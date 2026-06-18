@@ -14,7 +14,7 @@ const ITEMS = [
   { key: 'devotion', primary: '/member/devotion', paths: ['/member/devotion'], icon: 'heart', label: 'Devotion' },
   { key: 'goals', primary: '/member/goals', paths: ['/member/goals'], icon: 'target', label: 'Goals' },
   { key: 'forms', primary: '/member/forms', paths: ['/member/forms', '/member/wins'], icon: 'list', label: 'Forms' },
-  { key: 'learn', primary: '/member/learning', paths: ['/member/learning'], icon: 'bookopen', label: 'Learn' },
+  { key: 'you', primary: '/member/profile', paths: ['/member/profile', '/member/settings'], icon: 'user', label: 'You' },
 ];
 
 export default function BottomNav() {

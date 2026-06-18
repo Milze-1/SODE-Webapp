@@ -107,7 +107,10 @@ export default function ProfilePage() {
     await supabase.from('members').update({ consent_contact: v }).eq('id', member.id);
   };
 
+  const [signingOut, setSigningOut] = useState(false);
+
   const signOut = async () => {
+    setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace('/login');
@@ -207,14 +210,28 @@ export default function ProfilePage() {
             <SettingRow icon="info" title="How your data is used" sub="Plain-language NDPA summary" onClick={() => showToast({ msg: 'Privacy summary coming soon.' })} />
           </div>
 
-          {/* account */}
+          {/* settings & account */}
           <div className="card" style={{ overflow: 'hidden' }}>
+            <SettingRow icon="settings" title="Settings" sub="Password, notifications, privacy" onClick={() => router.push('/member/settings')} />
+            <hr className="divider" />
             <SettingRow icon="download" title="Export my data" onClick={() => showToast({ msg: 'Preparing your export…' })} />
             <hr className="divider" />
             <SettingRow icon="x" title="Request account deletion" danger onClick={() => showToast({ msg: 'Request noted — our team will follow up.' })} />
           </div>
 
-          <button onClick={signOut} className="btn btn-outline btn-block">Sign out</button>
+          <button
+            onClick={signOut}
+            disabled={signingOut}
+            className="btn btn-outline btn-block"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+          >
+            {signingOut ? (
+              <>
+                <span style={{ width: 15, height: 15, border: '2px solid var(--line-2)', borderTopColor: 'var(--navy)', borderRadius: '50%', animation: 'sode-spin .7s linear infinite', display: 'inline-block' }} />
+                Signing out…
+              </>
+            ) : 'Sign out'}
+          </button>
 
           <div style={{ textAlign: 'center', marginTop: 4 }}>
             <Image src="/images/sode-primary-logo.png" alt="SODE" width={80} height={56} className="object-contain" />
