@@ -76,21 +76,17 @@ export async function GET(request: Request) {
     }
   }
 
-  // Role-based redirect
-  const roles = await getUserRoles(user.id);
-  const isAdmin = hasAdminAccess(roles);
-
-  // Admin tab enforcement: if the login was initiated from the admin tab, non-admins are rejected
-  if (intent === "admin" && !isAdmin) {
-    await supabase.auth.signOut();
-    return NextResponse.redirect(`${origin}/login?error=not_admin`);
-  }
-
-  if (isAdmin) {
+  // Admin tab: check role, then send to dashboard or reject
+  if (intent === "admin") {
+    const roles = await getUserRoles(user.id);
+    if (!hasAdminAccess(roles)) {
+      await supabase.auth.signOut();
+      return NextResponse.redirect(`${origin}/login?error=not_admin`);
+    }
     return NextResponse.redirect(`${origin}/admin/dashboard`);
   }
 
-  // Check onboarding for members
+  // Member tab (no intent or intent=member): always go to member home, never admin
   const { data: member } = await supabase
     .from("members")
     .select("onboarding_complete")
