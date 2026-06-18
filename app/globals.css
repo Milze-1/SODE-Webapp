@@ -1,27 +1,279 @@
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+/* ── shadcn semantic tokens (kept for shadcn/ui component compat) ── */
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: var(--font-sans);
+  }
+  :root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --ring:   oklch(0.708 0 0);
+    --input: oklch(0.922 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+  }
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+  }
+  * {
+    border-color: var(--border);
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SODE design tokens — authoritative (from sode/tokens.css)
+   These override any conflicting shadcn variable names above.
+   ═══════════════════════════════════════════════════════════ */
+@layer base {
+  :root {
+    /* ---- surfaces / ink ---- */
+    --bg:        #ffffff;
+    --surface:   #f5f6f8;
+    --surface-2: #eef0f4;
+    --ink:       #11141c;
+    --ink-2:     #353b49;
+    --muted:     #6b7180;
+    --faint:     #9aa1ae;
+    --line:      #e6e8ed;
+    --line-2:    #d6d9e0;
+
+    /* ---- navy (single accent) ---- */
+    --navy:      #1e2a52;
+    --navy-700:  #283766;
+    --navy-600:  #33457a;
+    --navy-500:  #41538c;
+    --navy-ink:  #141d3a;
+    --navy-tint: #eef0f7;
+    --navy-tint-2:#e3e7f3;
+    --on-navy:   #ffffff;
+    --ring:      rgba(30,42,82,.20);
+
+    /* ---- pillar tints ---- */
+    --p-spiritual: #1e2a52;
+    --p-career:    #3a4e86;
+    --p-business:  #5c6b8c;
+    --p-character: #828ba0;
+
+    /* ---- radii ---- */
+    --r-xs: 8px;
+    --r-sm: 12px;
+    --r-md: 16px;
+    --r-lg: 20px;
+    --r-xl: 26px;
+    --r-pill: 999px;
+
+    /* ---- shadows (cool, navy-tinted) ---- */
+    --sh-sm: 0 1px 2px rgba(20,29,58,.06), 0 1px 3px rgba(20,29,58,.05);
+    --sh-md: 0 2px 6px rgba(20,29,58,.06), 0 8px 20px rgba(20,29,58,.07);
+    --sh-lg: 0 10px 30px rgba(20,29,58,.12), 0 2px 8px rgba(20,29,58,.06);
+    --sh-pop: 0 18px 50px rgba(20,29,58,.22), 0 4px 12px rgba(20,29,58,.10);
+
+    /* ---- type ---- */
+    --font: "Hanken Grotesk", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+    --tracking-label: .12em;
+
+    --fs-display: 30px;
+    --fs-h1: 24px;
+    --fs-h2: 20px;
+    --fs-h3: 17px;
+    --fs-body: 15px;
+    --fs-sm: 13px;
+    --fs-cap: 12px;
+    --fs-micro: 11px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SODE base styles & component utilities (from sode/tokens.css)
+   ═══════════════════════════════════════════════════════════ */
+
+.sode {
+  font-family: var(--font);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+.sode :where(h1,h2,h3,h4,p,ul,ol,figure) { margin: 0; }
+.sode button { font-family: inherit; cursor: pointer; border: none; }
+/* :where() reduces specificity to (0,0,1) so .btn-primary (0,1,0) always wins */
+:where(.sode) button { background: transparent; }
+.sode :focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 4px; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* label / eyebrow */
+.eyebrow {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--faint);
+}
+
+/* buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-weight: 600; font-size: var(--fs-body); line-height: 1;
+  border-radius: var(--r-pill); padding: 0 18px; height: 48px;
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease, color .15s ease;
+  white-space: nowrap; user-select: none;
+}
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--navy); color: var(--on-navy); box-shadow: var(--sh-sm); }
+.btn-primary:hover { background: var(--navy-700); }
+.btn-ghost { background: var(--surface); color: var(--ink); }
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line-2); }
+.btn-outline:hover { background: var(--surface); }
+.btn-block { width: 100%; }
+.btn-lg { height: 54px; font-size: var(--fs-h3); }
+.btn-sm { height: 38px; font-size: var(--fs-sm); padding: 0 14px; }
+.btn[disabled] { pointer-events: none; }
+.btn-primary[disabled] { background: var(--surface-2); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-2); }
+.btn-ghost[disabled], .btn-outline[disabled] { opacity: .5; }
+
+/* input / select / textarea */
+.input {
+  display: block; height: 44px; padding: 0 12px;
+  border-radius: var(--r-sm); border: 1.5px solid var(--line-2);
+  background: var(--surface); font-size: 13.5px; color: var(--ink);
+  font-family: var(--font); outline: none; appearance: none;
+  transition: border-color .15s;
+}
+.input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(30,42,82,.1); }
+textarea.input { height: auto; padding: 11px 12px; line-height: 1.5; }
+select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7180' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer; }
+
+/* card */
+.card {
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--r-md); box-shadow: var(--sh-sm);
+}
+.card-pad { padding: 16px; }
+
+/* chip */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 10px 0 8px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink);
+  font-size: var(--fs-cap); font-weight: 600; line-height: 1;
+}
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+/* generic */
+.divider { height: 1px; background: var(--line); border: 0; }
+.hpad { padding-left: 18px; padding-right: 18px; }
+
+/* hide scrollbars inside device for cleanliness */
+.noscroll::-webkit-scrollbar { width: 0; height: 0; }
+.noscroll { scrollbar-width: none; }
+
+/* ═══ keyframe animations ═══ */
+@keyframes sode-rise    { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes sode-fade    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sode-up      { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sode-pop     { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes sode-confetti{ 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(620px) rotate(540deg); opacity: 0; } }
+@keyframes sode-drawer  { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes sode-spin    { to { transform: rotate(360deg); } }
+@keyframes sode-pulse   { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* ── Member responsive desktop layout ──────────────────────────────── */
+.member-sidebar { display: none; flex-direction: column; width: 240px; flex: none; height: 100%; background: var(--bg); border-right: 1px solid var(--line); overflow: hidden; }
+.member-main { flex: 1; min-width: 0; position: relative; }
+
+@media (min-width: 768px) {
+  .member-shell { display: flex !important; height: 100dvh; overflow: hidden; }
+  .member-sidebar { display: flex !important; }
+  .member-main { overflow: hidden; }
+  .member-page { height: 100% !important; }
+  .member-bottom-nav { display: none !important; }
+  .member-scroll { height: 100%; overflow-y: auto; }
+
+  /* page-level content padding */
+  .member-content { padding: 28px 32px 32px !important; }
+
+  /* goal grid: 2 columns */
+  .member-goal-list { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
+
+  /* forms + learning: auto-fill grid */
+  .member-forms-list { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important; gap: 12px !important; }
+  .member-learning-list { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important; gap: 12px !important; }
+
+  /* two-col side-by-side desktop wrapper */
+  .member-desk-2col { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 20px !important; align-items: start; }
+
+  /* leaderboard you-bar: no bottom nav offset on desktop */
+  .member-leaderboard-bar { bottom: 8px !important; }
 }

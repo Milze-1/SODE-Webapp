@@ -1,0 +1,143 @@
+/* ============================================================
+   SODE Growth Platform — design tokens & base
+   Monochrome system: Navy Blue · Grey · Black
+   ============================================================ */
+
+:root {
+  /* ---- surfaces / ink ---- */
+  --bg:        #ffffff;
+  --surface:   #f5f6f8;   /* cards on white / inset fields */
+  --surface-2: #eef0f4;   /* deeper inset, chips */
+  --ink:       #11141c;   /* primary text (near-black) */
+  --ink-2:     #353b49;   /* strong secondary */
+  --muted:     #6b7180;   /* secondary text */
+  --faint:     #9aa1ae;   /* tertiary / captions */
+  --line:      #e6e8ed;   /* hairline */
+  --line-2:    #d6d9e0;   /* stronger hairline */
+
+  /* ---- navy (single accent) ---- */
+  --navy:      #1e2a52;   /* brand / primary actions */
+  --navy-700:  #283766;
+  --navy-600:  #33457a;
+  --navy-500:  #41538c;
+  --navy-ink:  #141d3a;   /* deepest, for dark panels */
+  --navy-tint: #eef0f7;   /* soft navy wash */
+  --navy-tint-2:#e3e7f3;
+  --on-navy:   #ffffff;
+  --ring:      rgba(30,42,82,.20);
+
+  /* ---- pillar tints (navy -> graphite ramp; meaning carried by icon+label) ---- */
+  --p-spiritual: #1e2a52;
+  --p-career:    #3a4e86;
+  --p-business:  #5c6b8c;
+  --p-character: #828ba0;
+
+  /* ---- radii ---- */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 20px;
+  --r-xl: 26px;
+  --r-pill: 999px;
+
+  /* ---- shadows (cool, navy-tinted, low) ---- */
+  --sh-sm: 0 1px 2px rgba(20,29,58,.06), 0 1px 3px rgba(20,29,58,.05);
+  --sh-md: 0 2px 6px rgba(20,29,58,.06), 0 8px 20px rgba(20,29,58,.07);
+  --sh-lg: 0 10px 30px rgba(20,29,58,.12), 0 2px 8px rgba(20,29,58,.06);
+  --sh-pop: 0 18px 50px rgba(20,29,58,.22), 0 4px 12px rgba(20,29,58,.10);
+
+  /* ---- type ---- */
+  --font: "Hanken Grotesk", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  --tracking-label: .12em;
+
+  --fs-display: 30px;
+  --fs-h1: 24px;
+  --fs-h2: 20px;
+  --fs-h3: 17px;
+  --fs-body: 15px;
+  --fs-sm: 13px;
+  --fs-cap: 12px;
+  --fs-micro: 11px;
+}
+
+/* ---------- base ---------- */
+* { box-sizing: border-box; }
+
+.sode {
+  font-family: var(--font);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+.sode :where(h1,h2,h3,h4,p,ul,ol,figure) { margin: 0; }
+.sode button { font-family: inherit; cursor: pointer; border: none; background: none; }
+.sode :focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; border-radius: 4px; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* label / eyebrow */
+.eyebrow {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--faint);
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-weight: 600; font-size: var(--fs-body); line-height: 1;
+  border-radius: var(--r-pill); padding: 0 18px; height: 48px;
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease, color .15s ease;
+  white-space: nowrap; user-select: none;
+}
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--navy); color: var(--on-navy); box-shadow: var(--sh-sm); }
+.btn-primary:hover { background: var(--navy-700); }
+.btn-ghost { background: var(--surface); color: var(--ink); }
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-outline { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line-2); }
+.btn-outline:hover { background: var(--surface); }
+.btn-block { width: 100%; }
+.btn-lg { height: 54px; font-size: var(--fs-h3); }
+.btn-sm { height: 38px; font-size: var(--fs-sm); padding: 0 14px; }
+.btn[disabled] { pointer-events: none; }
+.btn-primary[disabled] { background: var(--surface-2); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line-2); }
+.btn-ghost[disabled], .btn-outline[disabled] { opacity: .5; }
+
+/* ---------- card ---------- */
+.card {
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: var(--r-md); box-shadow: var(--sh-sm);
+}
+.card-pad { padding: 16px; }
+
+/* ---------- chip ---------- */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 26px; padding: 0 10px 0 8px; border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--ink);
+  font-size: var(--fs-cap); font-weight: 600; line-height: 1;
+}
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+/* ---------- generic ---------- */
+.divider { height: 1px; background: var(--line); border: 0; }
+.hpad { padding-left: 18px; padding-right: 18px; }
+
+@keyframes sode-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes sode-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sode-up   { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes sode-pop  { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
+@keyframes sode-confetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(620px) rotate(540deg); opacity: 0; } }
+@keyframes sode-drawer { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes sode-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+/* hide scrollbars inside device for cleanliness */
+.noscroll::-webkit-scrollbar { width: 0; height: 0; }
+.noscroll { scrollbar-width: none; }

@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/session-reminders",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/goal-reminders",
+      "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/cron/devotion-reminders",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/overdue-milestones",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase-server";
+import { getUserRoles, hasAdminAccess } from "@/lib/roles";
+
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get("code");
+  const type = searchParams.get("type"); // "recovery" for password reset flow
+  const intent = searchParams.get("intent"); // "admin" when logging in via admin tab
+  const authError = searchParams.get("error");
+
+  if (authError) {
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(authError)}`);
+  }
+
+  if (!code) {
+    return NextResponse.redirect(`${origin}/login?error=missing_code`);
+  }
+
+  const supabase = await createClient();
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (exchangeError) {
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(exchangeError.message)}`);
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.redirect(`${origin}/login?error=no_session`);
+  }
+
+  // Password reset flow — send to the reset page while session is active
+  if (type === "recovery") {
+    return NextResponse.redirect(`${origin}/auth/reset-password`);
+  }
+
+  // First-time password setup
+  if (user.user_metadata?.needs_password_setup) {
+    return NextResponse.redirect(`${origin}/auth/set-password`);
+  }
+
+  // Google OAuth: link or create member record
+  const provider = user.app_metadata?.provider;
+  if (provider === "google") {
+    const { data: existingMember } = await supabase
+      .from("members")
+      .select("id")
+      .eq("auth_id", user.id)
+      .maybeSingle();
+
+    if (!existingMember) {
+      // Try to find a pre-existing member by email (invited before Google signup)
+      const { data: memberByEmail } = await supabase
+        .from("members")
+        .select("id")
+        .eq("email", user.email)
+        .maybeSingle();
+
+      if (memberByEmail) {
+        await supabase.from("members").update({ auth_id: user.id }).eq("id", memberByEmail.id);
+      } else {
+        const name =
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
+          "Member";
+        await supabase.from("members").insert({
+          auth_id: user.id,
+          email: user.email,
+          name,
+          points: 0,
+          onboarding_complete: false,
+        });
+      }
+    }
+  }
+
+  // Role-based redirect
+  const roles = await getUserRoles(user.id);
+  const isAdmin = hasAdminAccess(roles);
+
+  // Admin tab enforcement: if the login was initiated from the admin tab, non-admins are rejected
+  if (intent === "admin" && !isAdmin) {
+    await supabase.auth.signOut();
+    return NextResponse.redirect(`${origin}/login?error=not_admin`);
+  }
+
+  if (isAdmin) {
+    return NextResponse.redirect(`${origin}/admin/dashboard`);
+  }
+
+  // Check onboarding for members
+  const { data: member } = await supabase
+    .from("members")
+    .select("onboarding_complete")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+
+  const dest = member?.onboarding_complete ? "/member/home" : "/member/onboarding";
+  return NextResponse.redirect(`${origin}${dest}`);
+}
