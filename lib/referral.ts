@@ -15,32 +15,40 @@ async function awardToInviter(
     .eq('ref_id', invitationId)
     .maybeSingle();
 
-  if (existingEvent) return 0;
+  if (existingEvent) {
+    console.log('[referral] awardToInviter: already awarded, skipping');
+    return 0;
+  }
 
   const { data: rule } = await db.from('point_rules').select('points')
     .eq('rule_key', ruleKey).eq('is_active', true).maybeSingle();
   const pts: number = (rule?.points as number | undefined) ?? (ruleKey === 'referral_attended' ? 30 : 50);
+  console.log('[referral] awardToInviter:', { ruleKey, pts, ruleFound: !!rule });
 
   const { data: inviterRow } = await db.from('members').select('points').eq('id', inviterMemberId).maybeSingle();
-  await db.from('point_events').insert({
+
+  const { error: insertErr } = await db.from('point_events').insert({
     member_id: inviterMemberId,
     rule_key: ruleKey,
     points: pts,
     ref_table: 'invitations',
     ref_id: invitationId,
   });
+  if (insertErr) console.error('[referral] point_events insert error:', insertErr.message);
+
   await db.from('members').update({ points: (inviterRow?.points ?? 0) + pts }).eq('id', inviterMemberId);
 
   const { data: bal } = await db.from('user_points_balance').select('total_points, this_month_points')
     .eq('member_id', inviterMemberId).maybeSingle();
   const now = new Date().toISOString();
-  await db.from('user_points_balance').upsert({
+  const { error: upsertErr } = await db.from('user_points_balance').upsert({
     member_id: inviterMemberId,
     total_points: (bal?.total_points ?? 0) + pts,
     this_month_points: (bal?.this_month_points ?? 0) + pts,
     last_recalc_at: now,
     updated_at: now,
   }, { onConflict: 'member_id' });
+  if (upsertErr) console.error('[referral] user_points_balance upsert error:', upsertErr.message);
 
   return pts;
 }
@@ -60,14 +68,16 @@ export async function processReferralOnRegister({
   let inviterMemberId: string | null = null;
   let invitationId: string | null = null;
 
-  // Path A: email matches a sent invitation
-  const { data: emailInv } = await db.from('invitations')
+  // Path A: email matches a sent invitation (case-insensitive)
+  const { data: emailInv, error: invErr } = await db.from('invitations')
     .select('id, inviter_id')
-    .eq('email', email)
+    .ilike('email', email)
     .in('stage', ['sent', 'opened'])
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  console.log('[referral] email lookup:', email, '→ found:', !!emailInv, 'error:', invErr?.message ?? null);
 
   if (emailInv) {
     inviterMemberId = emailInv.inviter_id as string;
@@ -79,10 +89,11 @@ export async function processReferralOnRegister({
     }).eq('id', invitationId);
   } else if (refCode) {
     // Path B: shared referral link with ?ref=CODE
-    const { data: refRow } = await db.from('referral_codes').select('id, member_id').eq('code', refCode).maybeSingle();
+    const { data: refRow, error: refErr } = await db.from('referral_codes').select('id, member_id').eq('code', refCode).maybeSingle();
+    console.log('[referral] refCode lookup:', refCode, '→ found:', !!refRow, 'error:', refErr?.message ?? null);
     if (refRow) {
       inviterMemberId = refRow.member_id as string;
-      const { data: newInv } = await db.from('invitations').insert({
+      const { data: newInv, error: newInvErr } = await db.from('invitations').insert({
         inviter_id: refRow.member_id,
         referral_code_id: refRow.id,
         email,
@@ -90,10 +101,12 @@ export async function processReferralOnRegister({
         invited_member_id: newMemberId,
         stage_updated_at: new Date().toISOString(),
       }).select('id').maybeSingle();
+      if (newInvErr) console.error('[referral] invitations insert error:', newInvErr.message);
       invitationId = (newInv?.id as string | undefined) ?? null;
     }
   }
 
+  console.log('[referral] inviter:', inviterMemberId, 'invitationId:', invitationId);
   if (!inviterMemberId || !invitationId) return null;
 
   const awarded = await awardToInviter(db, inviterMemberId, 'referral_joined', invitationId);
@@ -137,12 +150,13 @@ export async function processReferralOnAttendance({
   const db = createAdminClient();
 
   // Only applies when invitee has a 'joined' invitation (registered but not yet attended)
-  const { data: inv } = await db.from('invitations')
+  const { data: inv, error: invErr } = await db.from('invitations')
     .select('id, inviter_id')
     .eq('invited_member_id', inviteeMemberId)
     .eq('stage', 'joined')
     .maybeSingle();
 
+  console.log('[referral] attendance lookup for member:', inviteeMemberId, '→ found:', !!inv, 'error:', invErr?.message ?? null);
   if (!inv) return null;
 
   // Only on their VERY first attendance
@@ -150,6 +164,7 @@ export async function processReferralOnAttendance({
     .select('id', { count: 'exact', head: true })
     .eq('member_id', inviteeMemberId);
 
+  console.log('[referral] attendance count:', count);
   if ((count ?? 0) !== 1) return null;
 
   const inviterMemberId = inv.inviter_id as string;
@@ -157,7 +172,6 @@ export async function processReferralOnAttendance({
 
   const awarded = await awardToInviter(db, inviterMemberId, 'referral_attended', invitationId);
 
-  // Advance invitation stage
   await db.from('invitations').update({
     stage: 'attended',
     stage_updated_at: new Date().toISOString(),

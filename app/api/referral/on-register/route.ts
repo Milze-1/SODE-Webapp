@@ -1,29 +1,40 @@
-import { createClient, createAdminClient } from '@/lib/supabase-server';
+import { createAdminClient } from '@/lib/supabase-server';
 import { processReferralOnRegister } from '@/lib/referral';
 
 export async function POST(request: Request) {
-  // Verify caller is authenticated as the email they're claiming
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { email, refCode, authId } = await request.json() as {
+    email: string;
+    refCode?: string | null;
+    authId: string;
+  };
 
-  const { email, refCode } = await request.json() as { email: string; refCode?: string | null };
+  if (!email || !authId) {
+    return Response.json({ error: 'Missing required fields' }, { status: 400 });
+  }
 
-  if (!user || user.email?.toLowerCase() !== email?.toLowerCase()) {
+  const db = createAdminClient();
+
+  // Verify authId belongs to this email using admin client
+  // (avoids session-cookie timing race right after signUp)
+  const { data: { user: authUser } } = await db.auth.admin.getUserById(authId);
+  if (!authUser || authUser.email?.toLowerCase() !== email.toLowerCase()) {
+    console.error('[on-register] Auth check failed for authId:', authId, 'email:', email);
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Get the new member record using admin client to bypass RLS timing issues
-  const db = createAdminClient();
-  const { data: memberRow } = await db.from('members').select('id').eq('auth_id', user.id).maybeSingle();
+  const { data: memberRow } = await db.from('members').select('id').eq('auth_id', authId).maybeSingle();
   if (!memberRow) {
+    console.error('[on-register] Member not found for authId:', authId);
     return Response.json({ error: 'Member not found' }, { status: 404 });
   }
 
+  console.log('[on-register] Processing referral for member:', memberRow.id, 'refCode:', refCode);
   const result = await processReferralOnRegister({
     newMemberId: memberRow.id as string,
     email,
     refCode,
   });
+  console.log('[on-register] Result:', result);
 
   return Response.json({ success: true, result });
 }

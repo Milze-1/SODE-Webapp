@@ -87,12 +87,19 @@ function RegisterInner() {
       created_at: new Date().toISOString(),
     });
 
-    // Process referral (fire and forget — registration succeeds regardless)
-    fetch("/api/referral/on-register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), refCode: refCode || null }),
-    }).catch(() => {});
+    // Process referral
+    try {
+      console.log("[Referral] Calling on-register API", { refCode });
+      const refResponse = await fetch("/api/referral/on-register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), refCode: refCode || null, authId: user.id }),
+      });
+      const refResult = await refResponse.json();
+      console.log("[Referral] Result:", refResult);
+    } catch (e) {
+      console.error("[Referral] Error:", e);
+    }
 
     // Notify leadership (fire and forget)
     fetch("/api/notify/new-member", {
