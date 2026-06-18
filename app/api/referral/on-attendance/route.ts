@@ -14,6 +14,6 @@ export async function POST(request: Request) {
   const { data: memberRow } = await db.from('members').select('id').eq('id', memberId).eq('auth_id', user.id).maybeSingle();
   if (!memberRow) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-  const result = await processReferralOnAttendance({ inviteeMemberId: memberId });
-  return Response.json({ success: true, result });
+  await processReferralOnAttendance(memberId);
+  return Response.json({ success: true });
 }

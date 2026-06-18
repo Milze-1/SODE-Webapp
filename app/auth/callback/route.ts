@@ -80,11 +80,7 @@ export async function GET(request: Request) {
 
       // Process referral for the new Google OAuth member (fire and forget)
       if (newMemberId && user.email) {
-        processReferralOnRegister({
-          newMemberId,
-          email: user.email,
-          refCode: refCode ?? null,
-        }).catch(() => {});
+        processReferralOnRegister(user.email, newMemberId, refCode ?? null).catch(() => {});
       }
     }
   }

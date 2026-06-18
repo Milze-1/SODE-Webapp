@@ -29,12 +29,7 @@ export async function POST(request: Request) {
   }
 
   console.log('[on-register] Processing referral for member:', memberRow.id, 'refCode:', refCode);
-  const result = await processReferralOnRegister({
-    newMemberId: memberRow.id as string,
-    email,
-    refCode,
-  });
-  console.log('[on-register] Result:', result);
+  await processReferralOnRegister(email, memberRow.id as string, refCode ?? null);
 
-  return Response.json({ success: true, result });
+  return Response.json({ success: true });
 }
