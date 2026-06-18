@@ -26,14 +26,13 @@ export default function LeaderboardPage() {
 
       const { data: members } = await supabase
         .from('members')
-        .select('id, name, points, leaderboard_opt_in')
-        .eq('leaderboard_opt_in', true)
-        .eq('onboarding_complete', true)
+        .select('id, name, points, auth_id')
+        .gt('points', 0)
         .order('points', { ascending: false })
         .limit(50);
 
-      const entries = ((members ?? []) as { id: string; name: string; points: number }[]).map((m, i) => ({
-        id: m.id, name: m.name ?? 'Member', points: m.points ?? 0, isYou: m.id === memberRow.id, rank: i + 1,
+      const entries = ((members ?? []) as { id: string; name: string; points: number; auth_id: string }[]).map((m, i) => ({
+        id: m.id, name: m.name ?? 'Member', points: m.points ?? 0, isYou: m.auth_id === user.id, rank: i + 1,
       }));
 
       const youRank = entries.findIndex(e => e.isYou) + 1;

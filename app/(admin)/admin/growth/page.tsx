@@ -93,31 +93,20 @@ export default function GrowthPage() {
     const supabase = createClient();
     const { data: members } = await supabase
       .from('members')
-      .select('id,name,email,pillar,auth_id')
+      .select('id,name,email,pillar,auth_id,points')
       .eq('onboarding_complete', true)
-      .order('name');
+      .order('points', { ascending: false });
 
-    const memberList = (members ?? []) as { id: string; name: string; email: string; pillar: string | null; auth_id: string }[];
-
-    if (memberList.length === 0) { setMemberPoints([]); setMpLoading(false); return; }
-
-    const memberIds = memberList.map(m => m.id).filter(Boolean);
-    const { data: balances } = await supabase
-      .from('user_points_balance')
-      .select('member_id,total_points,this_month_points')
-      .in('member_id', memberIds);
-
-    const balMap = Object.fromEntries(
-      ((balances ?? []) as { member_id: string; total_points: number; this_month_points: number }[]).map(b => [b.member_id, b]),
-    );
-
-    const rows: MemberPoints[] = memberList
+    const rows: MemberPoints[] = ((members ?? []) as { id: string; name: string; email: string; pillar: string | null; auth_id: string; points: number }[])
       .map(m => ({
-        ...m,
-        all_time_points: balMap[m.id]?.total_points ?? 0,
-        current_period_points: balMap[m.id]?.this_month_points ?? 0,
-      }))
-      .sort((a, b) => b.all_time_points - a.all_time_points);
+        id: m.id,
+        auth_id: m.auth_id,
+        name: m.name,
+        email: m.email,
+        pillar: m.pillar,
+        all_time_points: m.points ?? 0,
+        current_period_points: m.points ?? 0,
+      }));
 
     setMemberPoints(rows);
     setMpLoading(false);
@@ -165,7 +154,7 @@ export default function GrowthPage() {
     const channel = supabase.channel('admin-growth')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invitations' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'point_rules' }, load)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_points_balance' }, loadMemberPoints)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, loadMemberPoints)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

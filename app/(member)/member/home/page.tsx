@@ -577,7 +577,7 @@ export default function HomePage() {
       const currentMonth = new Date().getMonth() + 1;
 
       const today = new Date().toISOString().slice(0, 10);
-      const [goalsRes, rankRes, sessionRes, winsRes, balRes, monthlyContentRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
+      const [goalsRes, rankRes, sessionRes, winsRes, monthlyContentRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
         supabase.from('goals')
           .select('id, pillar, title, current, target, unit, due_date, status')
           .eq('member_id', memberRow.id)
@@ -597,10 +597,6 @@ export default function HomePage() {
           .eq('member_id', memberRow.id)
           .order('created_at', { ascending: false })
           .limit(10),
-        supabase.from('user_points_balance')
-          .select('total_points')
-          .eq('member_id', memberRow.id)
-          .maybeSingle(),
         supabase.from('learning_content')
           .select('id,title,content_type,author,pillar')
           .eq('is_published', true)
@@ -641,7 +637,6 @@ export default function HomePage() {
       setRank((rankRes.count ?? 0) + 1);
       setNextSession(sessionRes.data ?? null);
       setWins((winsRes.data ?? []) as WinRow[]);
-      setMember(m => m ? { ...m, points: balRes.data?.total_points ?? memberRow.points ?? 0 } : m);
 
       let featured = ((monthlyContentRes.data ?? []) as ContentRow[])[0] ?? null;
       if (!featured) {

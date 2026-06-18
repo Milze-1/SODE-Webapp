@@ -27,27 +27,25 @@ export default function MemberSidebar() {
   const [name, setName] = useState('');
   const [points, setPoints] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data: member } = await supabase
-          .from('members')
-          .select('id, name, points')
-          .eq('auth_id', user.id)
-          .maybeSingle();
-        if (!member) return;
-        if (member.name) setName(member.name);
-        const [{ data: balance }, { data: roleRow }] = await Promise.all([
-          supabase.from('user_points_balance').select('total_points').eq('member_id', member.id).maybeSingle(),
+        if (!user) { setLoaded(true); return; }
+        const [{ data: member }, { data: roleRow }] = await Promise.all([
+          supabase.from('members').select('name, points').eq('auth_id', user.id).maybeSingle(),
           supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle(),
         ]);
-        setPoints(balance?.total_points ?? member.points ?? 0);
+        if (member) {
+          setName(member.name ?? '');
+          setPoints(member.points ?? 0);
+        }
         if (roleRow?.role && String(roleRow.role).includes('admin')) setIsAdmin(true);
       } catch { /* keep defaults */ }
+      setLoaded(true);
     })();
   }, []);
 
@@ -81,15 +79,25 @@ export default function MemberSidebar() {
       </nav>
 
       <div style={{ marginTop: 'auto', padding: '12px 8px 0', borderTop: '1px solid var(--line)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Avatar name={name || 'M'} size={34} tone="grey" />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {name || 'Member'}
+        {!loaded ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '2px 0' }}>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--surface-2)', flex: 'none' }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ height: 12, borderRadius: 6, background: 'var(--surface-2)', width: '68%', marginBottom: 6 }} />
+              <div style={{ height: 10, borderRadius: 5, background: 'var(--surface-2)', width: '40%' }} />
             </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }} className="tnum">{points} pts</div>
           </div>
-        </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Avatar name={name || '?'} size={34} tone="grey" />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }} className="tnum">{points} pts</div>
+            </div>
+          </div>
+        )}
         {isAdmin && (
           <button
             onClick={() => router.push('/admin/dashboard')}
