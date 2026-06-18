@@ -125,6 +125,12 @@ function AttendanceContent() {
         setCheckedInAt(inserted.checked_in_at);
         const awarded = await awardPoints(memberId, 'attendance_present', 'attendance_records', inserted.id);
         showToast({ msg: 'Checked in. Good to see you.', icon: 'check', points: awarded || undefined });
+        // Check if this member was referred and award inviter their first-attendance points
+        fetch('/api/referral/on-attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memberId }),
+        }).catch(() => {});
       } else {
         showToast({ msg: 'Could not check in — try again.' });
       }

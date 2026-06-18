@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         <p style="font-size:14px;line-height:1.65;color:#374151;margin:0 0 4px;">
           SODE is a community for young professionals committed to growing in faith, career, and marketplace impact.
         </p>
-        ${ctaButton('Accept invitation &amp; join', `${appUrl}/login`)}
+        ${ctaButton('Accept invitation &amp; join', `${appUrl}/register`)}
         <p style="font-size:12px;color:#9ca3af;margin-top:16px;">
           If you&apos;re not interested, you can safely ignore this email.
         </p>

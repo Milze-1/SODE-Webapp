@@ -54,6 +54,8 @@ export default function InvitePage() {
   const [totalPoints, setTotalPoints] = useState(0);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [view, setView] = useState('send');
+  const [refCode, setRefCode] = useState<string | null>(null);
+  const [copyToast, setCopyToast] = useState(false);
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
   const [batch, setBatch] = useState<{ name: string; contact: string }[]>([]);
@@ -84,6 +86,13 @@ export default function InvitePage() {
       const invs = (invRes ?? []) as Invitation[];
       setInvitations(invs);
       setTotalPoints(invs.reduce((a, i) => a + invitePoints(i.stage), 0));
+
+      // Load or create referral code
+      fetch('/api/referral/my-code')
+        .then(r => r.json())
+        .then((j: { code?: string }) => { if (j.code) setRefCode(j.code); })
+        .catch(() => {});
+
       setLoading(false);
     })();
   }, [router]);
@@ -153,6 +162,44 @@ export default function InvitePage() {
         </div>
 
         <div style={{ padding: '14px 16px 100px' }}>
+          {/* personal referral link */}
+          {refCode && (() => {
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://thesode.org';
+            const link = `${appUrl}/register?ref=${refCode}`;
+            const copyLink = () => {
+              navigator.clipboard.writeText(link).then(() => {
+                setCopyToast(true);
+                setTimeout(() => setCopyToast(false), 2000);
+              }).catch(() => {});
+            };
+            const waText = encodeURIComponent(`Hi! I've been growing with The School of Daniels & Esthers — a community helping young people thrive spiritually and in the marketplace. Join me here: ${link}`);
+            return (
+              <div className="card card-pad" style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 8 }}>Your invite link</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderRadius: 9, background: 'var(--surface-2)', border: '1px solid var(--line)', marginBottom: 10, overflow: 'hidden' }}>
+                  <span style={{ flex: 1, fontSize: 12.5, color: 'var(--ink-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{link}</span>
+                  {copyToast ? (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy)', whiteSpace: 'nowrap' }}>Copied ✓</span>
+                  ) : (
+                    <button onClick={copyLink} style={{ flex: 'none', fontSize: 12.5, fontWeight: 700, color: 'var(--navy)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', whiteSpace: 'nowrap' }}>Copy</button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={copyLink} className="btn btn-ghost btn-sm" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <Icon name="copy" size={14} /> Copy link
+                  </button>
+                  <button
+                    onClick={() => window.open(`https://wa.me/?text=${waText}`, '_blank')}
+                    className="btn btn-sm"
+                    style={{ flex: 1, background: '#25d366', border: 'none', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <Icon name="message" size={14} color="#fff" /> Share on WhatsApp
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* hero */}
           <div style={{ borderRadius: 'var(--r-md)', background: 'linear-gradient(135deg, var(--navy), var(--navy-ink))', color: '#fff', padding: 18, position: 'relative', overflow: 'hidden', marginBottom: 16 }}>
             <div style={{ position: 'absolute', right: -20, bottom: -24, opacity: .13 }}><Icon name="users" size={130} stroke={1.4} color="#fff" /></div>

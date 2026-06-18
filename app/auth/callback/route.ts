@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getUserRoles, hasAdminAccess } from "@/lib/roles";
+import { processReferralOnRegister } from "@/lib/referral";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const type = searchParams.get("type"); // "recovery" for password reset flow
   const intent = searchParams.get("intent"); // "admin" when logging in via admin tab
+  const refCode = searchParams.get("ref"); // referral code from ?ref=CODE
   const authError = searchParams.get("error");
 
   if (authError) {
@@ -57,21 +59,32 @@ export async function GET(request: Request) {
         .eq("email", user.email)
         .maybeSingle();
 
+      let newMemberId: string | null = null;
+
       if (memberByEmail) {
         await supabase.from("members").update({ auth_id: user.id }).eq("id", memberByEmail.id);
+        newMemberId = memberByEmail.id as string;
       } else {
         const name =
           user.user_metadata?.full_name ||
           user.user_metadata?.name ||
           user.email?.split("@")[0] ||
           "Member";
-        await supabase.from("members").insert({
-          auth_id: user.id,
+        const { data: inserted } = await supabase
+          .from("members")
+          .insert({ auth_id: user.id, email: user.email, name, points: 0, onboarding_complete: false })
+          .select("id")
+          .maybeSingle();
+        newMemberId = (inserted?.id as string | undefined) ?? null;
+      }
+
+      // Process referral for the new Google OAuth member (fire and forget)
+      if (newMemberId && user.email) {
+        processReferralOnRegister({
+          newMemberId,
           email: user.email,
-          name,
-          points: 0,
-          onboarding_complete: false,
-        });
+          refCode: refCode ?? null,
+        }).catch(() => {});
       }
     }
   }

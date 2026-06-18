@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Icon } from "@/components/sode/icons";
 
@@ -26,8 +26,11 @@ function inp(extra?: React.CSSProperties): React.CSSProperties {
   };
 }
 
-export default function RegisterPage() {
+function RegisterInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const refCode = searchParams.get("ref"); // referral code from invite link
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -84,7 +87,14 @@ export default function RegisterPage() {
       created_at: new Date().toISOString(),
     });
 
-    // Notify leadership (fire and forget — registration succeeds regardless)
+    // Process referral (fire and forget — registration succeeds regardless)
+    fetch("/api/referral/on-register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), refCode: refCode || null }),
+    }).catch(() => {});
+
+    // Notify leadership (fire and forget)
     fetch("/api/notify/new-member", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -98,9 +108,13 @@ export default function RegisterPage() {
     setGoogleLoading(true);
     setError("");
     const supabase = createClient();
+    // Carry ref code through OAuth so callback can process referral
+    const callbackUrl = refCode
+      ? `${window.location.origin}/auth/callback?ref=${encodeURIComponent(refCode)}`
+      : `${window.location.origin}/auth/callback`;
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl },
     });
     if (oauthError) {
       setError("Google sign-up failed. Please try again or use email and password.");
@@ -244,5 +258,13 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterInner />
+    </Suspense>
   );
 }
