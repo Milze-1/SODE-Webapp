@@ -78,14 +78,24 @@ function RegisterInner() {
     if (!user) { setLoading(false); setError("Registration failed. Please try again."); return; }
 
     // Create member record
-    await supabase.from("members").insert({
+    const { data: newMember } = await supabase.from("members").insert({
       auth_id: user.id,
       name: name.trim(),
       email: email.trim(),
       whatsapp: whatsapp.trim(),
       onboarding_complete: false,
       created_at: new Date().toISOString(),
-    });
+    }).select('id').single();
+
+    // Seed balance row so admin analytics are accurate from registration
+    if (newMember?.id) {
+      await supabase.from('user_points_balance').insert({
+        member_id: newMember.id,
+        total_points: 0,
+        this_month_points: 0,
+        updated_at: new Date().toISOString(),
+      });
+    }
 
     // Award registration points (session cookie not yet set, so pass authId)
     try {

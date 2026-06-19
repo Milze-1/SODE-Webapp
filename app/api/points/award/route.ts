@@ -137,21 +137,28 @@ export async function POST(req: NextRequest) {
   const newPoints = (memberRow.points ?? 0) + pts;
   await db.from('members').update({ points: newPoints }).eq('id', memberRow.id);
 
-  // Upsert user_points_balance
+  // Sync user_points_balance — total_points tracks members.points exactly (no drift)
   const { data: bal } = await db
     .from('user_points_balance')
-    .select('total_points, this_month_points')
+    .select('this_month_points')
     .eq('member_id', memberRow.id)
     .maybeSingle();
 
   const now = new Date().toISOString();
-  await db.from('user_points_balance').upsert({
-    member_id:          memberRow.id,
-    total_points:       (bal?.total_points       ?? 0) + pts,
-    this_month_points:  (bal?.this_month_points  ?? 0) + pts,
-    last_recalc_at:     now,
-    updated_at:         now,
-  });
+  if (bal) {
+    await db.from('user_points_balance').update({
+      total_points:      newPoints,
+      this_month_points: (bal.this_month_points ?? 0) + pts,
+      updated_at:        now,
+    }).eq('member_id', memberRow.id);
+  } else {
+    await db.from('user_points_balance').insert({
+      member_id:         memberRow.id,
+      total_points:      newPoints,
+      this_month_points: pts,
+      updated_at:        now,
+    });
+  }
 
   console.log('[awardPoints] Awarded', pts, 'to', memberRow.id, 'for', ruleKey);
   return NextResponse.json({ awarded: pts });

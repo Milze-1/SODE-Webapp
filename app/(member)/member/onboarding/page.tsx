@@ -174,6 +174,31 @@ export default function OnboardingPage() {
     })();
   }, [router]);
 
+  // Ensure user_points_balance row exists — catches members who registered before this was seeded
+  useEffect(() => {
+    if (!existingMemberId) return;
+    (async () => {
+      const supabase = createClient();
+      const { data: balance } = await supabase
+        .from('user_points_balance')
+        .select('member_id')
+        .eq('member_id', existingMemberId)
+        .maybeSingle();
+      if (balance) return;
+      const { data: member } = await supabase
+        .from('members')
+        .select('points')
+        .eq('id', existingMemberId)
+        .single();
+      await supabase.from('user_points_balance').insert({
+        member_id:         existingMemberId,
+        total_points:      member?.points ?? 0,
+        this_month_points: member?.points ?? 0,
+        updated_at:        new Date().toISOString(),
+      });
+    })();
+  }, [existingMemberId]);
+
   const handleFirstTimerSelect = async (value: 'first' | 'returning') => {
     setFirstTimer(value);
     if (!userId) return;
