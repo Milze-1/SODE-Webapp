@@ -433,15 +433,14 @@ CREATE POLICY "point_rules_write_director"
 
 -- ─── point_events ─────────────────────────────────────────────────────────────
 
--- Members read their own point events
-CREATE POLICY "point_events_read_own"
+-- All authenticated users can read all rows — required for leaderboard
+-- month/cycle tabs which aggregate point_events across all members.
+-- point_events contains no sensitive data beyond member_id and points earned.
+CREATE POLICY "read_all_point_events"
   ON public.point_events FOR SELECT TO authenticated
-  USING (member_id = public.auth_member_id());
+  USING (true);
 
--- Directors read all
-CREATE POLICY "point_events_read_director"
-  ON public.point_events FOR SELECT TO authenticated
-  USING (public.auth_is_director());
+-- Directors retain full write access via separate insert/update policies
 
 -- ─── user_points_balance ──────────────────────────────────────────────────────
 
