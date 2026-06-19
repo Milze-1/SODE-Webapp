@@ -132,25 +132,25 @@ export default function LeaderboardPage() {
       if (cancelled) return;
       setEntries(data);
 
+      // Always fetch real member row so the bar never shows stale or 0 points
+      const { data: realMember } = await sb
+        .from('members')
+        .select('id, name, auth_id, points')
+        .eq('auth_id', authUser.id)
+        .single();
+
+      if (!realMember || cancelled) return;
+
       const found = data.find(e => e.auth_id === authUser.id);
-      if (found) {
-        setCurrentMember(found);
-      } else {
-        const { data: me } = await sb
-          .from('members')
-          .select('id, name, auth_id, points')
-          .eq('auth_id', authUser.id)
-          .single();
-        if (me && !cancelled) {
-          setCurrentMember({
-            rank: data.length + 1,
-            id: me.id,
-            auth_id: me.auth_id,
-            name: me.name ?? '',
-            points: 0,
-          });
-        }
-      }
+
+      setCurrentMember({
+        rank: found?.rank ?? data.length + 1,
+        id: realMember.id,
+        auth_id: authUser.id,
+        name: realMember.name ?? '',
+        // Period pts when in this period's list; real total otherwise
+        points: found ? found.points : (realMember.points ?? 0),
+      });
 
       if (!cancelled) setLoading(false);
     };
@@ -174,9 +174,12 @@ export default function LeaderboardPage() {
   const top3      = entries.slice(0, 3);
   const rest      = entries.slice(3);
   const isEmpty   = entries.length === 0;
-  const meInList  = rest.some(e => e.auth_id === authUser?.id);
-  const showBar   = !meInList;
+  const meInList    = rest.some(e => e.auth_id === authUser?.id);
+  const showBar     = !meInList;
   const periodLabel = tab === 'month' ? 'month' : tab === 'cycle' ? 'cycle' : '';
+  // True when user has points in the current period (bar shows period pts + label)
+  const meInPeriod  = entries.some(e => e.auth_id === authUser?.id);
+  const barSuffix   = (tab !== 'alltime' && meInPeriod) ? ` this ${periodLabel}` : '';
 
   // ── Tab strip (shared between skeleton and main render) ───────────────────────
   const TabStrip = () => (
@@ -369,7 +372,7 @@ export default function LeaderboardPage() {
               <div style={{ fontSize: 13.5, fontWeight: 700 }}>You · {currentMember.name.split(' ')[0]}</div>
             </div>
             <span className="tnum" style={{ fontSize: 14, fontWeight: 800 }}>
-              {currentMember.points.toLocaleString()} pts
+              {currentMember.points.toLocaleString()} pts{barSuffix}
             </span>
           </div>
         </div>
