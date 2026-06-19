@@ -24,15 +24,30 @@ interface RegisterRow {
 }
 
 const SESSION_TYPES = [
-  { value: 'service', label: 'Service' },
-  { value: 'sode_session', label: 'SODE Session' },
-  { value: 'retreat', label: 'Retreat' },
-  { value: 'workshop', label: 'Workshop' },
+  { value: 'service',       label: 'Service' },
+  { value: 'sode_session',  label: 'SODE Session' },
+  { value: 'retreat',       label: 'Retreat' },
+  { value: 'workshop',      label: 'Workshop' },
+];
+
+const EDIT_SESSION_TYPES = [
+  { value: 'sunday_service', label: 'Sunday Service' },
+  { value: 'sode_session',   label: 'SODE Session' },
+  { value: 'cell_meeting',   label: 'Cell Meeting' },
+  { value: 'masterclass',    label: 'Masterclass' },
+  { value: 'service',        label: 'Service' },
+  { value: 'retreat',        label: 'Retreat' },
+  { value: 'workshop',       label: 'Workshop' },
+  { value: 'other',          label: 'Other' },
 ];
 
 const selectStyle: React.CSSProperties = {
   width: '100%', height: 50, borderRadius: 'var(--r-sm)', border: '1px solid var(--line-2)',
   background: 'var(--surface)', padding: '0 14px', fontSize: 15, color: 'var(--ink)', outline: 'none',
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', display: 'block', marginBottom: 6,
 };
 
 function fmtDate(s: string) {
@@ -54,33 +69,59 @@ function Modal({ onClose, width = 380, children }: { onClose: () => void; width?
 }
 
 export default function AttendancePage() {
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
-  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [sessions, setSessions]               = useState<SessionRow[]>([]);
+  const [members, setMembers]                 = useState<MemberRow[]>([]);
   const [registerSessionId, setRegisterSessionId] = useState<string | null>(null);
-  const [records, setRecords] = useState<AttendRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [records, setRecords]                 = useState<AttendRecord[]>([]);
+  const [loading, setLoading]                 = useState(true);
+  const [loadError, setLoadError]             = useState<string | null>(null);
 
-  const [showNew, setShowNew] = useState(false);
+  // New session modal
+  const [showNew, setShowNew]   = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newType, setNewType] = useState('service');
-  const [newAt, setNewAt] = useState('');
+  const [newType, setNewType]   = useState('service');
+  const [newAt, setNewAt]       = useState('');
   const [newCount, setNewCount] = useState('');
   const [newPillar, setNewPillar] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]     = useState(false);
 
+  // Edit session modal
+  const [editingSession, setEditingSession] = useState<SessionRow | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: '', type: 'service', date: '', time: '09:00', expected_count: 0, pillar: '',
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError]   = useState<string | null>(null);
+
+  // Delete session modal
+  const [deletingSession, setDeletingSession] = useState<SessionRow | null>(null);
+  const [deleting, setDeleting]               = useState(false);
+
+  // Register search
   const [registerSearch, setRegisterSearch] = useState('');
 
   // Member attendance history
-  const [historySearch, setHistorySearch] = useState('');
+  const [historySearch, setHistorySearch]   = useState('');
   const [historyResults, setHistoryResults] = useState<MemberRow[]>([]);
-  const [historyMember, setHistoryMember] = useState<MemberRow | null>(null);
+  const [historyMember, setHistoryMember]   = useState<MemberRow | null>(null);
   const [historyRecords, setHistoryRecords] = useState<{ session: SessionRow; record: AttendRecord }[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const [qrSession, setQrSession] = useState<SessionRow | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [qrSession, setQrSession]   = useState<SessionRow | null>(null);
+  const [qrDataUrl, setQrDataUrl]   = useState('');
   const qrImgRef = useRef<HTMLDivElement | null>(null);
+
+  // Toast
+  const [toast, setToast]                   = useState<string | null>(null);
+  const toastTimer                           = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2800);
+  };
+
+  // ─── Data fetching ─────────────────────────────────────────────────────────
 
   const fetchSessions = useCallback(async () => {
     const supabase = createClient();
@@ -113,17 +154,15 @@ export default function AttendancePage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const [allSessions] = await Promise.all([
-        fetchSessions(),
-      ]);
+      const [allSessions] = await Promise.all([fetchSessions()]);
       const { data: memberRows } = await supabase
         .from('members').select('id,name').eq('onboarding_complete', true).order('name');
       setMembers((memberRows ?? []) as MemberRow[]);
 
       const now = new Date().toISOString();
-      const live = allSessions.find(s => s.is_live);
+      const live     = allSessions.find(s => s.is_live);
       const fallback = allSessions.find(s => s.scheduled_at < now);
-      const initial = live ?? fallback ?? allSessions[0] ?? null;
+      const initial  = live ?? fallback ?? allSessions[0] ?? null;
       if (initial) {
         setRegisterSessionId(initial.id);
         await fetchRecords(initial.id);
@@ -141,6 +180,8 @@ export default function AttendancePage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Session actions ────────────────────────────────────────────────────────
 
   const selectRegister = async (sessionId: string) => {
     setRegisterSessionId(sessionId);
@@ -193,6 +234,82 @@ export default function AttendancePage() {
     } finally { setSaving(false); }
   };
 
+  // ─── Edit session ───────────────────────────────────────────────────────────
+
+  const openEdit = (session: SessionRow) => {
+    setEditingSession(session);
+    setEditError(null);
+    setEditForm({
+      title:          session.title,
+      type:           session.type || 'service',
+      date:           session.scheduled_at.split('T')[0],
+      time:           session.scheduled_at.split('T')[1]?.slice(0, 5) || '09:00',
+      expected_count: session.expected_count ?? 0,
+      pillar:         session.pillar || '',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingSession) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const supabase = createClient();
+      const combinedDateTime = new Date(`${editForm.date}T${editForm.time}`).toISOString();
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          title:          editForm.title,
+          type:           editForm.type,
+          scheduled_at:   combinedDateTime,
+          expected_count: editForm.expected_count || null,
+          pillar:         editForm.pillar || null,
+        })
+        .eq('id', editingSession.id);
+
+      if (error) { setEditError(error.message); return; }
+
+      setSessions(prev => prev.map(s => s.id === editingSession.id ? {
+        ...s,
+        title:          editForm.title,
+        type:           editForm.type,
+        scheduled_at:   combinedDateTime,
+        expected_count: editForm.expected_count || null,
+        pillar:         editForm.pillar || null,
+      } : s));
+
+      setEditingSession(null);
+      showToast('Session updated ✓');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  // ─── Delete session ─────────────────────────────────────────────────────────
+
+  const confirmDelete = async () => {
+    if (!deletingSession) return;
+    setDeleting(true);
+    try {
+      const supabase = createClient();
+
+      await supabase.from('attendance_records').delete().eq('session_id', deletingSession.id);
+
+      const { error } = await supabase.from('sessions').delete().eq('id', deletingSession.id);
+      if (error) { console.error('deleteSession error:', JSON.stringify(error)); return; }
+
+      setSessions(prev => prev.filter(s => s.id !== deletingSession.id));
+      if (registerSessionId === deletingSession.id) { setRegisterSessionId(null); setRecords([]); }
+
+      showToast('Session deleted');
+      setDeletingSession(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ─── QR ────────────────────────────────────────────────────────────────────
+
   const openQr = async (session: SessionRow) => {
     setQrSession(session);
     const url = typeof window !== 'undefined'
@@ -213,6 +330,8 @@ export default function AttendancePage() {
   const goFullscreen = () => {
     qrImgRef.current?.requestFullscreen?.().catch(() => {});
   };
+
+  // ─── Register ───────────────────────────────────────────────────────────────
 
   const toggleStatus = async (memberId: string, record: AttendRecord | null) => {
     if (!registerSessionId) return;
@@ -252,7 +371,8 @@ export default function AttendancePage() {
     await fetchRecords(registerSessionId);
   };
 
-  // History search
+  // ─── History search ─────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!historySearch.trim()) { setHistoryResults([]); return; }
     const supabase = createClient();
@@ -287,13 +407,15 @@ export default function AttendancePage() {
     setHistoryLoading(false);
   };
 
-  const now = new Date().toISOString();
+  // ─── Derived values ─────────────────────────────────────────────────────────
+
+  const now             = new Date().toISOString();
   const registerSession = sessions.find(s => s.id === registerSessionId) ?? null;
 
   const registerRows: RegisterRow[] = members.map(m => ({
     member_id: m.id,
-    name: m.name,
-    record: records.find(r => r.member_id === m.id) ?? null,
+    name:      m.name,
+    record:    records.find(r => r.member_id === m.id) ?? null,
   })).sort((a, b) => {
     if (!!a.record === !!b.record) return a.name.localeCompare(b.name);
     return a.record ? -1 : 1;
@@ -304,6 +426,8 @@ export default function AttendancePage() {
   );
 
   const presentCount = records.filter(r => r.status === 'present').length;
+
+  // ─── Loading state ──────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -317,6 +441,8 @@ export default function AttendancePage() {
       </>
     );
   }
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -336,6 +462,7 @@ export default function AttendancePage() {
             {loadError}
           </div>
         )}
+
         {/* Session cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14, marginBottom: 18 }}>
           {sessions.length === 0 && !loadError && (
@@ -347,6 +474,8 @@ export default function AttendancePage() {
             const present = sessionRecords ? sessionRecords.filter(r => r.status === 'present').length : null;
             const pct = present != null && members.length > 0 ? Math.round((present / members.length) * 100) : null;
             const stateColor = state === 'PAST' ? 'var(--faint)' : 'var(--navy)';
+            const liveDisabledTitle = 'End the session before editing/deleting';
+
             return (
               <div
                 key={s.id}
@@ -354,13 +483,45 @@ export default function AttendancePage() {
                 onClick={() => selectRegister(s.id)}
                 style={{ cursor: 'pointer', border: s.id === registerSessionId ? '1.5px solid var(--navy)' : undefined }}
               >
+                {/* Card header: state label + date + edit/delete */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: stateColor }}>
                     {state === 'LIVE' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: stateColor, animation: 'sode-pulse 1.4s infinite' }} />}
                     {state}
                   </span>
-                  <span className="tnum" style={{ fontSize: 12, color: 'var(--faint)' }}>{fmtDate(s.scheduled_at)}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span className="tnum" style={{ fontSize: 12, color: 'var(--faint)', marginRight: 4 }}>{fmtDate(s.scheduled_at)}</span>
+                    {/* Edit button */}
+                    <button
+                      onClick={e => { e.stopPropagation(); if (!s.is_live) openEdit(s); }}
+                      title={s.is_live ? liveDisabledTitle : 'Edit session'}
+                      disabled={s.is_live}
+                      style={{
+                        width: 28, height: 28, borderRadius: 7, border: '1px solid var(--line-2)',
+                        background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: s.is_live ? 'not-allowed' : 'pointer',
+                        opacity: s.is_live ? 0.4 : 1,
+                      }}
+                    >
+                      <Icon name="pencil" size={13} color="var(--ink-2)" />
+                    </button>
+                    {/* Delete button */}
+                    <button
+                      onClick={e => { e.stopPropagation(); if (!s.is_live) setDeletingSession(s); }}
+                      title={s.is_live ? liveDisabledTitle : 'Delete session'}
+                      disabled={s.is_live}
+                      style={{
+                        width: 28, height: 28, borderRadius: 7, border: '1px solid var(--line-2)',
+                        background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: s.is_live ? 'not-allowed' : 'pointer',
+                        opacity: s.is_live ? 0.4 : 1,
+                      }}
+                    >
+                      <Icon name="trash" size={13} color="#dc2626" />
+                    </button>
+                  </div>
                 </div>
+
                 <div style={{ fontSize: 15.5, fontWeight: 700, marginTop: 8 }}>{s.title}</div>
                 {pct != null ? (
                   <>
@@ -476,7 +637,6 @@ export default function AttendancePage() {
             )}
           </div>
 
-          {/* Member search results */}
           {historySearch.trim() && !historyMember && historyResults.length > 0 && (
             <div style={{ border: '1px solid var(--line-2)', borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
               {historyResults.map(m => (
@@ -493,7 +653,6 @@ export default function AttendancePage() {
               <div style={{ padding: '20px 0', color: 'var(--muted)', fontSize: 13 }}>Loading…</div>
             ) : (
               <div>
-                {/* Member card */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '14px 0', borderBottom: '1px solid var(--line)', marginBottom: 14 }}>
                   <Avatar name={historyMember.name} size={42} tone="soft" />
                   <div style={{ flex: 1 }}>
@@ -510,7 +669,6 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                {/* Sessions table */}
                 {historyRecords.length === 0 ? (
                   <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>No sessions attended yet.</div>
                 ) : (
@@ -528,23 +686,22 @@ export default function AttendancePage() {
                         </span>
                       </div>
                     ))}
-                    {/* Summary stats */}
                     {historyRecords.length > 0 && (() => {
                       const checkinTimes = historyRecords.filter(h => h.record.checked_in_at).map(h => new Date(h.record.checked_in_at!));
                       const toTimeStr = (d: Date) => d.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
                       const earliest = checkinTimes.length ? new Date(Math.min(...checkinTimes.map(d => d.getTime()))) : null;
-                      const latest = checkinTimes.length ? new Date(Math.max(...checkinTimes.map(d => d.getTime()))) : null;
+                      const latest   = checkinTimes.length ? new Date(Math.max(...checkinTimes.map(d => d.getTime()))) : null;
                       return (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, padding: '14px 0' }}>
                           {[
                             { l: 'Earliest check-in', v: earliest ? toTimeStr(earliest) : '—' },
-                            { l: 'Latest check-in', v: latest ? toTimeStr(latest) : '—' },
-                            { l: 'Sessions missed', v: String(sessions.length - historyRecords.length) },
-                            { l: 'Total attended', v: String(historyRecords.length) },
-                          ].map((s, i) => (
+                            { l: 'Latest check-in',   v: latest ? toTimeStr(latest) : '—' },
+                            { l: 'Sessions missed',   v: String(sessions.length - historyRecords.length) },
+                            { l: 'Total attended',    v: String(historyRecords.length) },
+                          ].map((stat, i) => (
                             <div key={i} style={{ padding: '11px 13px', borderRadius: 10, background: 'var(--surface)' }}>
-                              <div style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 5 }}>{s.l}</div>
-                              <div className="tnum" style={{ fontSize: 15, fontWeight: 800 }}>{s.v}</div>
+                              <div style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 5 }}>{stat.l}</div>
+                              <div className="tnum" style={{ fontSize: 15, fontWeight: 800 }}>{stat.v}</div>
                             </div>
                           ))}
                         </div>
@@ -562,7 +719,7 @@ export default function AttendancePage() {
         </Panel>
       </div>
 
-      {/* New session modal */}
+      {/* ── New session modal ─────────────────────────────────────────────────── */}
       {showNew && (
         <Modal onClose={() => setShowNew(false)} width={400}>
           <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 18 }}>New session</div>
@@ -571,12 +728,7 @@ export default function AttendancePage() {
             <select value={newType} onChange={e => setNewType(e.target.value)} style={selectStyle}>
               {SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
-            <input
-              type="datetime-local"
-              value={newAt}
-              onChange={e => setNewAt(e.target.value)}
-              style={selectStyle}
-            />
+            <input type="datetime-local" value={newAt} onChange={e => setNewAt(e.target.value)} style={selectStyle} />
             <TextInput value={newCount} onChange={setNewCount} placeholder="Expected count" type="number" />
             <select value={newPillar} onChange={e => setNewPillar(e.target.value)} style={selectStyle}>
               <option value="">No pillar (general)</option>
@@ -592,7 +744,126 @@ export default function AttendancePage() {
         </Modal>
       )}
 
-      {/* QR modal */}
+      {/* ── Edit session modal ────────────────────────────────────────────────── */}
+      {editingSession && (
+        <Modal onClose={() => setEditingSession(null)} width={420}>
+          <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 18 }}>Edit session</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            <div>
+              <label style={labelStyle}>Session name</label>
+              <input
+                type="text"
+                value={editForm.title}
+                onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="Session name"
+                style={selectStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Session type</label>
+              <select value={editForm.type} onChange={e => setEditForm(f => ({ ...f, type: e.target.value }))} style={selectStyle}>
+                {EDIT_SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div>
+                <label style={labelStyle}>Date</label>
+                <input
+                  type="date"
+                  value={editForm.date}
+                  onChange={e => setEditForm(f => ({ ...f, date: e.target.value }))}
+                  style={selectStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Time</label>
+                <input
+                  type="time"
+                  value={editForm.time}
+                  onChange={e => setEditForm(f => ({ ...f, time: e.target.value }))}
+                  style={selectStyle}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Expected attendance</label>
+              <input
+                type="number"
+                value={editForm.expected_count || ''}
+                onChange={e => setEditForm(f => ({ ...f, expected_count: parseInt(e.target.value) || 0 }))}
+                placeholder="0"
+                style={selectStyle}
+              />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Pillar (optional)</label>
+              <select value={editForm.pillar} onChange={e => setEditForm(f => ({ ...f, pillar: e.target.value }))} style={selectStyle}>
+                <option value="">None</option>
+                {PILLARS.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {editError && (
+            <div style={{ marginTop: 12, padding: '10px 13px', borderRadius: 9, background: '#fff5f5', border: '1px solid #fca5a5', color: '#dc2626', fontSize: 13 }}>
+              {editError}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+            <button onClick={() => setEditingSession(null)} className="btn btn-ghost" style={{ flex: 1 }}>Cancel</button>
+            <button
+              onClick={saveEdit}
+              disabled={editSaving || !editForm.title.trim() || !editForm.date}
+              className="btn btn-primary"
+              style={{ flex: 1 }}
+            >
+              {editSaving ? 'Saving…' : 'Save changes'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Delete session modal ──────────────────────────────────────────────── */}
+      {deletingSession && (
+        <Modal onClose={() => setDeletingSession(null)} width={380}>
+          <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 14 }}>Delete this session?</div>
+
+          <div style={{ padding: '13px 14px', borderRadius: 10, background: 'var(--surface)', border: '1px solid var(--line-2)', marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{deletingSession.title}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 3 }}>
+              {fmtDate(deletingSession.scheduled_at)} · {fmtTime(deletingSession.scheduled_at)}
+            </div>
+          </div>
+
+          <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.65, marginBottom: 20 }}>
+            This will also delete all attendance records for this session. This cannot be undone.
+          </p>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setDeletingSession(null)} className="btn btn-ghost" style={{ flex: 1 }}>Cancel</button>
+            <button
+              onClick={confirmDelete}
+              disabled={deleting}
+              style={{
+                flex: 1, height: 42, borderRadius: 10, border: 'none',
+                background: '#dc2626', color: '#fff',
+                fontSize: 14, fontWeight: 700, cursor: deleting ? 'not-allowed' : 'pointer',
+                opacity: deleting ? 0.7 : 1,
+              }}
+            >
+              {deleting ? 'Deleting…' : 'Delete session'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── QR modal ─────────────────────────────────────────────────────────── */}
       {qrSession && (
         <Modal onClose={() => { setQrSession(null); setQrDataUrl(''); }} width={380}>
           <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{qrSession.title}</div>
@@ -607,6 +878,14 @@ export default function AttendancePage() {
             <button onClick={() => { setQrSession(null); setQrDataUrl(''); }} className="btn btn-primary" style={{ flex: 1 }}>Done</button>
           </div>
         </Modal>
+      )}
+
+      {/* ── Toast ────────────────────────────────────────────────────────────── */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', zIndex: 200, display: 'inline-flex', alignItems: 'center', gap: 8, padding: '11px 18px', borderRadius: 12, background: 'var(--navy)', color: '#fff', fontSize: 13.5, fontWeight: 600, boxShadow: '0 8px 24px rgba(20,29,58,.25)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+          <Icon name="check" size={16} color="#fff" />
+          {toast}
+        </div>
       )}
     </>
   );
