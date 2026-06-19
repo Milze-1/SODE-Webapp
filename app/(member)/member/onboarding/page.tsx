@@ -132,7 +132,10 @@ export default function OnboardingPage() {
   const [baseline, setBaseline] = useState(false);
   const [done, setDone] = useState(false);
 
-  // form fields
+  // step 0 — first-timer question
+  const [firstTimer, setFirstTimer] = useState<'first' | 'returning' | null>(null);
+
+  // form fields (steps 1–4)
   const [name, setName] = useState('');
   const [wa, setWa] = useState('');
   const [stage, setStage] = useState<string | null>(null);
@@ -142,8 +145,13 @@ export default function OnboardingPage() {
   const [consent1, setConsent1] = useState(false);
   const [consent2, setConsent2] = useState(false);
 
-  const total = 4;
-  const canNext = step === 0 ? !!(name.trim() && wa.trim()) : step === 1 ? !!(stage && dept) : step === 2 ? consent1 : true;
+  const total = 5;
+  const canNext =
+    step === 0 ? firstTimer !== null :
+    step === 1 ? !!(name.trim() && wa.trim()) :
+    step === 2 ? !!(stage && dept) :
+    step === 3 ? consent1 :
+    true;
 
   useEffect(() => {
     (async () => {
@@ -165,6 +173,25 @@ export default function OnboardingPage() {
       setLoading(false);
     })();
   }, [router]);
+
+  const handleFirstTimerSelect = async (value: 'first' | 'returning') => {
+    setFirstTimer(value);
+    if (!userId) return;
+    try {
+      const supabase = createClient();
+      if (value === 'first') {
+        await supabase.from('members').update({
+          is_first_timer: true,
+          first_visit_date: new Date().toISOString().slice(0, 10),
+          first_timer_source: 'self_reported',
+        }).eq('auth_id', userId);
+      } else {
+        await supabase.from('members').update({
+          is_first_timer: false,
+        }).eq('auth_id', userId);
+      }
+    } catch { /* non-critical — saved again on onboarding_complete */ }
+  };
 
   const saveAndEnter = async (baselineAns?: Record<number, unknown>) => {
     if (!userId) return;
@@ -295,7 +322,53 @@ export default function OnboardingPage() {
       {/* scrollable content — paddingBottom reserves space for the StickyFooter */}
       <div className="noscroll" style={{ flex: 1, overflowY: 'auto', padding: '14px 22px 180px' }}>
 
+        {/* ── Step 0: First-timer question ─────────────────────────────────── */}
         {step === 0 && (
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em', marginBottom: 6 }}>Welcome to SODE! 👋</h1>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 0, marginBottom: 24, lineHeight: 1.5 }}>
+              Before we set up your profile, tell us about yourself.
+            </p>
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Have you attended a SODE session or event before?</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button
+                onClick={() => handleFirstTimerSelect('first')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '16px 18px', borderRadius: 'var(--r-sm)', textAlign: 'left', width: '100%',
+                  background: firstTimer === 'first' ? 'var(--navy-tint)' : 'var(--surface)',
+                  border: firstTimer === 'first' ? '1.5px solid var(--navy)' : '1px solid var(--line-2)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: 28, flex: 'none' }}>🌱</span>
+                <span>
+                  <span style={{ fontSize: 15, fontWeight: 700, display: 'block', marginBottom: 2 }}>No, this is my first time</span>
+                  <span style={{ fontSize: 13, color: 'var(--muted)' }}>I am new to SODE</span>
+                </span>
+              </button>
+              <button
+                onClick={() => handleFirstTimerSelect('returning')}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '16px 18px', borderRadius: 'var(--r-sm)', textAlign: 'left', width: '100%',
+                  background: firstTimer === 'returning' ? 'var(--navy-tint)' : 'var(--surface)',
+                  border: firstTimer === 'returning' ? '1.5px solid var(--navy)' : '1px solid var(--line-2)',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontSize: 28, flex: 'none' }}>👋</span>
+                <span>
+                  <span style={{ fontSize: 15, fontWeight: 700, display: 'block', marginBottom: 2 }}>Yes, I have been before</span>
+                  <span style={{ fontSize: 13, color: 'var(--muted)' }}>I am a returning member</span>
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 1: The basics ───────────────────────────────────────────── */}
+        {step === 1 && (
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em' }}>The basics</h1>
             <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 6, marginBottom: 22 }}>So we know who&apos;s in the room.</p>
@@ -308,7 +381,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step === 1 && (
+        {/* ── Step 2: About you ────────────────────────────────────────────── */}
+        {step === 2 && (
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em' }}>About you</h1>
             <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 6, marginBottom: 20 }}>Helps us tailor your pillars.</p>
@@ -327,7 +401,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step === 2 && (
+        {/* ── Step 3: Data consent ─────────────────────────────────────────── */}
+        {step === 3 && (
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em' }}>How we use your data</h1>
             <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 6, marginBottom: 20, lineHeight: 1.5 }}>
@@ -340,7 +415,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step === 3 && (
+        {/* ── Step 4: Baseline survey intro ────────────────────────────────── */}
+        {step === 4 && (
           <div style={{ paddingTop: 6 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ width: 60, height: 60, margin: '0 auto', borderRadius: 17, background: 'var(--navy-tint)', color: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -379,7 +455,7 @@ export default function OnboardingPage() {
         {error && (
           <p style={{ fontSize: 13, color: '#c5453b', textAlign: 'center', marginBottom: 8, marginTop: 0 }}>{error}</p>
         )}
-        {step < 3 ? (
+        {step < 4 ? (
           <button onClick={() => setStep(step + 1)} disabled={!canNext} className="btn btn-primary btn-lg btn-block">
             Continue
           </button>
