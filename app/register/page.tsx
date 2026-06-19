@@ -87,6 +87,22 @@ function RegisterInner() {
       created_at: new Date().toISOString(),
     });
 
+    // Award registration points (session cookie not yet set, so pass authId)
+    try {
+      await fetch("/api/points/award", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ruleKey: "member_registered",
+          sourceId: user.id,
+          sourceType: "registration",
+          authId: user.id,
+        }),
+      });
+    } catch (e) {
+      console.error("[Register] Points error:", e);
+    }
+
     // Process referral
     try {
       console.log("[Referral] Calling on-register API", { refCode });

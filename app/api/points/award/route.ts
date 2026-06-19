@@ -3,39 +3,72 @@ import { createClient, createAdminClient } from '@/lib/supabase-server';
 
 function capPeriodStart(period: string): Date {
   const now = new Date();
-  if (period === 'day') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (period === 'week') return new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+  if (period === 'day')   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'week')  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
   if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
   if (period === 'cycle') return new Date('2026-01-01');
   return new Date(0);
 }
 
 export async function POST(req: NextRequest) {
-  const userClient = await createClient();
-  const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const { memberId, ruleKey, refTable, refId, note } = await req.json() as {
-    memberId: string;
+  const body = await req.json() as {
+    memberId?: string;    // internal member UUID — passed by lib/points.ts callers
     ruleKey: string;
     refTable?: string;
     refId?: string;
     note?: string;
+    authId?: string;      // auth user UUID — fallback when session cookie not yet established
+    sourceId?: string;    // alias for refId (new callers)
+    sourceType?: string;  // alias for refTable (new callers)
   };
+
+  const { memberId, ruleKey, refTable, refId, note, authId, sourceId, sourceType } = body;
+  const effectiveRefId    = sourceId    ?? refId;
+  const effectiveRefTable = sourceType  ?? refTable;
 
   const db = createAdminClient();
 
-  console.log('[awardPoints] called with:', { memberId, ruleKey, refTable, refId });
+  // Auth resolution: session cookie first, then authId body param
+  const userClient = await createClient();
+  const { data: { user } } = await userClient.auth.getUser();
+  let userId = user?.id;
 
-  // Verify member belongs to this user
-  const { data: memberRow } = await db
-    .from('members')
-    .select('id, points')
-    .eq('id', memberId)
-    .eq('auth_id', user.id)
-    .maybeSingle();
+  if (!userId && authId) {
+    const { data: authData } = await db.auth.admin.getUserById(authId);
+    if (authData.user) userId = authId;
+  }
 
-  if (!memberRow) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!userId) {
+    console.error('[awardPoints] No user — unauthorized');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Member lookup: by internal memberId (old callers) or by auth_id (registration / new callers)
+  let memberRow: { id: string; points: number } | null = null;
+
+  if (memberId) {
+    const { data } = await db
+      .from('members')
+      .select('id, points')
+      .eq('id', memberId)
+      .eq('auth_id', userId)
+      .maybeSingle();
+    memberRow = data as { id: string; points: number } | null;
+  } else {
+    const { data } = await db
+      .from('members')
+      .select('id, points')
+      .eq('auth_id', userId)
+      .maybeSingle();
+    memberRow = data as { id: string; points: number } | null;
+  }
+
+  if (!memberRow) {
+    console.error('[awardPoints] Member not found for userId:', userId);
+    return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+  }
+
+  console.log('[awardPoints] called with:', { memberId: memberRow.id, ruleKey, effectiveRefTable, effectiveRefId });
 
   // Look up active rule
   const { data: rule } = await db
@@ -54,16 +87,18 @@ export async function POST(req: NextRequest) {
   const pts: number = rule.points;
 
   // Idempotency: prevent double-awarding for the same source record
-  if (refTable && refId) {
+  if (effectiveRefId) {
     const { data: existing } = await db
       .from('point_events')
       .select('id')
-      .eq('member_id', memberId)
+      .eq('member_id', memberRow.id)
       .eq('rule_key', ruleKey)
-      .eq('ref_table', refTable)
-      .eq('ref_id', refId)
+      .eq('ref_id', effectiveRefId)
       .maybeSingle();
-    if (existing) return NextResponse.json({ awarded: 0 });
+    if (existing) {
+      console.log('[awardPoints] Already awarded:', ruleKey, effectiveRefId);
+      return NextResponse.json({ awarded: 0 });
+    }
   }
 
   // Cap check
@@ -72,44 +107,52 @@ export async function POST(req: NextRequest) {
     const { count } = await db
       .from('point_events')
       .select('*', { count: 'exact', head: true })
-      .eq('member_id', memberId)
+      .eq('member_id', memberRow.id)
       .eq('rule_key', ruleKey)
       .gte('created_at', since);
-    if ((count ?? 0) >= rule.cap) return NextResponse.json({ awarded: 0 });
+    if ((count ?? 0) >= rule.cap) {
+      console.log('[awardPoints] Cap reached:', ruleKey, count, '/', rule.cap);
+      return NextResponse.json({ awarded: 0 });
+    }
   }
 
   // Insert ledger event
-  console.log('[awardPoints] inserting point_event for member:', memberId, 'rule:', ruleKey, 'pts:', pts);
+  console.log('[awardPoints] inserting point_event for member:', memberRow.id, 'rule:', ruleKey, 'pts:', pts);
   const { error: insertError } = await db.from('point_events').insert({
-    member_id: memberId,
-    rule_key: ruleKey,
-    points: pts,
-    ref_table: refTable ?? null,
-    ref_id: refId ?? null,
-    note: note ?? null,
+    member_id:  memberRow.id,
+    rule_key:   ruleKey,
+    points:     pts,
+    ref_table:  effectiveRefTable ?? null,
+    ref_id:     effectiveRefId   ?? null,
+    note:       note ?? null,
   });
 
-  if (insertError) console.error('[awardPoints] insert error:', insertError);
-  else console.log('[awardPoints] insert ok, pts awarded:', pts);
+  if (insertError) {
+    console.error('[awardPoints] insert error:', insertError);
+    return NextResponse.json({ error: insertError.message }, { status: 500 });
+  }
+  console.log('[awardPoints] insert ok, pts awarded:', pts);
 
-  // Increment members.points (denormalized cache for leaderboard ordering)
-  await db.from('members').update({ points: (memberRow.points ?? 0) + pts }).eq('id', memberId);
+  // Update members.points (denormalized cache for leaderboard)
+  const newPoints = (memberRow.points ?? 0) + pts;
+  await db.from('members').update({ points: newPoints }).eq('id', memberRow.id);
 
   // Upsert user_points_balance
   const { data: bal } = await db
     .from('user_points_balance')
     .select('total_points, this_month_points')
-    .eq('member_id', memberId)
+    .eq('member_id', memberRow.id)
     .maybeSingle();
 
   const now = new Date().toISOString();
   await db.from('user_points_balance').upsert({
-    member_id: memberId,
-    total_points: (bal?.total_points ?? 0) + pts,
-    this_month_points: (bal?.this_month_points ?? 0) + pts,
-    last_recalc_at: now,
-    updated_at: now,
+    member_id:          memberRow.id,
+    total_points:       (bal?.total_points       ?? 0) + pts,
+    this_month_points:  (bal?.this_month_points  ?? 0) + pts,
+    last_recalc_at:     now,
+    updated_at:         now,
   });
 
+  console.log('[awardPoints] Awarded', pts, 'to', memberRow.id, 'for', ruleKey);
   return NextResponse.json({ awarded: pts });
 }

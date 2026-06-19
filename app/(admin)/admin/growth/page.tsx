@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Icon } from '@/components/sode/icons';
 import { Avatar, PillarChip, Toast, type ToastData } from '@/components/sode/ui';
-import { AdminTopbar, AdminBody, Panel, THead, TRow, Bars, AdminSearch } from '@/components/admin/chrome';
+import { AdminTopbar, AdminBody, Panel, THead, TRow, AdminSearch } from '@/components/admin/chrome';
 import { createClient } from '@/lib/supabase';
 
 interface PointRule {
@@ -31,9 +31,6 @@ interface PointEvent {
   note: string | null;
   created_at: string;
 }
-
-const STAGE_ORDER = ['sent', 'opened', 'joined', 'attended', 'active'];
-const STAGE_LABELS: Record<string, string> = { sent: 'Sent', opened: 'Clicked', joined: 'Joined', attended: 'Attended', active: 'Active' };
 
 const RULE_LABELS: Record<string, string> = {
   win_logged:           'Win logged',
@@ -127,14 +124,14 @@ export default function GrowthPage() {
       setRuleLabels(Object.fromEntries(ruleRows.map(r => [r.rule_key, r.label])));
 
       const invitations = (invRes.data ?? []) as { inviter_id: string; stage: string }[];
-      const stageCounts = new Map<string, number>();
-      for (const inv of invitations) {
-        const idx = STAGE_ORDER.indexOf(inv.stage);
-        for (let i = 0; i <= idx && i < STAGE_ORDER.length; i++) {
-          stageCounts.set(STAGE_ORDER[i], (stageCounts.get(STAGE_ORDER[i]) ?? 0) + 1);
-        }
-      }
-      setFunnel(STAGE_ORDER.map(k => ({ l: STAGE_LABELS[k], v: stageCounts.get(k) ?? 0 })));
+
+      setFunnel([
+        { l: 'Sent',     v: invitations.filter(i => ['sent','delivered','queued'].includes(i.stage)).length },
+        { l: 'Clicked',  v: invitations.filter(i => i.stage === 'clicked').length },
+        { l: 'Joined',   v: invitations.filter(i => ['registered','first_attended','active'].includes(i.stage)).length },
+        { l: 'Attended', v: invitations.filter(i => ['first_attended','active'].includes(i.stage)).length },
+        { l: 'Active',   v: invitations.filter(i => i.stage === 'active').length },
+      ]);
 
       const inviterMap = new Map<string, number>();
       for (const inv of invitations) {
@@ -220,7 +217,10 @@ export default function GrowthPage() {
   };
 
   const joinRate = funnel[2]?.v && funnel[0]?.v ? Math.round((funnel[2].v / funnel[0].v) * 100) : 0;
-  const displayFunnel = funnel.length > 0 ? funnel : STAGE_ORDER.map(k => ({ l: STAGE_LABELS[k], v: 0 }));
+  const displayFunnel = funnel.length > 0 ? funnel : [
+    { l: 'Sent', v: 0 }, { l: 'Clicked', v: 0 }, { l: 'Joined', v: 0 },
+    { l: 'Attended', v: 0 }, { l: 'Active', v: 0 },
+  ];
 
   const filteredMp = memberPoints.filter(m => {
     if (mpPillar !== 'all' && m.pillar !== mpPillar) return false;
@@ -274,7 +274,28 @@ export default function GrowthPage() {
           </Panel>
 
           <Panel title="Referral funnel">
-            <Bars data={displayFunnel.map(f => f.v)} labels={displayFunnel.map(f => f.l)} w={400} h={160} />
+            {(() => {
+              const maxCount = Math.max(...displayFunnel.map(f => f.v), 1);
+              return (
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', minHeight: 180, paddingBottom: 0 }}>
+                  {displayFunnel.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: f.v > 0 ? '#1e2a52' : '#999' }} className="tnum">
+                        {f.v}
+                      </span>
+                      <div style={{
+                        width: 44,
+                        height: Math.max(f.v > 0 ? Math.round((f.v / maxCount) * 120) : 4, 4),
+                        backgroundColor: f.v > 0 ? '#1e2a52' : '#e2e8f0',
+                        borderRadius: '4px 4px 0 0',
+                        transition: 'height 0.3s ease',
+                      }} />
+                      <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, whiteSpace: 'nowrap' }}>{f.l}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
               {[[`${joinRate}%`, 'Join rate'], [String(funnel[4]?.v ?? 0), 'Now active'], [String(funnel[2]?.v ?? 0), 'Reg. via referral']].map(([v, l], i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
