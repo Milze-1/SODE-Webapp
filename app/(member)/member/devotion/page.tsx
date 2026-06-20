@@ -11,7 +11,7 @@ import BottomNav from '@/components/member/bottom-nav';
 
 interface DailyDevotional {
   id: string;
-  date: string;
+  devotional_date: string;
   title: string;
   scripture_ref: string;
   scripture_text: string;
@@ -183,8 +183,8 @@ export default function DevotionPage() {
       const [devotionalRes, checkinRes, recentRes] = await Promise.all([
         supabase
           .from('daily_devotionals')
-          .select('id, date, title, scripture_ref, scripture_text, body, prayer_focus, key_declaration')
-          .eq('date', today)
+          .select('id, devotional_date, title, scripture_ref, scripture_text, body, prayer_focus, key_declaration')
+          .eq('devotional_date', today)
           .eq('is_published', true)
           .maybeSingle(),
         supabase

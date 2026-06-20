@@ -230,7 +230,7 @@ export default function AdminDevotionPage() {
     const { data } = await supabase
       .from('daily_devotionals')
       .select('*')
-      .order('date', { ascending: false })
+      .order('devotional_date', { ascending: false })
       .limit(60);
     setDevotionals((data ?? []) as DailyDevotional[]);
     setDevLoading(false);
@@ -244,7 +244,7 @@ export default function AdminDevotionPage() {
   const startEdit = (d: DailyDevotional) => {
     setEditingId(d.id);
     setForm({
-      date: d.date,
+      date: d.devotional_date,
       title: d.title,
       scripture_ref: d.scripture_ref,
       scripture_text: d.scripture_text,
@@ -280,7 +280,7 @@ export default function AdminDevotionPage() {
       const { data: { user } } = await supabase.auth.getUser();
 
       const payload = {
-        date: form.date,
+        devotional_date: form.date,
         title: form.title.trim(),
         scripture_ref: form.scripture_ref.trim() || '',
         scripture_text: form.scripture_text.trim(),
@@ -637,7 +637,7 @@ export default function AdminDevotionPage() {
                       <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{fmtDate(d.date)}</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)' }}>{fmtDate(d.devotional_date)}</span>
                             <span style={{
                               fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
                               background: d.is_published ? '#d1fae5' : 'var(--surface-2)',
