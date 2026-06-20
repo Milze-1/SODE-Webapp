@@ -60,7 +60,14 @@ function RegisterInner() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { data: { full_name: name.trim(), phone: whatsapp.trim() } },
+      options: {
+        data: {
+          full_name: name.trim(),
+          phone: whatsapp.trim(),
+          ref_code: refCode || null,
+          invited_via_email: email.trim(),
+        },
+      },
     });
 
     if (signUpError) {
@@ -111,30 +118,6 @@ function RegisterInner() {
       });
     } catch (e) {
       console.error("[Register] Points error:", e);
-    }
-
-    // Process referral
-    try {
-      console.log('[register] calling referral API with:', {
-        email: email.trim(),
-        newMemberId: newMember?.id,
-        authId: user.id,
-        refCode,
-      });
-      const refResponse = await fetch('/api/referral/on-register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          newMemberId: newMember?.id ?? null,
-          authId: user.id,
-          refCode: refCode || null,
-        }),
-      });
-      const refResult = await refResponse.json();
-      console.log('[register] referral result:', refResult);
-    } catch (e) {
-      console.error('[register] referral error:', e);
     }
 
     // Notify leadership (fire and forget)

@@ -85,6 +85,38 @@ export async function GET(request: Request) {
     }
   }
 
+  // Email/password: process referral stored in user metadata at sign-up time.
+  // Only runs for new signups (within 5 min of account creation) to avoid
+  // repeating on every login.
+  if (provider !== "google") {
+    const storedRefCode = (user.user_metadata?.ref_code as string | null) ?? null;
+    const storedEmail =
+      (user.user_metadata?.invited_via_email as string | null) ?? user.email ?? null;
+    const userCreatedAt = new Date(user.created_at ?? 0).getTime();
+    const isNewSignup = Date.now() - userCreatedAt < 300_000;
+
+    if (storedEmail && isNewSignup) {
+      // Poll for member record — it may have been created client-side
+      // milliseconds ago and may not yet be visible server-side.
+      let memberId: string | null = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: m } = await supabase
+          .from("members")
+          .select("id")
+          .eq("auth_id", user.id)
+          .maybeSingle();
+        if (m?.id) { memberId = m.id as string; break; }
+        if (attempt < 4) await new Promise(r => setTimeout(r, 500));
+      }
+
+      if (memberId) {
+        processReferralOnRegister(storedEmail, memberId, storedRefCode).catch(console.error);
+      } else {
+        console.error("[callback] Could not find member record for auth_id:", user.id);
+      }
+    }
+  }
+
   // Admin tab: check role, then send to dashboard or reject
   if (intent === "admin") {
     const roles = await getUserRoles(user.id);

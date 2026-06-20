@@ -94,60 +94,84 @@ export async function processReferralOnRegister(
   refCode?: string | null,
 ): Promise<void> {
   const db = getAdminClient();
+  const normalizedEmail = email?.trim().toLowerCase() || '';
 
-  console.log('[referral] processReferralOnRegister called', { email, newMemberId, refCode });
+  console.log('[referral] processReferralOnRegister called', { email: normalizedEmail, newMemberId, refCode });
 
   try {
     let inviterId: string | null = null;
+    let invitationId: string | null = null;
 
-    // Path A: find invitation by email (case-insensitive), exclude already-processed stages
-    const { data: invitation, error: invErr } = await db
-      .from('invitations')
-      .select('*')
-      .ilike('email', email?.trim() || '')
-      .not('stage', 'in', '("registered","first_attended","active","joined")')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    console.log('[referral] invitation lookup:', {
-      found: !!invitation,
-      error: invErr?.message ?? null,
-      stage: invitation?.stage,
-      inviterId: invitation?.inviter_id,
-      invitationId: invitation?.id,
-    });
-
-    if (invitation) {
-      inviterId = invitation.inviter_id as string;
-
-      console.log('[referral] updating invitation stage...');
-      const { error: updateErr } = await db
-        .from('invitations')
-        .update({
-          stage: 'registered',
-          stage_updated_at: new Date().toISOString(),
-          invited_member_id: newMemberId,
-        })
-        .eq('id', invitation.id);
-
-      console.log('[referral] invitation update result:', { error: updateErr?.message ?? null });
-    } else if (refCode) {
-      // Path B: referral link with ?ref=CODE
+    // METHOD 1: Referral link — look up by code (higher priority than email)
+    if (refCode) {
       const { data: refRecord, error: refErr } = await db
         .from('referral_codes')
-        .select('*')
-        .eq('code', refCode)
+        .select('member_id')
+        .eq('code', refCode.toUpperCase())
         .maybeSingle();
 
-      console.log('[referral] refCode lookup:', {
+      console.log('[referral] METHOD 1 refCode lookup:', {
+        code: refCode.toUpperCase(),
         found: !!refRecord,
         error: refErr?.message ?? null,
-        memberId: refRecord?.member_id,
-      });;
+        inviterId: refRecord?.member_id,
+      });
 
-      if (refRecord) {
+      if (refRecord?.member_id) {
         inviterId = refRecord.member_id as string;
+
+        // Find or create an invitation record for this referral link signup
+        const { data: existingInv } = await db
+          .from('invitations')
+          .select('id, stage')
+          .ilike('email', normalizedEmail)
+          .eq('inviter_id', inviterId)
+          .maybeSingle();
+
+        if (existingInv) {
+          invitationId = existingInv.id as string;
+          console.log('[referral] found existing invitation via refCode+email:', invitationId);
+        } else {
+          const { data: newInv } = await db
+            .from('invitations')
+            .insert({
+              inviter_id: inviterId,
+              email: normalizedEmail,
+              stage: 'sent',
+              invited_member_id: newMemberId,
+              created_at: new Date().toISOString(),
+            })
+            .select('id')
+            .maybeSingle();
+          invitationId = (newInv?.id as string | undefined) ?? null;
+          console.log('[referral] created new invitation for refCode signup:', invitationId);
+        }
+      }
+    }
+
+    // METHOD 2: Email invitation fallback
+    if (!inviterId) {
+      const { data: invitation, error: invErr } = await db
+        .from('invitations')
+        .select('id, inviter_id, stage')
+        .ilike('email', normalizedEmail)
+        .not('stage', 'in', '("registered","first_attended","active","joined")')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      console.log('[referral] METHOD 2 email lookup:', {
+        email: normalizedEmail,
+        found: !!invitation,
+        error: invErr?.message ?? null,
+        stage: invitation?.stage,
+        inviterId: invitation?.inviter_id,
+        invitationId: invitation?.id,
+      });
+
+      if (invitation) {
+        inviterId = invitation.inviter_id as string;
+        invitationId = invitation.id as string;
       }
     }
 
@@ -156,44 +180,110 @@ export async function processReferralOnRegister(
       return;
     }
 
-    console.log('[referral] awarding points to inviter:', inviterId);
-    const pts = await awardPointsToMember(
-      db,
-      inviterId,
-      'referral_joined',
-      newMemberId,
-      `Referral registered: ${email}`,
-    );
+    // Update invitation to registered stage
+    if (invitationId) {
+      const { error: updateErr } = await db
+        .from('invitations')
+        .update({
+          stage: 'registered',
+          stage_updated_at: new Date().toISOString(),
+          invited_member_id: newMemberId,
+        })
+        .eq('id', invitationId);
+      console.log('[referral] invitation stage → registered:', { invitationId, error: updateErr?.message ?? null });
+    }
 
-    // Email inviter
-    if (pts > 0) {
-      const { data: inviter } = await db.from('members').select('name, email').eq('id', inviterId).single();
-      const { data: newMember } = await db.from('members').select('name').eq('id', newMemberId).single();
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://thesode.org';
+    // Idempotency: skip if points already awarded for this referral
+    const { data: existing } = await db
+      .from('point_events')
+      .select('id')
+      .eq('member_id', inviterId)
+      .eq('rule_key', 'referral_joined')
+      .eq('ref_id', newMemberId)
+      .maybeSingle();
 
-      if (inviter?.email) {
-        sendEmail({
-          to: inviter.email as string,
-          subject: `${(newMember?.name as string | undefined) ?? 'Someone'} joined SODE! 🎉`,
-          html: `
-            <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-              <div style="background:#1e2a52;padding:32px;text-align:center;">
-                <p style="color:white;font-size:20px;font-weight:800;margin:0;">Daniels &amp; Esthers</p>
-              </div>
-              <div style="padding:32px;">
-                <h2>Your referral joined! 🎉</h2>
-                <p>Hi ${(inviter.name as string | undefined) ?? 'there'},</p>
-                <p>${(newMember?.name as string | undefined) ?? 'Someone'} just registered on SODE using your invitation.</p>
-                <p style="font-size:24px;font-weight:800;color:#1e2a52;">+${pts} points added to your account!</p>
-                <a href="${appUrl}/member/invite"
-                  style="display:inline-block;background:#1e2a52;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
-                  Invite more people →
-                </a>
-              </div>
+    if (existing) {
+      console.log('[referral] referral_joined already awarded — skipping');
+      return;
+    }
+
+    // Get rule
+    const { data: rule } = await db
+      .from('point_rules')
+      .select('points')
+      .eq('rule_key', 'referral_joined')
+      .eq('is_active', true)
+      .single();
+
+    if (!rule) {
+      console.error('[referral] referral_joined rule not found or inactive');
+      return;
+    }
+
+    const pts = rule.points as number;
+
+    // Insert point event
+    const { error: eventErr } = await db.from('point_events').insert({
+      member_id: inviterId,
+      rule_key: 'referral_joined',
+      points: pts,
+      ref_table: 'members',
+      ref_id: newMemberId,
+      note: `Referral registered: ${normalizedEmail}`,
+    });
+
+    if (eventErr) {
+      console.error('[referral] point_events insert error:', JSON.stringify(eventErr));
+      return;
+    }
+
+    // Update members.points
+    const { data: inviterRow } = await db.from('members').select('points').eq('id', inviterId).single();
+    await db.from('members').update({ points: (inviterRow?.points || 0) + pts }).eq('id', inviterId);
+
+    // Upsert balance (read current so we increment correctly)
+    const { data: balance } = await db
+      .from('user_points_balance')
+      .select('total_points, this_month_points')
+      .eq('member_id', inviterId)
+      .maybeSingle();
+
+    await db.from('user_points_balance').upsert({
+      member_id: inviterId,
+      total_points: (balance?.total_points ?? 0) + pts,
+      this_month_points: (balance?.this_month_points ?? 0) + pts,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'member_id' });
+
+    console.log('[referral] Awarded', pts, 'pts for referral_joined to inviter', inviterId);
+
+    // Notify inviter
+    const { data: inviter } = await db.from('members').select('name, email').eq('id', inviterId).single();
+    const { data: newMemberData } = await db.from('members').select('name').eq('id', newMemberId).single();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://thesode.org';
+
+    if (inviter?.email) {
+      sendEmail({
+        to: inviter.email as string,
+        subject: `${(newMemberData?.name as string | undefined) ?? 'Someone'} joined SODE! 🎉`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+            <div style="background:#1e2a52;padding:32px;text-align:center;">
+              <p style="color:white;font-size:20px;font-weight:800;margin:0;">Daniels &amp; Esthers</p>
             </div>
-          `,
-        }).catch(() => {});
-      }
+            <div style="padding:32px;">
+              <h2>Your referral joined! 🎉</h2>
+              <p>Hi ${(inviter.name as string | undefined) ?? 'there'},</p>
+              <p>${(newMemberData?.name as string | undefined) ?? 'Someone'} just registered on SODE using your invitation.</p>
+              <p style="font-size:24px;font-weight:800;color:#1e2a52;">+${pts} points added to your account!</p>
+              <a href="${appUrl}/member/invite"
+                style="display:inline-block;background:#1e2a52;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">
+                Invite more people →
+              </a>
+            </div>
+          </div>
+        `,
+      }).catch(() => {});
     }
   } catch (err) {
     console.error('[Referral] Unexpected error in processReferralOnRegister:', err);
