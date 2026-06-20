@@ -76,7 +76,7 @@ interface JournalRow {
 
 interface DailyDevotional {
   id: string;
-  date: string;
+  devotional_date: string;
   title: string;
   scripture_ref: string;
   scripture_text: string;
