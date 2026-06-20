@@ -115,16 +115,26 @@ function RegisterInner() {
 
     // Process referral
     try {
-      console.log("[Referral] Calling on-register API", { refCode });
-      const refResponse = await fetch("/api/referral/on-register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), refCode: refCode || null, authId: user.id }),
+      console.log('[register] calling referral API with:', {
+        email: email.trim(),
+        newMemberId: newMember?.id,
+        authId: user.id,
+        refCode,
+      });
+      const refResponse = await fetch('/api/referral/on-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          newMemberId: newMember?.id ?? null,
+          authId: user.id,
+          refCode: refCode || null,
+        }),
       });
       const refResult = await refResponse.json();
-      console.log("[Referral] Result:", refResult);
+      console.log('[register] referral result:', refResult);
     } catch (e) {
-      console.error("[Referral] Error:", e);
+      console.error('[register] referral error:', e);
     }
 
     // Notify leadership (fire and forget)

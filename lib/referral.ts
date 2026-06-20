@@ -95,27 +95,34 @@ export async function processReferralOnRegister(
 ): Promise<void> {
   const db = getAdminClient();
 
-  console.log('[Referral] processReferralOnRegister', { email, newMemberId, refCode });
+  console.log('[referral] processReferralOnRegister called', { email, newMemberId, refCode });
 
   try {
     let inviterId: string | null = null;
 
-    // Path A: find invitation by email (case-insensitive)
+    // Path A: find invitation by email (case-insensitive), exclude already-processed stages
     const { data: invitation, error: invErr } = await db
       .from('invitations')
       .select('*')
-      .ilike('email', email)
-      .in('stage', ['sent', 'delivered', 'clicked', 'queued'])
+      .ilike('email', email?.trim() || '')
+      .not('stage', 'in', '("registered","first_attended","active","joined")')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    console.log('[Referral] invitation found:', !!invitation, 'error:', invErr?.message ?? null);
+    console.log('[referral] invitation lookup:', {
+      found: !!invitation,
+      error: invErr?.message ?? null,
+      stage: invitation?.stage,
+      inviterId: invitation?.inviter_id,
+      invitationId: invitation?.id,
+    });
 
     if (invitation) {
       inviterId = invitation.inviter_id as string;
 
-      await db
+      console.log('[referral] updating invitation stage...');
+      const { error: updateErr } = await db
         .from('invitations')
         .update({
           stage: 'registered',
@@ -124,7 +131,7 @@ export async function processReferralOnRegister(
         })
         .eq('id', invitation.id);
 
-      console.log('[Referral] Updated invitation stage to registered');
+      console.log('[referral] invitation update result:', { error: updateErr?.message ?? null });
     } else if (refCode) {
       // Path B: referral link with ?ref=CODE
       const { data: refRecord, error: refErr } = await db
@@ -133,7 +140,11 @@ export async function processReferralOnRegister(
         .eq('code', refCode)
         .maybeSingle();
 
-      console.log('[Referral] refCode lookup:', !!refRecord, 'error:', refErr?.message ?? null);
+      console.log('[referral] refCode lookup:', {
+        found: !!refRecord,
+        error: refErr?.message ?? null,
+        memberId: refRecord?.member_id,
+      });;
 
       if (refRecord) {
         inviterId = refRecord.member_id as string;
@@ -141,10 +152,11 @@ export async function processReferralOnRegister(
     }
 
     if (!inviterId) {
-      console.log('[Referral] No inviter found — skipping');
+      console.log('[referral] No inviter found — skipping points award');
       return;
     }
 
+    console.log('[referral] awarding points to inviter:', inviterId);
     const pts = await awardPointsToMember(
       db,
       inviterId,
