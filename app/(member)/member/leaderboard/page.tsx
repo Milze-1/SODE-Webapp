@@ -18,10 +18,11 @@ type LeaderEntry = {
 };
 
 // Podium display order: 2nd (left), 1st (centre), 3rd (right)
-const PODIUM_ORDER = [1, 0, 2] as const;
-const BAR_HEIGHTS  = [120, 90, 70] as const; // #1, #2, #3
-const BAR_COLORS   = ['#1e2a52', '#64748b', '#78716c'] as const;
-const MEDALS       = ['🥇', '🥈', '🥉'] as const;
+const PODIUM_ORDER        = [1, 0, 2] as const;
+const BAR_HEIGHTS         = [120, 90, 70] as const;  // #1, #2, #3 — standard
+const BAR_HEIGHTS_MOBILE  = [100, 75, 55] as const;  // below 400px
+const BAR_COLORS          = ['#1e2a52', '#64748b', '#78716c'] as const;
+const MEDALS              = ['🥇', '🥈', '🥉'] as const;
 
 function getInitials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase() || '?';
@@ -95,6 +96,14 @@ export default function LeaderboardPage() {
   const [loading, setLoading]             = useState(true);
   const [authUser, setAuthUser]           = useState<{ id: string } | null>(null);
   const [currentMember, setCurrentMember] = useState<LeaderEntry | null>(null);
+  const [smallScreen, setSmallScreen]     = useState(false);
+
+  useEffect(() => {
+    const check = () => setSmallScreen(window.innerWidth < 400);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // ── One-time auth + onboarding guard ─────────────────────────────────────────
   useEffect(() => {
@@ -273,30 +282,30 @@ export default function LeaderboardPage() {
                 {PODIUM_ORDER.map((rankIdx, col) => {
                   const m     = top3[rankIdx];
                   const color = BAR_COLORS[rankIdx];
-                  const barH  = BAR_HEIGHTS[rankIdx];
+                  const barH  = (smallScreen ? BAR_HEIGHTS_MOBILE : BAR_HEIGHTS)[rankIdx];
                   const isYou = m?.auth_id === authUser?.id;
 
                   if (!m) return <div key={`gap-${col}`} style={{ flex: 1 }} />;
 
                   return (
                     <div key={m.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      {/* Medal */}
-                      <div style={{ fontSize: 22, marginBottom: 5, lineHeight: 1 }}>{MEDALS[rankIdx]}</div>
-                      {/* Avatar (overlaps bar top via -20px margin) */}
+                      {/* Medal emoji — always above avatar */}
+                      <div style={{ fontSize: 22, marginBottom: 4, lineHeight: 1 }}>{MEDALS[rankIdx]}</div>
+                      {/* Avatar — sits flush on top of bar */}
                       <div style={{
                         width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
                         background: color, color: '#fff',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 700, fontSize: 16, letterSpacing: '.01em',
-                        marginBottom: -20, position: 'relative', zIndex: 1,
+                        position: 'relative', zIndex: 1,
                         boxShadow: rankIdx === 0 ? '0 4px 16px rgba(30,42,82,.4)' : '0 2px 8px rgba(0,0,0,.16)',
                         outline: isYou ? '2.5px solid #fff' : 'none',
                         outlineOffset: isYou ? '2px' : '0',
                       }}>
                         {getInitials(m.name)}
                       </div>
-                      {/* Bar */}
-                      <div style={{ width: '100%', height: barH, background: color, opacity: rankIdx === 0 ? 1 : 0.82, borderRadius: '8px 8px 0 0' }} />
+                      {/* Bar — connected below avatar */}
+                      <div style={{ width: '100%', height: barH, background: color, opacity: rankIdx === 0 ? 1 : 0.82, borderRadius: '0 0 8px 8px', marginTop: -1 }} />
                       {/* Name */}
                       <div style={{ fontSize: 12.5, fontWeight: 700, marginTop: 7, textAlign: 'center', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingInline: 4 }}>
                         {m.name.split(' ')[0]}{isYou && <span style={{ color: 'var(--navy)' }}> ★</span>}

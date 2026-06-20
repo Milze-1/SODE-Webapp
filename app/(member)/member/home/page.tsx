@@ -575,17 +575,18 @@ export default function HomePage() {
       setMember({ id: memberRow.id, name: memberRow.name, points: memberRow.points ?? 0 });
 
       const currentMonth = new Date().getMonth() + 1;
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
       const today = new Date().toISOString().slice(0, 10);
-      const [goalsRes, rankRes, sessionRes, winsRes, monthlyContentRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
+      const [goalsRes, monthEventsRes, sessionRes, winsRes, monthlyContentRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
         supabase.from('goals')
           .select('id, pillar, title, current, target, unit, due_date, status')
           .eq('member_id', memberRow.id)
           .neq('status', 'done')
           .order('created_at', { ascending: true }),
-        supabase.from('members')
-          .select('id', { count: 'exact', head: true })
-          .gt('points', memberRow.points ?? 0),
+        supabase.from('point_events')
+          .select('member_id, points')
+          .gte('created_at', monthStart),
         supabase.from('sessions')
           .select('title, location, scheduled_at')
           .gt('scheduled_at', new Date().toISOString())
@@ -634,7 +635,13 @@ export default function HomePage() {
           milestones: [],
         })));
       }
-      setRank((rankRes.count ?? 0) + 1);
+      // Calculate monthly rank from point_events (matches leaderboard exactly)
+      const events = (monthEventsRes.data ?? []) as { member_id: string; points: number }[];
+      const monthTotals: Record<string, number> = {};
+      events.forEach(e => { monthTotals[e.member_id] = (monthTotals[e.member_id] ?? 0) + e.points; });
+      const sorted = Object.entries(monthTotals).sort(([, a], [, b]) => b - a);
+      const memberRank = sorted.findIndex(([id]) => id === memberRow.id) + 1;
+      setRank(memberRank || sorted.length + 1);
       setNextSession(sessionRes.data ?? null);
       setWins((winsRes.data ?? []) as WinRow[]);
 
