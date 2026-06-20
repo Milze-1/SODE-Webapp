@@ -180,11 +180,12 @@ export default function DevotionPage() {
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }
       setMemberId(memberRow.id);
 
+      const todayDate = new Date().toISOString().split('T')[0];
       const [devotionalRes, checkinRes, recentRes] = await Promise.all([
         supabase
           .from('daily_devotionals')
           .select('id, devotional_date, title, scripture_ref, scripture_text, body, prayer_focus, key_declaration')
-          .eq('devotional_date', today)
+          .eq('devotional_date', todayDate)
           .eq('is_published', true)
           .maybeSingle(),
         supabase
@@ -202,6 +203,7 @@ export default function DevotionPage() {
           .limit(35),
       ]);
 
+      console.log('[Devotion] Today devotional:', devotionalRes.data, 'for date:', todayDate);
       setDevotional((devotionalRes.data ?? null) as DailyDevotional | null);
 
       if (checkinRes.data) {
@@ -362,52 +364,46 @@ export default function DevotionPage() {
 
         {/* ── Today's devotional ── */}
         {devotional ? (
-          <div className="card" style={{ overflow: 'hidden' }}>
-            <div style={{ background: 'var(--navy)', padding: '16px 16px 14px' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,.55)', marginBottom: 5 }}>
-                Today&apos;s Devotional
+          <div style={{ background: '#f8f9ff', border: '1px solid #e0e4ff', borderRadius: 16, padding: 20, marginBottom: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px' }}>
+              📖 Today&apos;s Devotional
+            </p>
+            <h2 style={{ fontSize: 20, fontWeight: 800, color: '#1e2a52', margin: '0 0 12px' }}>
+              {devotional.title}
+            </h2>
+            {devotional.scripture_ref && (
+              <p style={{ fontSize: 13, color: '#6366f1', fontWeight: 600, margin: '0 0 4px' }}>
+                {devotional.scripture_ref}
+              </p>
+            )}
+            {devotional.scripture_text && (
+              <p style={{ fontSize: 14, fontStyle: 'italic', color: '#444', background: '#fff', borderLeft: '3px solid #6366f1', padding: '8px 12px', borderRadius: '0 8px 8px 0', margin: '0 0 16px' }}>
+                &ldquo;{devotional.scripture_text}&rdquo;
+              </p>
+            )}
+            <p style={{ fontSize: 15, color: '#333', lineHeight: 1.6, margin: '0 0 16px', whiteSpace: 'pre-wrap' }}>
+              {devotional.body}
+            </p>
+            {devotional.prayer_focus && (
+              <div style={{ background: '#fff', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#6366f1', margin: '0 0 4px' }}>🙏 PRAYER FOCUS</p>
+                <p style={{ fontSize: 14, color: '#444', margin: 0 }}>{devotional.prayer_focus}</p>
               </div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', lineHeight: 1.3 }}>{devotional.title}</div>
-              <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.65)', marginTop: 4 }}>{devotional.scripture_ref}</div>
-            </div>
-            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Scripture */}
-              <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '13px 14px' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--muted)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                  Scripture
-                </div>
-                <div style={{ fontSize: 14, lineHeight: 1.75, color: 'var(--ink)', fontStyle: 'italic' }}>
-                  &ldquo;{devotional.scripture_text}&rdquo;
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--faint)', marginTop: 6 }}>— {devotional.scripture_ref}</div>
-              </div>
-              {/* Body */}
-              <div style={{ fontSize: 14, lineHeight: 1.8, color: 'var(--ink)' }}>{devotional.body}</div>
-              {/* Prayer focus */}
-              <div style={{ background: '#eff6ff', borderRadius: 10, padding: '12px 14px', borderLeft: '3px solid #2563eb' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#2563eb', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                  Prayer Focus
-                </div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.65, color: '#1e40af' }}>{devotional.prayer_focus}</div>
-              </div>
-              {/* Key declaration */}
-              <div style={{ background: '#f0fdf4', borderRadius: 10, padding: '12px 14px', borderLeft: '3px solid #16a34a' }}>
-                <div style={{ fontSize: 10.5, fontWeight: 700, color: '#16a34a', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                  Key Declaration
-                </div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.65, color: '#14532d', fontStyle: 'italic', fontWeight: 600 }}>
+            )}
+            {devotional.key_declaration && (
+              <div style={{ background: '#1e2a52', borderRadius: 8, padding: 12 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#a5b4fc', margin: '0 0 4px' }}>📢 TODAY&apos;S DECLARATION</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: 'white', margin: 0, fontStyle: 'italic' }}>
                   &ldquo;{devotional.key_declaration}&rdquo;
-                </div>
+                </p>
               </div>
-            </div>
+            )}
           </div>
         ) : (
-          <div className="card card-pad" style={{ textAlign: 'center', padding: '24px 16px' }}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>📖</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>No devotional posted today</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
-              Complete the checklist below to log your personal devotion time.
-            </div>
+          <div style={{ background: '#f5f5f7', borderRadius: 16, padding: 20, marginBottom: 8, textAlign: 'center' }}>
+            <p style={{ fontSize: 16, color: '#666', margin: 0 }}>
+              📖 No devotional posted for today yet. Use this time for personal Bible study and prayer.
+            </p>
           </div>
         )}
 

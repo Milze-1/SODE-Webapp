@@ -87,17 +87,6 @@ interface DailyDevotional {
   created_at: string;
 }
 
-const BLANK_FORM = {
-  date: new Date().toISOString().slice(0, 10),
-  title: '',
-  scripture_ref: '',
-  scripture_text: '',
-  body: '',
-  prayer_focus: '',
-  key_declaration: '',
-  is_published: false,
-};
-
 // ─── Main admin devotion page ─────────────────────────────────────────────────
 
 export default function AdminDevotionPage() {
@@ -217,7 +206,14 @@ export default function AdminDevotionPage() {
   const [devotionals, setDevotionals]   = useState<DailyDevotional[]>([]);
   const [devLoading, setDevLoading]     = useState(false);
   const [editingId, setEditingId]       = useState<string | null>(null);
-  const [form, setForm]                 = useState(BLANK_FORM);
+  const [formDate, setFormDate]         = useState(new Date().toISOString().split('T')[0]);
+  const [formTitle, setFormTitle]       = useState('');
+  const [formScriptureRef, setFormScriptureRef]   = useState('');
+  const [formScriptureText, setFormScriptureText] = useState('');
+  const [formBody, setFormBody]         = useState('');
+  const [formPrayerFocus, setFormPrayerFocus]       = useState('');
+  const [formKeyDeclaration, setFormKeyDeclaration] = useState('');
+  const [isPublished, setIsPublished]   = useState(false);
   const [saving, setSaving]             = useState(false);
   const [saveError, setSaveError]       = useState('');
   const [saveSuccess, setSaveSuccess]   = useState(false);
@@ -243,21 +239,26 @@ export default function AdminDevotionPage() {
 
   const startEdit = (d: DailyDevotional) => {
     setEditingId(d.id);
-    setForm({
-      date: d.devotional_date,
-      title: d.title,
-      scripture_ref: d.scripture_ref,
-      scripture_text: d.scripture_text,
-      body: d.body,
-      prayer_focus: d.prayer_focus,
-      key_declaration: d.key_declaration,
-      is_published: d.is_published,
-    });
+    setFormDate(d.devotional_date ?? '');
+    setFormTitle(d.title ?? '');
+    setFormScriptureRef(d.scripture_ref ?? '');
+    setFormScriptureText(d.scripture_text ?? '');
+    setFormBody(d.body ?? '');
+    setFormPrayerFocus(d.prayer_focus ?? '');
+    setFormKeyDeclaration(d.key_declaration ?? '');
+    setIsPublished(d.is_published ?? false);
   };
 
   const resetForm = () => {
     setEditingId(null);
-    setForm(BLANK_FORM);
+    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormTitle('');
+    setFormScriptureRef('');
+    setFormScriptureText('');
+    setFormBody('');
+    setFormPrayerFocus('');
+    setFormKeyDeclaration('');
+    setIsPublished(false);
     setSaveError('');
     setSaveSuccess(false);
   };
@@ -267,12 +268,12 @@ export default function AdminDevotionPage() {
     setSaveSuccess(false);
 
     // Validate required fields
-    if (!form.date) { setSaveError('Please select a date.'); return; }
-    if (!form.title?.trim()) { setSaveError('Please enter a title.'); return; }
-    if (!form.body?.trim()) { setSaveError('Please enter the devotional body.'); return; }
+    if (!formDate) { setSaveError('Please select a date.'); return; }
+    if (!(formTitle || '').trim()) { setSaveError('Please enter a title.'); return; }
+    if (!(formBody || '').trim()) { setSaveError('Please enter the devotional body.'); return; }
     if (saving) return;
 
-    console.log('[Devotional] Save clicked', { editingId, form });
+    console.log('[Devotional] Save clicked', { editingId, formDate, formTitle, formBody });
     setSaving(true);
 
     try {
@@ -280,14 +281,14 @@ export default function AdminDevotionPage() {
       const { data: { user } } = await supabase.auth.getUser();
 
       const payload = {
-        devotional_date: form.date,
-        title: form.title.trim(),
-        scripture_ref: form.scripture_ref.trim() || '',
-        scripture_text: form.scripture_text.trim(),
-        body: form.body.trim(),
-        prayer_focus: form.prayer_focus.trim(),
-        key_declaration: form.key_declaration.trim(),
-        is_published: form.is_published,
+        devotional_date: formDate,
+        title: (formTitle || '').trim(),
+        scripture_ref: (formScriptureRef || '').trim() || null,
+        scripture_text: (formScriptureText || '').trim() || null,
+        body: (formBody || '').trim(),
+        prayer_focus: (formPrayerFocus || '').trim() || null,
+        key_declaration: (formKeyDeclaration || '').trim() || null,
+        is_published: isPublished,
         updated_at: new Date().toISOString(),
         ...(user?.id ? { created_by: user.id } : {}),
       };
@@ -500,8 +501,8 @@ export default function AdminDevotionPage() {
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 5 }}>Date *</label>
                 <input
                   type="date"
-                  value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                  value={formDate}
+                  onChange={e => setFormDate(e.target.value)}
                   style={{ width: '100%', height: 40, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 13.5, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>
@@ -510,8 +511,8 @@ export default function AdminDevotionPage() {
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 5 }}>Title *</label>
                 <input
                   type="text"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  value={formTitle}
+                  onChange={e => setFormTitle(e.target.value)}
                   placeholder="e.g. Walking in Faith"
                   style={{ width: '100%', height: 40, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 13.5, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
                 />
@@ -521,8 +522,8 @@ export default function AdminDevotionPage() {
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 5 }}>Scripture reference *</label>
                 <input
                   type="text"
-                  value={form.scripture_ref}
-                  onChange={e => setForm(f => ({ ...f, scripture_ref: e.target.value }))}
+                  value={formScriptureRef}
+                  onChange={e => setFormScriptureRef(e.target.value)}
                   placeholder="e.g. Hebrews 11:1"
                   style={{ width: '100%', height: 40, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 13.5, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
                 />
@@ -531,8 +532,8 @@ export default function AdminDevotionPage() {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 5 }}>Scripture text</label>
                 <textarea
-                  value={form.scripture_text}
-                  onChange={e => setForm(f => ({ ...f, scripture_text: e.target.value }))}
+                  value={formScriptureText}
+                  onChange={e => setFormScriptureText(e.target.value)}
                   placeholder="Now faith is confidence in what we hope for…"
                   rows={3}
                   style={{ width: '100%', borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 13.5, padding: '10px 12px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
@@ -542,8 +543,8 @@ export default function AdminDevotionPage() {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 5 }}>Devotional body *</label>
                 <textarea
-                  value={form.body}
-                  onChange={e => setForm(f => ({ ...f, body: e.target.value }))}
+                  value={formBody}
+                  onChange={e => setFormBody(e.target.value)}
                   placeholder="The main devotional text…"
                   rows={6}
                   style={{ width: '100%', borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 13.5, padding: '10px 12px', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
@@ -553,8 +554,8 @@ export default function AdminDevotionPage() {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 5 }}>Prayer focus</label>
                 <textarea
-                  value={form.prayer_focus}
-                  onChange={e => setForm(f => ({ ...f, prayer_focus: e.target.value }))}
+                  value={formPrayerFocus}
+                  onChange={e => setFormPrayerFocus(e.target.value)}
                   placeholder="What members should pray about…"
                   rows={3}
                   style={{ width: '100%', borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 13.5, padding: '10px 12px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
@@ -564,8 +565,8 @@ export default function AdminDevotionPage() {
               <div>
                 <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', display: 'block', marginBottom: 5 }}>Key declaration</label>
                 <textarea
-                  value={form.key_declaration}
-                  onChange={e => setForm(f => ({ ...f, key_declaration: e.target.value }))}
+                  value={formKeyDeclaration}
+                  onChange={e => setFormKeyDeclaration(e.target.value)}
                   placeholder="A declaration members will speak aloud…"
                   rows={2}
                   style={{ width: '100%', borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 13.5, padding: '10px 12px', outline: 'none', resize: 'none', boxSizing: 'border-box' }}
@@ -574,29 +575,29 @@ export default function AdminDevotionPage() {
 
               {/* Publish toggle */}
               <button
-                onClick={() => setForm(f => ({ ...f, is_published: !f.is_published }))}
+                onClick={() => setIsPublished(v => !v)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px',
                   borderRadius: 10,
-                  background: form.is_published ? 'var(--navy-tint)' : 'var(--surface-2)',
-                  border: `1.5px solid ${form.is_published ? 'var(--navy)' : 'transparent'}`,
+                  background: isPublished ? 'var(--navy-tint)' : 'var(--surface-2)',
+                  border: `1.5px solid ${isPublished ? 'var(--navy)' : 'transparent'}`,
                   textAlign: 'left', cursor: 'pointer',
                 }}
               >
                 <div style={{
                   width: 36, height: 20, borderRadius: 10, flex: 'none',
-                  background: form.is_published ? 'var(--navy)' : 'var(--line-2)',
+                  background: isPublished ? 'var(--navy)' : 'var(--line-2)',
                   position: 'relative', transition: 'background .2s',
                 }}>
                   <div style={{
                     position: 'absolute', top: 2,
-                    left: form.is_published ? 18 : 2,
+                    left: isPublished ? 18 : 2,
                     width: 16, height: 16, borderRadius: '50%', background: '#fff',
                     transition: 'left .2s',
                   }} />
                 </div>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: form.is_published ? 'var(--navy)' : 'var(--muted)' }}>
-                  {form.is_published ? 'Published — visible to members' : 'Draft — not yet published'}
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: isPublished ? 'var(--navy)' : 'var(--muted)' }}>
+                  {isPublished ? 'Published — visible to members' : 'Draft — not yet published'}
                 </span>
               </button>
 
