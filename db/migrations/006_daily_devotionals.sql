@@ -10,11 +10,11 @@ CREATE TABLE IF NOT EXISTS public.daily_devotionals (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   date             DATE NOT NULL UNIQUE,
   title            TEXT NOT NULL,
-  scripture_ref    TEXT NOT NULL,
-  scripture_text   TEXT NOT NULL,
+  scripture_ref    TEXT NOT NULL DEFAULT '',
+  scripture_text   TEXT NOT NULL DEFAULT '',
   body             TEXT NOT NULL,
-  prayer_focus     TEXT NOT NULL,
-  key_declaration  TEXT NOT NULL,
+  prayer_focus     TEXT NOT NULL DEFAULT '',
+  key_declaration  TEXT NOT NULL DEFAULT '',
   is_published     BOOLEAN NOT NULL DEFAULT FALSE,
   created_by       UUID REFERENCES auth.users(id),
   created_at       TIMESTAMPTZ DEFAULT now(),
@@ -23,14 +23,25 @@ CREATE TABLE IF NOT EXISTS public.daily_devotionals (
 
 ALTER TABLE public.daily_devotionals ENABLE ROW LEVEL SECURITY;
 
--- Admins can fully manage devotionals
+-- Drop old policy if it exists (e.g. re-running this migration)
+DROP POLICY IF EXISTS "Admins manage daily_devotionals" ON public.daily_devotionals;
+DROP POLICY IF EXISTS "Members read published devotionals" ON public.daily_devotionals;
+
+-- Admins can fully manage devotionals (WITH CHECK required for INSERT/UPDATE)
 CREATE POLICY "Admins manage daily_devotionals"
   ON public.daily_devotionals FOR ALL TO authenticated
   USING (
     EXISTS (
       SELECT 1 FROM public.user_roles
       WHERE user_id = auth.uid()
-        AND role IN ('director','spiritual_lead','data_ops_lead')
+        AND role IN ('director','spiritual_lead','data_ops_lead','member_care_lead')
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.user_roles
+      WHERE user_id = auth.uid()
+        AND role IN ('director','spiritual_lead','data_ops_lead','member_care_lead')
     )
   );
 

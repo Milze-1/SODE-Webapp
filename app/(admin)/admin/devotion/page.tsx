@@ -219,6 +219,8 @@ export default function AdminDevotionPage() {
   const [editingId, setEditingId]       = useState<string | null>(null);
   const [form, setForm]                 = useState(BLANK_FORM);
   const [saving, setSaving]             = useState(false);
+  const [saveError, setSaveError]       = useState('');
+  const [saveSuccess, setSaveSuccess]   = useState(false);
   const [devLoaded, setDevLoaded]       = useState(false);
 
   const loadDevotionals = useCallback(async () => {
@@ -253,42 +255,73 @@ export default function AdminDevotionPage() {
     });
   };
 
-  const resetForm = () => { setEditingId(null); setForm(BLANK_FORM); };
+  const resetForm = () => {
+    setEditingId(null);
+    setForm(BLANK_FORM);
+    setSaveError('');
+    setSaveSuccess(false);
+  };
 
   const saveDevotional = async () => {
-    if (!form.title || !form.date || !form.scripture_ref || !form.body || saving) return;
+    setSaveError('');
+    setSaveSuccess(false);
+
+    // Validate required fields
+    if (!form.date) { setSaveError('Please select a date.'); return; }
+    if (!form.title?.trim()) { setSaveError('Please enter a title.'); return; }
+    if (!form.body?.trim()) { setSaveError('Please enter the devotional body.'); return; }
+    if (saving) return;
+
+    console.log('[Devotional] Save clicked', { editingId, form });
     setSaving(true);
+
     try {
       const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
       const payload = {
         date: form.date,
         title: form.title.trim(),
-        scripture_ref: form.scripture_ref.trim(),
+        scripture_ref: form.scripture_ref.trim() || '',
         scripture_text: form.scripture_text.trim(),
         body: form.body.trim(),
         prayer_focus: form.prayer_focus.trim(),
         key_declaration: form.key_declaration.trim(),
         is_published: form.is_published,
         updated_at: new Date().toISOString(),
+        ...(user?.id ? { created_by: user.id } : {}),
       };
 
       if (editingId) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('daily_devotionals')
           .update(payload)
           .eq('id', editingId)
           .select()
           .single();
+
+        console.log('[Devotional] Update result:', { data, error: error?.message });
+        if (error) throw error;
         if (data) setDevotionals(ds => ds.map(d => d.id === editingId ? data as DailyDevotional : d));
       } else {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('daily_devotionals')
           .insert(payload)
           .select()
           .single();
+
+        console.log('[Devotional] Insert result:', { data, error: error?.message });
+        if (error) throw error;
         if (data) setDevotionals(ds => [data as DailyDevotional, ...ds]);
       }
+
+      setSaveSuccess(true);
       resetForm();
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Devotional] Save error:', msg);
+      setSaveError(msg || 'Failed to save devotional. Check Supabase RLS policies.');
     } finally {
       setSaving(false);
     }
@@ -569,11 +602,24 @@ export default function AdminDevotionPage() {
 
               <button
                 onClick={saveDevotional}
-                disabled={!form.title || !form.date || !form.scripture_ref || !form.body || saving}
+                disabled={saving}
                 className="btn btn-primary btn-block"
+                style={{ opacity: saving ? 0.7 : 1 }}
               >
-                {saving ? 'Saving…' : editingId ? 'Save changes' : 'Create devotional'}
+                {saving ? (editingId ? 'Saving…' : 'Creating…') : editingId ? 'Save changes' : 'Create devotional'}
               </button>
+
+              {saveError && (
+                <div style={{ background: '#fff5f5', border: '1px solid #fed7d7', borderRadius: 9, padding: '10px 13px', fontSize: 13, color: '#c53030' }}>
+                  {saveError}
+                </div>
+              )}
+
+              {saveSuccess && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 9, padding: '10px 13px', fontSize: 13, color: '#065f46', fontWeight: 600 }}>
+                  ✓ Devotional {editingId ? 'updated' : 'created'} successfully!
+                </div>
+              )}
             </div>
 
             {/* Devotional list */}
