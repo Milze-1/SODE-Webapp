@@ -16,8 +16,9 @@ export const metadata: Metadata = {
   title: "The School of Daniels & Esthers",
   description: "Spiritually deep. Excellent in the marketplace.",
   icons: {
-    icon: [{ url: "/images/sode-primary-logo.png", type: "image/png" }],
-    apple: [{ url: "/images/sode-primary-logo.png" }],
+    icon: [{ url: "/favicon.png", type: "image/png" }],
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 
