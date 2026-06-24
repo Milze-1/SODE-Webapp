@@ -15,7 +15,7 @@ export default function PageLoader() {
         alt="SODE"
         width={120}
         height={120}
-        style={{ animation: 'pulse 1.2s ease-in-out infinite' }}
+        style={{ animation: 'pulse 2.2s ease-in-out infinite' }}
       />
       <style>{`
         @keyframes pulse {
