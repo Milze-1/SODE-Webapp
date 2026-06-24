@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Hanken_Grotesk } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { NavigationLoader } from "@/components/NavigationLoader";
 
 const hankenGrotesk = Hanken_Grotesk({
   subsets: ["latin"],
@@ -13,6 +15,10 @@ const hankenGrotesk = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "The School of Daniels & Esthers",
   description: "Spiritually deep. Excellent in the marketplace.",
+  icons: {
+    icon: [{ url: "/images/sode-primary-logo.png", type: "image/png" }],
+    apple: [{ url: "/images/sode-primary-logo.png" }],
+  },
 };
 
 export default function RootLayout({
@@ -26,6 +32,9 @@ export default function RootLayout({
         className="antialiased"
         style={{ fontFamily: "var(--font-hanken), system-ui, sans-serif" }}
       >
+        <Suspense>
+          <NavigationLoader />
+        </Suspense>
         {children}
       </body>
     </html>
