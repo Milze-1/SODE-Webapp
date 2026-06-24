@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 export default function PageLoader() {
   return (
     <div style={{
@@ -12,8 +10,8 @@ export default function PageLoader() {
       alignItems: 'center',
       justifyContent: 'center',
     }}>
-      <Image
-        src="/favicon.png"
+      <img
+        src="/sode-logo.png"
         alt="SODE"
         width={120}
         height={120}
