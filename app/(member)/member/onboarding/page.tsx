@@ -4,103 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import Image from 'next/image';
-import { Icon, pillarOf } from '@/components/sode/icons';
-import { PillarChip, Field, TextInput, OptionChips, StickyFooter } from '@/components/sode/ui';
-
-// ─── Baseline survey questions ────────────────────────────────────────────────
-
-const BASELINE_Q = [
-  { pillar: 'spiritual', q: 'How consistent is your devotional life right now?', type: 'choice', options: ['Daily', 'A few times a week', 'Occasionally', 'Rarely'] },
-  { pillar: 'career', q: 'Where are you in your career journey?', type: 'choice', options: ['Studying', 'Employed', 'Job-seeking', 'Self-employed'] },
-  { pillar: 'career', q: 'Do you hold a professional certification?', type: 'choice', options: ['Yes', 'In progress', 'Not yet'] },
-  { pillar: 'business', q: 'Do you run or plan to run a business?', type: 'choice', options: ['Running one', 'Registered', 'Idea stage', 'No'] },
-  { pillar: 'character', q: 'How often do you serve others or volunteer?', type: 'choice', options: ['Weekly', 'Monthly', 'Rarely', 'Not yet'] },
-  { pillar: null, q: 'Rate your overall growth this past year.', type: 'nps' },
-  { pillar: null, q: "What do you most want to be \"ten times better\" at this year?", type: 'text' },
-] as const;
-
-// ─── Baseline survey component ────────────────────────────────────────────────
-
-function BaselineSurvey({ onDone }: { onDone: (ans: Record<number, unknown>) => void }) {
-  const [i, setI] = useState(0);
-  const [ans, setAns] = useState<Record<number, unknown>>({});
-  const q = BASELINE_Q[i];
-  const set = (v: unknown) => setAns(a => ({ ...a, [i]: v }));
-  const last = i === BASELINE_Q.length - 1;
-  const canNext = q.type === 'text' ? true : ans[i] != null;
-  const p = q.pillar ? pillarOf(q.pillar) : null;
-
-  return (
-    <div className="sode" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <div style={{ padding: '18px 22px 4px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        {i > 0 && (
-          <button onClick={() => setI(i - 1)} style={{ color: 'var(--ink)', display: 'flex' }}>
-            <Icon name="arrowleft" size={22} />
-          </button>
-        )}
-        <div style={{ flex: 1, display: 'flex', gap: 4 }}>
-          {BASELINE_Q.map((_, j) => (
-            <div key={j} style={{ flex: 1, height: 5, borderRadius: 3, background: j <= i ? 'var(--navy)' : 'var(--surface-2)' }} />
-          ))}
-        </div>
-        <span className="tnum" style={{ fontSize: 12, fontWeight: 700, color: 'var(--faint)' }}>{i + 1}/{BASELINE_Q.length}</span>
-      </div>
-      <div style={{ padding: '6px 22px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div className="eyebrow">Baseline Survey · ~4 min</div>
-        <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          <Icon name="check" size={12} stroke={2.6} color="var(--navy)" /> Autosaved
-        </span>
-      </div>
-
-      {/* extra bottom padding so StickyFooter never covers the last option */}
-      <div className="noscroll" style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 100px' }}>
-        {p && <div style={{ marginBottom: 12 }}><PillarChip pillar={q.pillar!} size="sm" /></div>}
-        <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-.01em', lineHeight: 1.3 }}>{q.q}</div>
-        <div style={{ marginTop: 18 }}>
-          {q.type === 'choice' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {(q as { options: readonly string[] }).options.map(o => {
-                const seld = ans[i] === o;
-                return (
-                  <button key={o} onClick={() => set(o)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '14px 15px', borderRadius: 'var(--r-sm)', background: seld ? 'var(--navy-tint)' : 'var(--surface)', border: seld ? '1.5px solid var(--navy)' : '1px solid var(--line-2)', textAlign: 'left' }}>
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', flex: 'none', border: seld ? '6px solid var(--navy)' : '2px solid var(--line-2)', background: '#fff' }} />
-                    <span style={{ fontSize: 14.5, fontWeight: 600 }}>{o}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          {q.type === 'nps' && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 7 }}>
-                {Array.from({ length: 11 }).map((_, n) => {
-                  const seld = ans[i] === n;
-                  return (
-                    <button key={n} onClick={() => set(n)} className="tnum" style={{ height: 46, borderRadius: 12, fontSize: 16, fontWeight: 700, background: seld ? 'var(--navy)' : 'var(--surface)', color: seld ? '#fff' : 'var(--ink)', border: seld ? 'none' : '1px solid var(--line-2)' }}>
-                      {n}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--faint)', marginTop: 8, fontWeight: 600 }}>
-                <span>Just starting</span><span>Ten times better</span>
-              </div>
-            </div>
-          )}
-          {q.type === 'text' && (
-            <TextInput value={(ans[i] as string) || ''} onChange={set} multiline rows={4} placeholder="A sentence is plenty…" />
-          )}
-        </div>
-      </div>
-
-      <StickyFooter>
-        <button onClick={() => last ? onDone(ans) : setI(i + 1)} disabled={!canNext} className="btn btn-primary btn-lg btn-block">
-          {last ? 'Finish baseline' : 'Continue'}
-        </button>
-      </StickyFooter>
-    </div>
-  );
-}
+import { Icon } from '@/components/sode/icons';
+import { Field, TextInput, OptionChips, StickyFooter } from '@/components/sode/ui';
 
 // ─── Life stage / dept options ────────────────────────────────────────────────
 
@@ -113,6 +18,53 @@ const LIFE_STAGE_MAP: Record<string, string> = {
   'Young professional': 'young_professional',
   'Entrepreneur': 'entrepreneur',
   'Between roles': 'between_roles',
+};
+
+const INDUSTRIES = [
+  'Technology', 'Finance / banking', 'Healthcare', 'Law', 'Education',
+  'Media / content', 'Creative arts', 'Business / consulting',
+  'Government / public service', 'Real estate / construction',
+  'Non-profit / NGO', 'Agriculture', 'Ministry / theology', 'Other',
+];
+
+const CAREER_STAGES = [
+  'Just starting out (0–2 yrs)', 'Building (3–7 yrs)',
+  'Established (8–15 yrs)', 'Senior / leading others', 'Transitioning / pivoting',
+];
+
+const STRENGTH_AREAS = [
+  'Strategy & leadership', 'Financial analysis', 'Technology & systems',
+  'Communication & storytelling', 'Teaching & training', 'Operations & execution',
+  'People & relationships', 'Creative & design', 'Research & analysis',
+  'Sales & business development', 'Legal & compliance', 'Healthcare & wellness', 'Other',
+];
+
+const MOUNTAINS = [
+  { key: 'Business',    sub: 'Commerce, enterprise' },
+  { key: 'Government',  sub: 'Policy, public service' },
+  { key: 'Education',   sub: 'Schools, training' },
+  { key: 'Media & arts', sub: 'Storytelling, culture' },
+  { key: 'Family',      sub: 'Home, community' },
+  { key: 'Religion',    sub: 'Church, ministry' },
+  { key: 'Healthcare',  sub: 'Medicine, wellbeing' },
+];
+
+const LEADERSHIP_OPTIONS = [
+  'Yes — leading a team or organisation',
+  'Yes — leading in church / ministry',
+  'Yes — community or volunteer leadership',
+  'Not yet, but preparing for it',
+  'No',
+];
+
+const MOUNTAIN_TO_PILLAR: Record<string, string> = {
+  'Business': 'business',
+  'Government': 'career',
+  'Education': 'career',
+  'Media & arts': 'character',
+  'Family': 'character',
+  'Religion': 'spiritual',
+  'Healthcare': 'career',
 };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -129,29 +81,44 @@ export default function OnboardingPage() {
 
   // flow state
   const [step, setStep] = useState(0);
-  const [baseline, setBaseline] = useState(false);
   const [done, setDone] = useState(false);
 
   // step 0 — first-timer question
   const [firstTimer, setFirstTimer] = useState<'first' | 'returning' | null>(null);
 
-  // form fields (steps 1–4)
+  // step 1 — basics
   const [name, setName] = useState('');
   const [wa, setWa] = useState('');
+
+  // step 2 — about you
   const [stage, setStage] = useState<string | null>(null);
   const [dept, setDept] = useState<string | null>(null);
-  const [biz, setBiz] = useState<string | null>(null);
-  const [leader, setLeader] = useState<string | null>(null);
+  const [industry, setIndustry] = useState<string | null>(null);
+  const [careerStage, setCareerStage] = useState<string | null>(null);
+  const [strengthArea, setStrengthArea] = useState<string | null>(null);
+  const [mountains, setMountains] = useState<string[]>([]);
+  const [mountainError, setMountainError] = useState(false);
+  const [leadershipRole, setLeadershipRole] = useState<string | null>(null);
+
+  // step 3 — consent
   const [consent1, setConsent1] = useState(false);
   const [consent2, setConsent2] = useState(false);
+
+  // step 4 — goals & business
+  const [businessStatus, setBusinessStatus] = useState<string | null>(null);
+  const [businessIndustry, setBusinessIndustry] = useState<string | null>(null);
+  const [businessDescription, setBusinessDescription] = useState('');
+  const [businessEmployees, setBusinessEmployees] = useState<string | null>(null);
+  const [threeYearGoal, setThreeYearGoal] = useState('');
+  const [supportNeeded, setSupportNeeded] = useState<string | null>(null);
 
   const total = 5;
   const canNext =
     step === 0 ? firstTimer !== null :
     step === 1 ? !!(name.trim() && wa.trim()) :
-    step === 2 ? !!(stage && dept) :
+    step === 2 ? !!(stage && dept && industry && careerStage && strengthArea && mountains.length > 0 && leadershipRole) :
     step === 3 ? consent1 :
-    true;
+    !!(businessStatus && threeYearGoal.trim() && supportNeeded);
 
   useEffect(() => {
     (async () => {
@@ -218,7 +185,7 @@ export default function OnboardingPage() {
     } catch { /* non-critical — saved again on onboarding_complete */ }
   };
 
-  const saveAndEnter = async (baselineAns?: Record<number, unknown>) => {
+  const saveAndEnter = async () => {
     if (!userId) return;
     setSaving(true);
     setError(null);
@@ -231,14 +198,23 @@ export default function OnboardingPage() {
         whatsapp: wa.trim() || null,
         life_stage: stage ? (LIFE_STAGE_MAP[stage] ?? null) : null,
         department: dept,
-        has_business: biz === 'Yes, registered' || biz === 'Just an idea',
-        is_leader: leader === 'Yes',
+        has_business: ['I have a registered business', 'I have an idea, not yet started', 'Actively building (unregistered)'].includes(businessStatus ?? ''),
+        is_leader: leadershipRole ? leadershipRole.toLowerCase().startsWith('yes') : false,
         consent_data: consent1,
         consent_contact: consent2,
         onboarding_complete: true,
+        industry: industry || null,
+        career_stage: careerStage || null,
+        strength_area: strengthArea || null,
+        mountains: mountains.length > 0 ? mountains : null,
+        leadership_role: leadershipRole || null,
+        business_status: businessStatus || null,
+        business_industry: businessIndustry || null,
+        business_description: businessDescription || null,
+        business_employees: businessEmployees || null,
+        three_year_goal: threeYearGoal || null,
+        support_needed: supportNeeded || null,
       };
-
-      console.log('[saveAndEnter] payload:', payload);
 
       let memberId = existingMemberId;
 
@@ -255,21 +231,32 @@ export default function OnboardingPage() {
         memberId = inserted?.id ?? null;
       }
 
-      // Save baseline answers to form_responses if a "Baseline Survey" form exists in DB
-      if (baselineAns && memberId) {
-        const { data: baselineForm } = await supabase
-          .from('forms')
-          .select('id')
-          .eq('title', 'Baseline Survey')
-          .maybeSingle();
+      // Auto-create 3-year goal from onboarding answer (non-fatal if it fails)
+      if (threeYearGoal.trim() && memberId) {
+        try {
+          const { count } = await supabase
+            .from('goals')
+            .select('id', { count: 'exact', head: true })
+            .eq('member_id', memberId)
+            .eq('created_via', 'onboarding');
 
-        if (baselineForm?.id) {
-          const { error: respErr } = await supabase.from('form_responses').insert({
-            form_id: baselineForm.id,
-            member_id: memberId,
-            data: baselineAns,
-          });
-          if (respErr) console.error('[saveAndEnter] form_responses error:', respErr);
+          if ((count ?? 0) === 0) {
+            const pillar = mountains[0] ? (MOUNTAIN_TO_PILLAR[mountains[0]] ?? 'career') : 'career';
+            const rawTitle = threeYearGoal.trim();
+            const firstSentence = rawTitle.split(/[.!?]/)[0].trim();
+            let goalTitle = firstSentence.length > 0 && firstSentence.length <= 100 ? firstSentence : rawTitle;
+            if (goalTitle.length > 100) goalTitle = goalTitle.slice(0, 100).replace(/\s+\S+$/, '').trim();
+            const due = new Date();
+            due.setFullYear(due.getFullYear() + 3);
+            await supabase.from('goals').insert({
+              member_id: memberId, pillar, title: goalTitle, notes: rawTitle,
+              current: 0, target: 1, unit: 'goal',
+              due_date: due.toISOString().slice(0, 10),
+              status: 'ontrack', created_via: 'onboarding',
+            });
+          }
+        } catch (goalErr) {
+          console.error('[onboarding] goal auto-create failed (non-fatal):', goalErr);
         }
       }
 
@@ -289,11 +276,6 @@ export default function OnboardingPage() {
         </div>
       </div>
     );
-  }
-
-  // Baseline survey step
-  if (baseline) {
-    return <BaselineSurvey onDone={(ans) => { setBaseline(false); saveAndEnter(ans); }} />;
   }
 
   // Completion / welcome screen
@@ -351,9 +333,13 @@ export default function OnboardingPage() {
         {step === 0 && (
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em', marginBottom: 6 }}>Welcome to SODE! 👋</h1>
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 0, marginBottom: 24, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 0, marginBottom: 16, lineHeight: 1.5 }}>
               Before we set up your profile, tell us about yourself.
             </p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 99, background: 'var(--navy-tint)', border: '1px solid var(--navy)', marginBottom: 24 }}>
+              <Icon name="mappin" size={13} color="var(--navy)" />
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--navy)', letterSpacing: '.01em' }}>Connected to Dominion City · Victoria Island, Lagos</span>
+            </div>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Have you attended a SODE session or event before?</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <button
@@ -417,11 +403,52 @@ export default function OnboardingPage() {
             <Field label="Department / serving">
               <OptionChips options={DEPTS} value={dept ?? ''} onChange={v => setDept(v as string)} />
             </Field>
-            <Field label="Running a business?">
-              <OptionChips options={['Yes, registered', 'Just an idea', 'Not yet']} value={biz ?? ''} onChange={v => setBiz(v as string)} />
+            <Field label="What field or industry do you work in?">
+              <OptionChips options={INDUSTRIES} value={industry ?? ''} onChange={v => setIndustry(v as string)} />
             </Field>
-            <Field label="A leadership role?">
-              <OptionChips options={['Yes', 'No']} value={leader ?? ''} onChange={v => setLeader(v as string)} />
+            <Field label="Where are you in your career or life stage?">
+              <OptionChips options={CAREER_STAGES} value={careerStage ?? ''} onChange={v => setCareerStage(v as string)} />
+            </Field>
+            <Field label="What is your primary area of strength?" hint="The thing people come to you for">
+              <OptionChips options={STRENGTH_AREAS} value={strengthArea ?? ''} onChange={v => setStrengthArea(v as string)} />
+            </Field>
+            <Field label="Which mountains of influence do you feel most called to?" hint="Select up to 2 — this shapes your cohort and mentor matching on SODE">
+              {mountainError && (
+                <div style={{ fontSize: 12, color: '#c53030', marginBottom: 8, fontWeight: 600 }}>You can only select up to 2 mountains.</div>
+              )}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {MOUNTAINS.map(m => {
+                  const sel = mountains.includes(m.key);
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => {
+                        setMountainError(false);
+                        if (sel) {
+                          setMountains(prev => prev.filter(x => x !== m.key));
+                        } else if (mountains.length >= 2) {
+                          setMountainError(true);
+                        } else {
+                          setMountains(prev => [...prev, m.key]);
+                        }
+                      }}
+                      style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3,
+                        padding: '12px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left', cursor: 'pointer',
+                        background: sel ? 'var(--navy-tint)' : 'var(--surface)',
+                        border: sel ? '1.5px solid var(--navy)' : '1px solid var(--line-2)',
+                      }}
+                    >
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: sel ? 'var(--navy)' : 'var(--ink)' }}>{m.key}</span>
+                      <span style={{ fontSize: 11, color: sel ? 'var(--navy)' : 'var(--muted)' }}>{m.sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </Field>
+            <Field label="Do you currently hold any leadership role?" hint="In any sphere — workplace, church, community, or family">
+              <OptionChips options={LEADERSHIP_OPTIONS} value={leadershipRole ?? ''} onChange={v => setLeadershipRole(v as string)} />
             </Field>
           </div>
         )}
@@ -440,37 +467,63 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* ── Step 4: Baseline survey intro ────────────────────────────────── */}
+        {/* ── Step 4: Goals & business ─────────────────────────────────────── */}
         {step === 4 && (
           <div style={{ paddingTop: 6 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ width: 60, height: 60, margin: '0 auto', borderRadius: 17, background: 'var(--navy-tint)', color: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="trendingup" size={28} stroke={2} />
+            {/* Anchor nudge */}
+            <div style={{ padding: '12px 14px', borderRadius: 'var(--r-sm)', background: '#f0fdf4', border: '1px solid #86efac', marginBottom: 22 }}>
+              <div style={{ fontSize: 13, color: '#166534', lineHeight: 1.55 }}>
+                Take a moment with this section. Your answers here become your anchor on SODE — they shape your growth plan, mentor matches, and how we track your progress over the next 3 years. Be honest and specific. The more real you are, the more we can help.
               </div>
-              <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em', marginTop: 14 }}>Your Baseline Survey</h1>
-              <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 7, lineHeight: 1.5 }}>
-                About 4 minutes · 7 questions. It captures where you&apos;re starting so we can measure how far you climb.
-              </p>
             </div>
-            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {([
-                ['spiritual', 'Your devotional rhythm'],
-                ['career', 'Where you are in your career'],
-                ['business', 'Your business stage'],
-                ['character', 'How you serve others'],
-                [null, 'Overall growth & the year ahead'],
-              ] as [string | null, string][]).map(([pk, label], idx) => {
-                const pp = pk ? pillarOf(pk) : null;
-                return (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 13px', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
-                    <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fff', color: pp ? pp.color : 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: 'var(--sh-sm)' }}>
-                      <Icon name={pp ? pp.icon : 'sparkles'} size={17} stroke={2.1} />
-                    </div>
-                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{label}</span>
-                  </div>
-                );
-              })}
-            </div>
+
+            {/* Business section */}
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 14 }}>Business &amp; Entrepreneurship</div>
+            <Field label="What is your business or entrepreneurship status?">
+              <OptionChips
+                options={['I have a registered business', 'I have an idea, not yet started', 'Actively building (unregistered)', 'No business interest currently']}
+                value={businessStatus ?? ''} onChange={v => setBusinessStatus(v as string)}
+              />
+            </Field>
+
+            {(businessStatus === 'I have a registered business' || businessStatus === 'Actively building (unregistered)') && (
+              <div>
+                <Field label="What industry is your business in?">
+                  <OptionChips
+                    options={['Fintech', 'Healthcare', 'Edtech', 'E-commerce', 'Food & beverage', 'Real estate', 'Media / content', 'Agriculture', 'Logistics', 'Technology / SaaS', 'Consulting', 'Other']}
+                    value={businessIndustry ?? ''} onChange={v => setBusinessIndustry(v as string)}
+                  />
+                </Field>
+                <Field label="Briefly — what does your business do?">
+                  <TextInput
+                    value={businessDescription} onChange={setBusinessDescription}
+                    multiline rows={3} placeholder="e.g. We provide affordable digital banking tools for SMEs in Lagos…"
+                  />
+                </Field>
+                <Field label="How many people does it employ or engage?">
+                  <OptionChips
+                    options={['Just me', '2–5', '6–20', '21–50', '50+']}
+                    value={businessEmployees ?? ''} onChange={v => setBusinessEmployees(v as string)}
+                  />
+                </Field>
+              </div>
+            )}
+
+            {/* Goal section */}
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 14, marginTop: 24 }}>Your Goal</div>
+            <Field label="Write the one goal you are hoping to achieve in the next 3 years" hint="Make it ambitious but real — career, business, ministry, or personal">
+              <TextInput
+                value={threeYearGoal} onChange={setThreeYearGoal}
+                multiline rows={5}
+                placeholder="e.g. By 2028 I will have launched a licensed fintech company serving 10,000 users with a team of 15, and be recognised as a leading voice in faith-driven finance in Nigeria…"
+              />
+            </Field>
+            <Field label="What kind of support would help you most right now?">
+              <OptionChips
+                options={['Mentorship from someone ahead of me', 'Peer accountability', 'Skill-building / learning', 'Business connections', 'Spiritual direction', 'All of the above']}
+                value={supportNeeded ?? ''} onChange={v => setSupportNeeded(v as string)}
+              />
+            </Field>
           </div>
         )}
       </div>
@@ -486,10 +539,10 @@ export default function OnboardingPage() {
           </button>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button onClick={() => setBaseline(true)} disabled={saving} className="btn btn-primary btn-lg btn-block">
-              <Icon name="trendingup" size={18} color="#fff" /> Take the baseline now
+            <button onClick={saveAndEnter} disabled={saving || !canNext} className="btn btn-primary btn-lg btn-block">
+              <Icon name="arrowright" size={18} color="#fff" /> Complete and enter SODE
             </button>
-            <button onClick={() => saveAndEnter()} disabled={saving} className="btn btn-ghost btn-block">
+            <button onClick={saveAndEnter} disabled={saving} className="btn btn-ghost btn-block">
               {saving ? 'Saving…' : "I'll do it later"}
             </button>
           </div>
