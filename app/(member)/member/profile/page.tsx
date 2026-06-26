@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Icon } from '@/components/sode/icons';
 import { Avatar, Toggle, Segmented, Field, TextInput, Sheet, Toast } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
+import { usePoints } from '@/lib/hooks/useRealtimeData';
 
 interface ToastPayload { msg: string; icon?: string; }
 
@@ -35,6 +36,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [member, setMember] = useState<MemberData | null>(null);
+  const { balance: liveBalance } = usePoints(member?.id ?? '');
   const [authEmail, setAuthEmail] = useState<string | null>(null);
   const [rank, setRank] = useState(0);
   const [optIn, setOptIn] = useState(true);
@@ -169,7 +171,7 @@ export default function ProfilePage() {
           <div className="card card-pad">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div className="tnum" style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-.02em' }}>{(member?.points ?? 0).toLocaleString()}</div>
+                <div className="tnum" style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-.02em' }}>{(liveBalance?.total_points ?? member?.points ?? 0).toLocaleString()}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>total points</div>
               </div>
               <div style={{ textAlign: 'right' }}>

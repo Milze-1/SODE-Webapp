@@ -11,6 +11,7 @@ import {
 } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
 import { awardPoints } from '@/lib/points';
+import { usePoints } from '@/lib/hooks/useRealtimeData';
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -531,6 +532,7 @@ export default function HomePage() {
   // data
   const [loading, setLoading] = useState(true);
   const [member, setMember] = useState<{ id: string; name: string; points: number } | null>(null);
+  const { balance: liveBalance } = usePoints(member?.id ?? '');
   const [goals, setGoals] = useState<Goal[]>([]);
   const [wins, setWins] = useState<WinRow[]>([]);
   const [rank, setRank] = useState(0);
@@ -762,7 +764,7 @@ export default function HomePage() {
                 {member?.name?.split(' ')[0] ?? ''}
               </div>
             </div>
-            <PointsBadge value={member?.points ?? 0} onClick={() => router.push('/member/leaderboard')} />
+            <PointsBadge value={liveBalance?.total_points ?? member?.points ?? 0} onClick={() => router.push('/member/leaderboard')} />
           </div>
         </div>
 
@@ -984,7 +986,7 @@ export default function HomePage() {
                 Month {month} of 12 — here&apos;s you this cycle.
               </p>
             </div>
-            <PointsBadge value={member?.points ?? 0} onClick={() => router.push('/member/leaderboard')} />
+            <PointsBadge value={liveBalance?.total_points ?? member?.points ?? 0} onClick={() => router.push('/member/leaderboard')} />
           </div>
 
           {/* three stat cards */}

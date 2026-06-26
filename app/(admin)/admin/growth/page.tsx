@@ -126,11 +126,10 @@ export default function GrowthPage() {
       const invitations = (invRes.data ?? []) as { inviter_id: string; stage: string }[];
 
       setFunnel([
-        { l: 'Sent',     v: invitations.filter(i => ['sent','delivered','queued'].includes(i.stage)).length },
-        { l: 'Clicked',  v: invitations.filter(i => i.stage === 'clicked').length },
-        { l: 'Joined',   v: invitations.filter(i => ['registered','first_attended','active'].includes(i.stage)).length },
-        { l: 'Attended', v: invitations.filter(i => ['first_attended','active'].includes(i.stage)).length },
-        { l: 'Active',   v: invitations.filter(i => i.stage === 'active').length },
+        { l: 'Sent',          v: invitations.filter(i => ['sent','delivered','queued','clicked','opened'].includes(i.stage)).length },
+        { l: 'Signed Up',     v: invitations.filter(i => ['registered','first_attended','five_meetings','active'].includes(i.stage)).length },
+        { l: 'First Meeting', v: invitations.filter(i => ['first_attended','five_meetings','active'].includes(i.stage)).length },
+        { l: '5 Meetings',    v: invitations.filter(i => ['five_meetings','active'].includes(i.stage)).length },
       ]);
 
       const inviterMap = new Map<string, number>();
@@ -216,10 +215,9 @@ export default function GrowthPage() {
     showToast('Leaderboard reset ✓ All period points set to zero.', 'check');
   };
 
-  const joinRate = funnel[2]?.v && funnel[0]?.v ? Math.round((funnel[2].v / funnel[0].v) * 100) : 0;
+  const joinRate = funnel[1]?.v && funnel[0]?.v ? Math.round((funnel[1].v / funnel[0].v) * 100) : 0;
   const displayFunnel = funnel.length > 0 ? funnel : [
-    { l: 'Sent', v: 0 }, { l: 'Clicked', v: 0 }, { l: 'Joined', v: 0 },
-    { l: 'Attended', v: 0 }, { l: 'Active', v: 0 },
+    { l: 'Sent', v: 0 }, { l: 'Signed Up', v: 0 }, { l: 'First Meeting', v: 0 }, { l: '5 Meetings', v: 0 },
   ];
 
   const filteredMp = memberPoints.filter(m => {
@@ -297,7 +295,7 @@ export default function GrowthPage() {
               );
             })()}
             <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-              {[[`${joinRate}%`, 'Join rate'], [String(funnel[4]?.v ?? 0), 'Now active'], [String(funnel[2]?.v ?? 0), 'Reg. via referral']].map(([v, l], i) => (
+              {[[`${joinRate}%`, 'Sign-up rate'], [String(funnel[2]?.v ?? 0), 'First meeting'], [String(funnel[3]?.v ?? 0), '5 meetings']].map(([v, l], i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
                   <div className="tnum" style={{ fontSize: 20, fontWeight: 800 }}>{v}</div>
                   <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{l}</div>

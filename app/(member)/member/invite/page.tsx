@@ -15,22 +15,28 @@ interface Invitation {
 }
 
 const STAGES = [
-  { key: 'sent', label: 'Sent', pts: 5 },
-  { key: 'opened', label: 'Opened', pts: 0 },
-  { key: 'joined', label: 'Joined', pts: 50 },
-  { key: 'attended', label: 'Attended', pts: 30 },
-  { key: 'active', label: 'Active', pts: 15 },
+  { key: 'sent',          label: 'Invite Sent',  ruleKey: 'invite_sent' },
+  { key: 'registered',   label: 'Signed Up',     ruleKey: 'referral_joined' },
+  { key: 'first_attended', label: 'First Meeting', ruleKey: 'referral_attended' },
+  { key: 'five_meetings', label: '5 Meetings',    ruleKey: 'referral_five_meetings' },
 ];
 
-const stageIdx = (k: string) => STAGES.findIndex(s => s.key === k);
-const invitePoints = (stage: string) => STAGES.slice(0, stageIdx(stage) + 1).reduce((a, s) => a + s.pts, 0);
+const stageIdx = (k: string) => {
+  if (k === 'five_meetings' || k === 'active') return 3;
+  if (k === 'first_attended') return 2;
+  if (k === 'registered' || k === 'joined') return 1;
+  return 0;
+};
+const invitePoints = (stage: string, pts: Record<string, number>) =>
+  STAGES.slice(0, stageIdx(stage) + 1).reduce((a, s) => a + (pts[s.ruleKey] ?? 0), 0);
 
-function LifecycleTracker({ stage }: { stage: string }) {
+function LifecycleTracker({ stage, pts }: { stage: string; pts: Record<string, number> }) {
   const cur = stageIdx(stage);
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', marginTop: 12 }}>
       {STAGES.map((s, i) => {
         const done = i <= cur; const isCur = i === cur;
+        const p = pts[s.ruleKey] ?? 0;
         return (
           <div key={s.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
             {i > 0 && <div style={{ position: 'absolute', top: 11, right: '50%', width: '100%', height: 2, background: i <= cur ? 'var(--navy)' : 'var(--line-2)' }} />}
@@ -38,7 +44,7 @@ function LifecycleTracker({ stage }: { stage: string }) {
               {done && <Icon name="check" size={13} stroke={3} color="#fff" />}
             </div>
             <div style={{ fontSize: 9.5, fontWeight: 700, marginTop: 5, color: done ? 'var(--ink)' : 'var(--faint)', textAlign: 'center' }}>{s.label}</div>
-            {s.pts > 0 && <div className="tnum" style={{ fontSize: 9, color: done ? 'var(--navy)' : 'var(--faint)', fontWeight: 700 }}>+{s.pts}</div>}
+            {p > 0 && <div className="tnum" style={{ fontSize: 9, color: done ? 'var(--navy)' : 'var(--faint)', fontWeight: 700 }}>+{p}</div>}
           </div>
         );
       })}
@@ -63,6 +69,7 @@ export default function InvitePage() {
   const [consent, setConsent] = useState(false);
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState<ToastPayload | null>(null);
+  const [pointRules, setPointRules] = useState<Record<string, number>>({});
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cap = 10;
 
@@ -85,7 +92,17 @@ export default function InvitePage() {
       const { data: invRes } = await supabase.from('invitations').select('id,name,email,phone,stage,created_at').eq('inviter_id', memberRow.id).order('created_at', { ascending: false });
       const invs = (invRes ?? []) as Invitation[];
       setInvitations(invs);
-      setTotalPoints(invs.reduce((a, i) => a + invitePoints(i.stage), 0));
+
+      // Fetch point rule values from DB so UI always reflects live config
+      const { data: rules } = await supabase
+        .from('point_rules')
+        .select('rule_key, points')
+        .in('rule_key', ['invite_sent', 'referral_joined', 'referral_attended', 'referral_five_meetings'])
+        .eq('is_active', true);
+      const ruleMap: Record<string, number> = {};
+      (rules ?? []).forEach((r: { rule_key: string; points: number }) => { ruleMap[r.rule_key] = r.points; });
+      setPointRules(ruleMap);
+      setTotalPoints(invs.reduce((a, i) => a + invitePoints(i.stage, ruleMap), 0));
 
       // Load or create referral code
       fetch('/api/referral/my-code')
@@ -118,9 +135,21 @@ export default function InvitePage() {
       const { data, error } = await supabase.from('invitations').insert(rows).select('id,name,email,phone,stage,created_at');
       if (error) throw error;
       const newInvs = (data ?? []) as Invitation[];
+      // Award invite_sent points via API (idempotent per invitation id)
+      const sendPts = pointRules['invite_sent'] ?? 5;
+      await Promise.allSettled(
+        (newInvs).map(inv =>
+          fetch('/api/points/award', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ memberId, ruleKey: 'invite_sent', refTable: 'invitations', refId: inv.id }),
+          })
+        )
+      );
+      const awardedTotal = sendPts * newInvs.length;
       setInvitations(iv => [...newInvs, ...iv]);
-      setTotalPoints(p => p + batch.length * 5);
-      showToast({ msg: `${batch.length} invitation${batch.length > 1 ? 's' : ''} sent.`, icon: 'userplus', points: batch.length * 5 });
+      setTotalPoints(p => p + awardedTotal);
+      showToast({ msg: `${batch.length} invitation${batch.length > 1 ? 's' : ''} sent.`, icon: 'userplus', points: awardedTotal });
       // Fire-and-forget invitation emails to those with email addresses
       const emailRecipients = batch.filter(c => c.contact.includes('@'));
       if (emailRecipients.length > 0) {
@@ -275,11 +304,13 @@ export default function InvitePage() {
                         <Avatar name={iv.name ?? iv.email ?? iv.phone ?? '?'} size={38} tone="soft" />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14.5, fontWeight: 700 }}>{iv.name ?? iv.email ?? iv.phone ?? 'Contact'}</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>{iv.stage === 'active' ? 'Active member' : iv.stage}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)', textTransform: 'capitalize' }}>
+                            {iv.stage === 'five_meetings' ? '5 meetings attended' : iv.stage === 'first_attended' ? 'First meeting attended' : iv.stage === 'registered' ? 'Signed up' : iv.stage === 'active' ? 'Active member' : iv.stage}
+                          </div>
                         </div>
-                        <PointsBadge value={invitePoints(iv.stage)} size="sm" />
+                        <PointsBadge value={invitePoints(iv.stage, pointRules)} size="sm" />
                       </div>
-                      <LifecycleTracker stage={iv.stage} />
+                      <LifecycleTracker stage={iv.stage} pts={pointRules} />
                     </div>
                   ))}
                 </div>

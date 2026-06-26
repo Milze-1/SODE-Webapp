@@ -257,6 +257,9 @@ export async function processReferralOnRegister(
 
     console.log('[referral] Awarded', pts, 'pts for referral_joined to inviter', inviterId);
 
+    // Award member_joined points to the new member for joining via referral
+    await awardPointsToMember(db, newMemberId, 'member_joined', inviterId, 'Joined SODE via referral');
+
     // Notify inviter
     const { data: inviter } = await db.from('members').select('name, email').eq('id', inviterId).single();
     const { data: newMemberData } = await db.from('members').select('name').eq('id', newMemberId).single();
@@ -294,11 +297,12 @@ export async function processReferralOnAttendance(memberId: string): Promise<voi
   const db = getAdminClient();
 
   try {
+    // Find invitation not yet at the final milestone
     const { data: invitation, error: invErr } = await db
       .from('invitations')
       .select('*')
       .eq('invited_member_id', memberId)
-      .eq('stage', 'registered')
+      .not('stage', 'eq', 'five_meetings')
       .maybeSingle();
 
     console.log('[Referral] attendance invitation:', !!invitation, 'error:', invErr?.message ?? null);
@@ -309,26 +313,22 @@ export async function processReferralOnAttendance(memberId: string): Promise<voi
       .select('id', { count: 'exact', head: true })
       .eq('member_id', memberId);
 
-    console.log('[Referral] attendance count:', count);
-    if ((count ?? 0) !== 1) return;
+    const n = count ?? 0;
+    console.log('[Referral] attendance count:', n);
 
-    await awardPointsToMember(
-      db,
-      invitation.inviter_id as string,
-      'referral_attended',
-      memberId,
-      'Referral attended first session',
-    );
-
-    await db
-      .from('invitations')
-      .update({
-        stage: 'first_attended',
-        stage_updated_at: new Date().toISOString(),
-      })
-      .eq('id', invitation.id);
-
-    console.log('[Referral] Attendance points awarded, stage → first_attended');
+    if (n >= 5) {
+      // Ensure first-meeting was also awarded if we jumped straight here
+      if (invitation.stage === 'registered') {
+        await awardPointsToMember(db, invitation.inviter_id as string, 'referral_attended', memberId, 'Referral attended first session');
+      }
+      await awardPointsToMember(db, invitation.inviter_id as string, 'referral_five_meetings', memberId, 'Referral attended 5 sessions');
+      await db.from('invitations').update({ stage: 'five_meetings', stage_updated_at: new Date().toISOString() }).eq('id', invitation.id);
+      console.log('[Referral] Milestone: five_meetings');
+    } else if (n >= 1 && invitation.stage === 'registered') {
+      await awardPointsToMember(db, invitation.inviter_id as string, 'referral_attended', memberId, 'Referral attended first session');
+      await db.from('invitations').update({ stage: 'first_attended', stage_updated_at: new Date().toISOString() }).eq('id', invitation.id);
+      console.log('[Referral] Milestone: first_attended');
+    }
   } catch (err) {
     console.error('[Referral] Error in processReferralOnAttendance:', err);
   }
