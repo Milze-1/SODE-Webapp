@@ -35,7 +35,6 @@ interface DevotionCheckin {
   checklist: ChecklistState | null;
   notes: string | null;
   completed: boolean;
-  points_awarded: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -213,7 +212,7 @@ export default function DevotionPage() {
           .maybeSingle(),
         supabase
           .from('devotion_checkins')
-          .select('id, member_id, checkin_date, checklist, notes, completed, points_awarded')
+          .select('id, member_id, checkin_date, checklist, notes, completed')
           .eq('member_id', memberRow.id)
           .eq('checkin_date', today)
           .maybeSingle(),
@@ -258,7 +257,6 @@ export default function DevotionPage() {
           checkin_date: today,
           checklist: newChecklist,
           completed: false,
-          points_awarded: false,
         })
         .select()
         .single();
@@ -285,7 +283,6 @@ export default function DevotionPage() {
             checklist,
             notes: journal || null,
             completed: true,
-            points_awarded: true,
           })
           .eq('id', checkin.id);
         if (updErr) {
@@ -304,7 +301,6 @@ export default function DevotionPage() {
             checklist,
             notes: journal || null,
             completed: true,
-            points_awarded: true,
           })
           .select('id')
           .single();
@@ -316,14 +312,13 @@ export default function DevotionPage() {
         checkinId = inserted?.id;
       }
 
-      setCheckin(c => c ? { ...c, completed: true, points_awarded: true } : {
+      setCheckin(c => c ? { ...c, completed: true } : {
         id: checkinId ?? '',
         member_id: memberId,
         checkin_date: today,
         checklist,
         notes: journal || null,
         completed: true,
-        points_awarded: true,
       });
 
       // Award base check-in points
