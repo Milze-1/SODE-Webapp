@@ -1,5 +1,27 @@
 import { createClient } from '@/lib/supabase';
 
+export async function getPointsRule(ruleKey: string): Promise<number> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('point_rules')
+    .select('points')
+    .eq('rule_key', ruleKey)
+    .eq('is_active', true)
+    .maybeSingle();
+  return (data?.points as number | undefined) ?? 0;
+}
+
+export async function getAllPointsRules(): Promise<Record<string, number>> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('point_rules')
+    .select('rule_key, points')
+    .eq('is_active', true);
+  const map: Record<string, number> = {};
+  (data ?? []).forEach((r: { rule_key: string; points: number }) => { map[r.rule_key] = r.points; });
+  return map;
+}
+
 export async function awardPoints(
   memberId: string,
   ruleKey: string,

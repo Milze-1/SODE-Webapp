@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { getAllPointsRules } from '@/lib/points';
 import { Icon } from '@/components/sode/icons';
 import { Avatar, PointsBadge, Segmented, Field, TextInput, Toast } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
@@ -94,13 +95,7 @@ export default function InvitePage() {
       setInvitations(invs);
 
       // Fetch point rule values from DB so UI always reflects live config
-      const { data: rules } = await supabase
-        .from('point_rules')
-        .select('rule_key, points')
-        .in('rule_key', ['invite_sent', 'referral_joined', 'referral_attended', 'referral_five_meetings'])
-        .eq('is_active', true);
-      const ruleMap: Record<string, number> = {};
-      (rules ?? []).forEach((r: { rule_key: string; points: number }) => { ruleMap[r.rule_key] = r.points; });
+      const ruleMap = await getAllPointsRules();
       setPointRules(ruleMap);
       setTotalPoints(invs.reduce((a, i) => a + invitePoints(i.stage, ruleMap), 0));
 

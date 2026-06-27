@@ -18,6 +18,7 @@ interface MemberPoints {
   name: string;
   email: string;
   pillar: string | null;
+  mountains: string[] | null;
   all_time_points: number;
   current_period_points: number;
 }
@@ -31,6 +32,11 @@ interface PointEvent {
   note: string | null;
   created_at: string;
 }
+
+const MOUNTAIN_TO_PILLAR: Record<string, string> = {
+  'Business': 'business', 'Government': 'career', 'Education': 'career',
+  'Media & arts': 'character', 'Family': 'character', 'Religion': 'spiritual', 'Healthcare': 'career',
+};
 
 const RULE_LABELS: Record<string, string> = {
   win_logged:           'Win logged',
@@ -90,20 +96,24 @@ export default function GrowthPage() {
     const supabase = createClient();
     const { data: members } = await supabase
       .from('members')
-      .select('id,name,email,pillar,auth_id,points')
+      .select('id,name,email,pillar,mountains,auth_id,points')
       .eq('onboarding_complete', true)
       .order('points', { ascending: false });
 
-    const rows: MemberPoints[] = ((members ?? []) as { id: string; name: string; email: string; pillar: string | null; auth_id: string; points: number }[])
-      .map(m => ({
-        id: m.id,
-        auth_id: m.auth_id,
-        name: m.name,
-        email: m.email,
-        pillar: m.pillar,
-        all_time_points: m.points ?? 0,
-        current_period_points: m.points ?? 0,
-      }));
+    const rows: MemberPoints[] = ((members ?? []) as { id: string; name: string; email: string; pillar: string | null; mountains: string[] | null; auth_id: string; points: number }[])
+      .map(m => {
+        const derivedPillar = m.pillar ?? (m.mountains?.[0] ? (MOUNTAIN_TO_PILLAR[m.mountains[0]] ?? null) : null);
+        return {
+          id: m.id,
+          auth_id: m.auth_id,
+          name: m.name,
+          email: m.email,
+          pillar: derivedPillar,
+          mountains: m.mountains ?? null,
+          all_time_points: m.points ?? 0,
+          current_period_points: m.points ?? 0,
+        };
+      });
 
     setMemberPoints(rows);
     setMpLoading(false);
