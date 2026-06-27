@@ -96,11 +96,11 @@ export default function OnboardingPage() {
   const [industry, setIndustry] = useState<string | null>(null);
   const [industryOtherText, setIndustryOtherText] = useState('');
   const [careerStage, setCareerStage] = useState<string | null>(null);
-  const [strengthArea, setStrengthArea] = useState<string | null>(null);
+  const [strengthArea, setStrengthArea] = useState<string[]>([]);
   const [strengthAreaOtherText, setStrengthAreaOtherText] = useState('');
   const [mountains, setMountains] = useState<string[]>([]);
   const [mountainError, setMountainError] = useState(false);
-  const [leadershipRole, setLeadershipRole] = useState<string | null>(null);
+  const [leadershipRole, setLeadershipRole] = useState<string[]>([]);
 
   // step 3 — consent
   const [consent1, setConsent1] = useState(false);
@@ -118,7 +118,7 @@ export default function OnboardingPage() {
   const canNext =
     step === 0 ? firstTimer !== null :
     step === 1 ? !!(name.trim() && wa.trim()) :
-    step === 2 ? !!(stage && dept && industry && (industry !== 'Other' || industryOtherText.trim()) && careerStage && strengthArea && (strengthArea !== 'Other' || strengthAreaOtherText.trim()) && mountains.length > 0 && leadershipRole) :
+    step === 2 ? !!(stage && dept && industry && (industry !== 'Other' || industryOtherText.trim()) && careerStage && strengthArea.length > 0 && (!strengthArea.includes('Other') || strengthAreaOtherText.trim()) && mountains.length > 0 && leadershipRole.length > 0) :
     step === 3 ? consent1 :
     !!(businessStatus && threeYearGoal.trim() && supportNeeded);
 
@@ -201,15 +201,19 @@ export default function OnboardingPage() {
         life_stage: stage ? (LIFE_STAGE_MAP[stage] ?? null) : null,
         department: dept,
         has_business: ['I have a registered business', 'I have an idea, not yet started', 'Actively building (unregistered)'].includes(businessStatus ?? ''),
-        is_leader: leadershipRole ? leadershipRole.toLowerCase().startsWith('yes') : false,
+        is_leader: leadershipRole.some(r => r.toLowerCase().startsWith('yes')),
         consent_data: consent1,
         consent_contact: consent2,
         onboarding_complete: true,
         industry: industry === 'Other' ? (industryOtherText.trim() || null) : (industry || null),
         career_stage: careerStage || null,
-        strength_area: strengthArea === 'Other' ? (strengthAreaOtherText.trim() || null) : (strengthArea || null),
+        strength_area: strengthArea.length > 0
+          ? (strengthArea.includes('Other')
+              ? [...strengthArea.filter(s => s !== 'Other'), strengthAreaOtherText.trim()].filter(Boolean)
+              : strengthArea)
+          : null,
         mountains: mountains.length > 0 ? mountains : null,
-        leadership_role: leadershipRole || null,
+        leadership_role: leadershipRole.length > 0 ? leadershipRole : null,
         business_status: businessStatus || null,
         business_industry: businessIndustry || null,
         business_description: businessDescription || null,
@@ -433,8 +437,8 @@ export default function OnboardingPage() {
             <div style={{ marginBottom: 32 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 4, lineHeight: 1.3 }}>What is your primary area of strength?</div>
               <div style={{ fontSize: 12, color: 'var(--muted)', paddingLeft: 13, marginBottom: 10 }}>The thing people come to you for</div>
-              <OptionChips options={STRENGTH_AREAS} value={strengthArea ?? ''} onChange={v => { setStrengthArea(v as string); if (v !== 'Other') setStrengthAreaOtherText(''); }} />
-              {strengthArea === 'Other' && (
+              <OptionChips options={STRENGTH_AREAS} value={strengthArea} multi onChange={v => { const arr = v as string[]; setStrengthArea(arr); if (!arr.includes('Other')) setStrengthAreaOtherText(''); }} />
+              {strengthArea.includes('Other') && (
                 <div style={{ marginTop: 10 }}>
                   <TextInput value={strengthAreaOtherText} onChange={setStrengthAreaOtherText} placeholder="Please specify..." />
                 </div>
@@ -484,7 +488,7 @@ export default function OnboardingPage() {
             <div style={{ marginBottom: 32 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 4, lineHeight: 1.3 }}>Do you currently hold any leadership role?</div>
               <div style={{ fontSize: 12, color: 'var(--muted)', paddingLeft: 13, marginBottom: 10 }}>In any sphere — workplace, church, community, or family</div>
-              <OptionChips options={LEADERSHIP_OPTIONS} value={leadershipRole ?? ''} onChange={v => setLeadershipRole(v as string)} />
+              <OptionChips options={LEADERSHIP_OPTIONS} value={leadershipRole} multi onChange={v => setLeadershipRole(v as string[])} />
             </div>
           </div>
         )}
