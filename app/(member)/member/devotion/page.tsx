@@ -252,16 +252,17 @@ export default function DevotionPage() {
         .update({ checklist: newChecklist })
         .eq('id', checkin.id);
     } else {
-      const { data: newCi } = await supabase.from('devotion_checkins')
-        .upsert({
+      const { data: newCi, error: insErr } = await supabase.from('devotion_checkins')
+        .insert({
           member_id: memberId,
           checkin_date: today,
           checklist: newChecklist,
           completed: false,
           points_awarded: false,
-        }, { onConflict: 'member_id,checkin_date' })
+        })
         .select()
         .single();
+      if (insErr) console.error('Devotion checkin insert error:', insErr);
       if (newCi) setCheckin(newCi as DevotionCheckin);
     }
   };
@@ -274,25 +275,46 @@ export default function DevotionPage() {
     try {
       const supabase = createClient();
 
-      const { data: upserted, error: upsertErr } = await supabase
-        .from('devotion_checkins')
-        .upsert({
-          member_id: memberId,
-          checkin_date: today,
-          checklist,
-          journal_entry: journal || null,
-          completed: true,
-          points_awarded: true,
-        }, { onConflict: 'member_id,checkin_date' })
-        .select('id')
-        .single();
+      let checkinId: string | undefined;
 
-      if (upsertErr) {
-        showToast('Could not save devotion — please try again.');
-        return;
+      if (checkin?.id) {
+        // Row already exists from checklist clicks — UPDATE in place
+        const { error: updErr } = await supabase
+          .from('devotion_checkins')
+          .update({
+            checklist,
+            journal_entry: journal || null,
+            completed: true,
+            points_awarded: true,
+          })
+          .eq('id', checkin.id);
+        if (updErr) {
+          console.error('Devotion update error:', updErr);
+          showToast('Could not save devotion — please try again.');
+          return;
+        }
+        checkinId = checkin.id;
+      } else {
+        // No checkin row yet — INSERT
+        const { data: inserted, error: insErr } = await supabase
+          .from('devotion_checkins')
+          .insert({
+            member_id: memberId,
+            checkin_date: today,
+            checklist,
+            journal_entry: journal || null,
+            completed: true,
+            points_awarded: true,
+          })
+          .select('id')
+          .single();
+        if (insErr) {
+          console.error('Devotion insert error:', insErr);
+          showToast('Could not save devotion — please try again.');
+          return;
+        }
+        checkinId = inserted?.id;
       }
-
-      const checkinId = upserted?.id ?? checkin?.id;
 
       setCheckin(c => c ? { ...c, completed: true, points_awarded: true } : {
         id: checkinId ?? '',
