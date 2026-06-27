@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
 import { Icon } from '@/components/sode/icons';
@@ -127,8 +128,8 @@ export default function LearningDetailPage() {
 
         <div style={{ padding: '16px 16px 110px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {content.thumbnail_url && (
-            <div style={{ width: '100%', height: 180, borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--surface-2)' }}>
-              <img src={content.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div style={{ width: '100%', height: 180, borderRadius: 'var(--r-md)', overflow: 'hidden', background: 'var(--surface-2)', position: 'relative' }}>
+              <Image src={content.thumbnail_url} alt="" fill style={{ objectFit: 'cover' }} />
             </div>
           )}
 

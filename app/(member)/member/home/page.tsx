@@ -12,6 +12,7 @@ import {
 import BottomNav from '@/components/member/bottom-nav';
 import { awardPoints } from '@/lib/points';
 import { usePoints } from '@/lib/hooks/useRealtimeData';
+import { getCached, setCached, invalidateCache } from '@/lib/home-cache';
 
 // ─── Local types ──────────────────────────────────────────────────────────────
 
@@ -41,6 +42,20 @@ interface GoalRow { id: string; pillar: string; title: string; current: number |
 interface WinRow { id: string; pillar: string | null; win_type: string | null; description: string | null; created_at: string; points_earned: number; }
 interface ContentRow { id: string; title: string; content_type: string; author: string | null; pillar: string | null; }
 interface PairingRow { id: string; mentor: { id: string; name: string; pillar: string | null } | null; }
+
+interface HomeCache {
+  member: { id: string; name: string; points: number };
+  goals: Goal[];
+  wins: WinRow[];
+  rank: number;
+  nextSession: SessionRow | null;
+  content: ContentRow | null;
+  pairing: PairingRow | null;
+  devotionRef: string | null;
+  devotionDone: boolean;
+  liveSession: { id: string; title: string } | null;
+  liveCheckedInAt: string | null;
+}
 
 const CONTENT_TYPE_ICON: Record<string, string> = { article: 'list', video: 'camera', podcast: 'message', book: 'bookopen', course: 'sparkles' };
 
@@ -547,6 +562,7 @@ export default function HomePage() {
   const [toast, setToast] = useState<ToastPayload | null>(null);
   const [celebrate, setCelebrate] = useState<CelebratePayload | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const homeCacheKey = useRef<string | null>(null);
 
   const showToast = (t: ToastPayload) => {
     setToast(t);
@@ -554,7 +570,10 @@ export default function HomePage() {
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   };
 
-  const addPoints = (n: number) => setMember(m => m ? { ...m, points: m.points + n } : m);
+  const addPoints = (n: number) => {
+    setMember(m => m ? { ...m, points: m.points + n } : m);
+    if (homeCacheKey.current) invalidateCache(homeCacheKey.current);
+  };
 
   const [liveSession, setLiveSession] = useState<{ id: string; title: string } | null>(null);
   const [liveCheckedInAt, setLiveCheckedInAt] = useState<string | null>(null);
@@ -565,116 +584,126 @@ export default function HomePage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace('/login'); return; }
 
-      const { data: memberRow } = await supabase
-        .from('members')
-        .select('id, name, points, onboarding_complete')
-        .eq('auth_id', user.id)
-        .maybeSingle();
+      const cacheKey = `home-${user.id}`;
+      homeCacheKey.current = cacheKey;
+      const cached = getCached<HomeCache>(cacheKey);
+      if (cached) {
+        setMember(cached.member);
+        setGoals(cached.goals);
+        setWins(cached.wins);
+        setRank(cached.rank);
+        setNextSession(cached.nextSession);
+        setContent(cached.content);
+        setPairing(cached.pairing);
+        setDevotionRef(cached.devotionRef);
+        setDevotionDone(cached.devotionDone);
+        setLiveSession(cached.liveSession);
+        setLiveCheckedInAt(cached.liveCheckedInAt);
+        setLoading(false);
+        return;
+      }
 
+      const today = new Date().toISOString().slice(0, 10);
+      const currentMonth = new Date().getMonth() + 1;
+
+      // RT2: member + queries that don't need member PK, all in parallel
+      const [memberRes, sessionRes, monthlyContentRes, fallbackContentRes, liveSessionRes] = await Promise.all([
+        supabase.from('members').select('id,name,points,onboarding_complete').eq('auth_id', user.id).maybeSingle(),
+        supabase.from('sessions').select('title,location,scheduled_at').gt('scheduled_at', new Date().toISOString()).order('scheduled_at', { ascending: true }).limit(1).maybeSingle(),
+        supabase.from('learning_content').select('id,title,content_type,author,pillar').eq('is_published', true).eq('month_number', currentMonth).order('created_at', { ascending: false }).limit(1),
+        supabase.from('learning_content').select('id,title,content_type,author,pillar').eq('is_published', true).is('month_number', null).order('created_at', { ascending: false }).limit(1),
+        supabase.from('sessions').select('id,title').eq('is_live', true).maybeSingle(),
+      ]);
+
+      const memberRow = memberRes.data;
       if (!memberRow) { router.replace('/member/onboarding'); return; }
       if (!memberRow.onboarding_complete) { router.replace('/member/onboarding'); return; }
 
-      setMember({ id: memberRow.id, name: memberRow.name, points: memberRow.points ?? 0 });
+      const liveId = liveSessionRes.data?.id ?? null;
 
-      const currentMonth = new Date().getMonth() + 1;
-      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      // RT3: member-PK-dependent queries + attendance (all parallel, attendance conditional)
+      const attendancePromise: Promise<{ data: { checked_in_at: string } | null }> = liveId
+        ? (supabase.from('attendance_records').select('checked_in_at').eq('session_id', liveId).eq('member_id', memberRow.id).maybeSingle() as unknown) as Promise<{ data: { checked_in_at: string } | null }>
+        : Promise.resolve({ data: null });
 
-      const today = new Date().toISOString().slice(0, 10);
-      const [goalsRes, monthEventsRes, sessionRes, winsRes, monthlyContentRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
-        supabase.from('goals')
-          .select('id, pillar, title, current, target, unit, due_date, status')
-          .eq('member_id', memberRow.id)
-          .neq('status', 'done')
-          .order('created_at', { ascending: true }),
-        supabase.from('point_events')
-          .select('member_id, points')
-          .gte('created_at', monthStart),
-        supabase.from('sessions')
-          .select('title, location, scheduled_at')
-          .gt('scheduled_at', new Date().toISOString())
-          .order('scheduled_at', { ascending: true })
-          .limit(1)
-          .maybeSingle(),
-        supabase.from('wins')
-          .select('id, pillar, win_type, description, created_at, points_earned')
-          .eq('member_id', memberRow.id)
-          .order('created_at', { ascending: false })
-          .limit(10),
-        supabase.from('learning_content')
-          .select('id,title,content_type,author,pillar')
-          .eq('is_published', true)
-          .eq('month_number', currentMonth)
-          .order('created_at', { ascending: false })
-          .limit(1),
-        supabase.from('mentor_pairings')
-          .select('id,mentor:mentor_id(id,name,pillar)')
-          .eq('mentee_id', memberRow.id)
-          .eq('status', 'active')
-          .maybeSingle(),
-        supabase.from('bible_reading_plans')
-          .select('start_date, start_book, chapters_per_day, testament, end_book')
-          .eq('member_id', memberRow.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase.from('devotion_journal')
-          .select('checklist')
-          .eq('member_id', memberRow.id)
-          .eq('entry_date', today)
-          .maybeSingle(),
+      const [goalsRes, rankRes, winsRes, pairingRes, devotionPlanRes, devotionJournalRes, attendanceRes] = await Promise.all([
+        supabase.from('goals').select('id,pillar,title,current,target,unit,due_date,status').eq('member_id', memberRow.id).neq('status', 'done').order('created_at', { ascending: true }),
+        supabase.from('members').select('id', { count: 'exact', head: true }).gt('points', memberRow.points ?? 0),
+        supabase.from('wins').select('id,pillar,win_type,description,created_at,points_earned').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(10),
+        supabase.from('mentor_pairings').select('id,mentor:mentor_id(id,name,pillar)').eq('mentee_id', memberRow.id).eq('status', 'active').maybeSingle(),
+        supabase.from('bible_reading_plans').select('start_date,start_book,chapters_per_day,testament,end_book').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('devotion_journal').select('checklist').eq('member_id', memberRow.id).eq('entry_date', today).maybeSingle(),
+        attendancePromise,
       ]);
 
-      if (goalsRes.data) {
-        setGoals((goalsRes.data as GoalRow[]).map((g) => ({
-          id: g.id,
-          pillar: g.pillar as PillarKey,
-          title: g.title,
-          current: g.current ?? 0,
-          target: g.target ?? 1,
-          unit: g.unit ?? '',
-          due: fmtDate(g.due_date),
-          status: (g.status ?? 'ontrack') as GoalStatus,
-          milestones: [],
-        })));
-      }
-      // Calculate monthly rank from point_events (matches leaderboard exactly)
-      const events = (monthEventsRes.data ?? []) as { member_id: string; points: number }[];
-      const monthTotals: Record<string, number> = {};
-      events.forEach(e => { monthTotals[e.member_id] = (monthTotals[e.member_id] ?? 0) + e.points; });
-      const sorted = Object.entries(monthTotals).sort(([, a], [, b]) => b - a);
-      const memberRank = sorted.findIndex(([id]) => id === memberRow.id) + 1;
-      setRank(memberRank || sorted.length + 1);
-      setNextSession(sessionRes.data ?? null);
-      setWins((winsRes.data ?? []) as WinRow[]);
+      const member = { id: memberRow.id, name: memberRow.name, points: memberRow.points ?? 0 };
+      setMember(member);
 
-      let featured = ((monthlyContentRes.data ?? []) as ContentRow[])[0] ?? null;
-      if (!featured) {
-        const { data: always } = await supabase
-          .from('learning_content')
-          .select('id,title,content_type,author,pillar')
-          .eq('is_published', true)
-          .is('month_number', null)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        featured = (always ?? [])[0] ?? null;
-      }
+      const mappedGoals: Goal[] = (goalsRes.data as GoalRow[] ?? []).map((g) => ({
+        id: g.id,
+        pillar: g.pillar as PillarKey,
+        title: g.title,
+        current: g.current ?? 0,
+        target: g.target ?? 1,
+        unit: g.unit ?? '',
+        due: fmtDate(g.due_date),
+        status: (g.status ?? 'ontrack') as GoalStatus,
+        milestones: [],
+      }));
+      setGoals(mappedGoals);
+
+      // Rank: O(1) count of members with more points than this member
+      const computedRank = (rankRes.count ?? 0) + 1;
+      setRank(computedRank);
+
+      setNextSession(sessionRes.data ?? null);
+      const mappedWins = (winsRes.data ?? []) as WinRow[];
+      setWins(mappedWins);
+
+      // Content: prefer monthly, fall back to always-available (both already fetched)
+      const monthlyArr = (monthlyContentRes.data ?? []) as ContentRow[];
+      const fallbackArr = (fallbackContentRes.data ?? []) as ContentRow[];
+      const featured = monthlyArr[0] ?? fallbackArr[0] ?? null;
       setContent(featured);
+
       setPairing((pairingRes.data ?? null) as unknown as PairingRow | null);
 
+      let computedDevotionRef: string | null = null;
       if (devotionPlanRes.data) {
         const brp = devotionPlanRes.data as { start_date: string; start_book: string; chapters_per_day: number; testament: string; end_book: string };
-        // Calculate today's passage reference
         try {
           const { getDayPassage: gdp, getDayNumber: gdn } = await import('@/lib/bible-structure');
           const dn = gdn(brp.start_date);
           const p = gdp(brp as Parameters<typeof gdp>[0], dn);
-          if (p) setDevotionRef(p.displayText);
+          if (p) { computedDevotionRef = p.displayText; setDevotionRef(p.displayText); }
         } catch { /* optional enhancement */ }
       }
+
+      let computedDevotionDone = false;
       if (devotionJournalRes.data) {
         const cl = (devotionJournalRes.data as { checklist: { read: boolean; prayed: boolean; reflected: boolean } | null }).checklist;
-        setDevotionDone(!!(cl?.read && cl?.prayed && cl?.reflected));
+        computedDevotionDone = !!(cl?.read && cl?.prayed && cl?.reflected);
+        setDevotionDone(computedDevotionDone);
       }
+
+      const liveSessionData = liveSessionRes.data ?? null;
+      const checkedInAt = attendanceRes.data?.checked_in_at ?? null;
+      setLiveSession(liveSessionData);
+      setLiveCheckedInAt(checkedInAt);
+
+      setCached(cacheKey, {
+        member,
+        goals: mappedGoals,
+        wins: mappedWins,
+        rank: computedRank,
+        nextSession: sessionRes.data ?? null,
+        content: featured,
+        pairing: (pairingRes.data ?? null) as unknown as PairingRow | null,
+        devotionRef: computedDevotionRef,
+        devotionDone: computedDevotionDone,
+        liveSession: liveSessionData,
+        liveCheckedInAt: checkedInAt,
+      });
 
       setLoading(false);
     })();
@@ -699,8 +728,6 @@ export default function HomePage() {
         setLiveCheckedInAt(null);
       }
     };
-
-    refreshLive();
 
     const channel = supabase.channel('member-home-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, refreshLive)

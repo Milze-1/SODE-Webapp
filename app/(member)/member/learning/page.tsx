@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { PillarChip, SectionHead, EmptyState, StatusPill } from '@/components/sode/ui';
@@ -19,9 +20,9 @@ interface ContentRow {
 function ContentCard({ c, done }: { c: ContentRow; done?: boolean }) {
   return (
     <Link href={`/member/learning/${c.id}`} className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: 13, textDecoration: 'none', color: 'inherit' }}>
-      <div style={{ width: 44, height: 44, borderRadius: 13, background: 'var(--surface-2)', color: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', overflow: 'hidden' }}>
+      <div style={{ width: 44, height: 44, borderRadius: 13, background: 'var(--surface-2)', color: 'var(--navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', overflow: 'hidden', position: 'relative' }}>
         {c.thumbnail_url
-          ? <img src={c.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ? <Image src={c.thumbnail_url} alt="" fill style={{ objectFit: 'cover' }} />
           : <Icon name={TYPE_ICON[c.content_type] ?? 'bookopen'} size={21} stroke={2.1} />}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
