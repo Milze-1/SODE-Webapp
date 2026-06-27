@@ -126,50 +126,155 @@ export default function ProfilePage() {
     try {
       const supabase = createClient();
       const [profileRes, pointsRes, goalsRes, devotionRes, referralsRes] = await Promise.all([
-        supabase.from('members')
-          .select('name,email,whatsapp,life_stage,industry,career_stage,mountains,leadership_role,strength_area,department,created_at')
-          .eq('id', member.id).single(),
-        supabase.from('point_events')
-          .select('rule_key,points,note,created_at')
-          .eq('member_id', member.id)
-          .order('created_at', { ascending: false }),
-        supabase.from('goals')
-          .select('pillar,title,current,target,unit,due_date,status,notes,created_at')
-          .eq('member_id', member.id),
-        supabase.from('devotion_checkins')
-          .select('entry_date,completed,journal_entry,checklist')
-          .eq('member_id', member.id)
-          .order('entry_date', { ascending: false }),
-        supabase.from('invitations')
-          .select('name,email,phone,stage,created_at')
-          .eq('inviter_id', member.id)
-          .order('created_at', { ascending: false }),
+        supabase.from('members').select('*').eq('id', member.id).single(),
+        supabase.from('point_events').select('rule_key,points,note,created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('goals').select('*').eq('member_id', member.id),
+        supabase.from('devotion_checkins').select('*').eq('member_id', member.id).order('checkin_date', { ascending: false }),
+        supabase.from('invitations').select('name,email,phone,stage,created_at').eq('inviter_id', member.id).order('created_at', { ascending: false }),
       ]);
 
-      const payload = {
-        exported_at: new Date().toISOString(),
-        profile: profileRes.data,
-        points: {
-          total: liveBalance?.total_points ?? member.points,
-          history: pointsRes.data ?? [],
-        },
-        goals: goalsRes.data ?? [],
-        devotion_log: devotionRes.data ?? [],
-        referrals_sent: referralsRes.data ?? [],
+      const profile = (profileRes.data ?? {}) as Record<string, unknown>;
+      const points  = (pointsRes.data   ?? []) as Array<{ rule_key: string; points: number; note: string | null; created_at: string }>;
+      const goals   = (goalsRes.data    ?? []) as Array<{ pillar: string | null; title: string; current: number | null; target: number | null; unit: string | null; due_date: string | null; status: string | null }>;
+      const devs    = (devotionRes.data ?? []) as Array<{ checkin_date?: string | null; entry_date?: string | null; completed?: boolean; checklist?: Record<string, boolean> | null }>;
+      const refs    = (referralsRes.data ?? []) as Array<{ name?: string | null; email: string | null; phone?: string | null; stage: string; created_at: string }>;
+
+      const totalPts   = liveBalance?.total_points ?? member.points ?? 0;
+      const exportedAt = new Date().toISOString();
+      const exportDate = exportedAt.slice(0, 10);
+      const firstName  = (member.name ?? 'member').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const esc  = (s: unknown): string =>
+        String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const fmtD = (d: string | null | undefined): string =>
+        d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+
+      const RULE_LABELS: Record<string, string> = {
+        win_logged: 'Win logged', goal_created: 'Goal created', goal_completed: 'Goal completed',
+        form_submitted: 'Form submitted', session_attended: 'Session attended', attendance_present: 'Session attended',
+        referral_joined: 'Referral joined', referral_attended: 'Referral attended',
+        referral_five_meetings: 'Referral — 5 meetings', advocacy_shared: 'Shared SODE',
+        content_completed: 'Learning completed', member_joined: 'Joined via referral',
+        leaderboard_reset: 'Cycle reset',
+      };
+      const PILLAR_COLOR: Record<string, string> = {
+        spiritual: '#8B5CF6', career: '#0EA5E9', business: '#10B981', character: '#F59E0B',
       };
 
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const firstName = (member.name ?? 'member').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-      const date = new Date().toISOString().slice(0, 10);
-      a.href = url;
-      a.download = `sode-data-${firstName}-${date}.json`;
+      const profileFields: [string, unknown][] = [
+        ['Full name',      profile.name],
+        ['Email',          profile.email],
+        ['WhatsApp',       profile.whatsapp],
+        ['Life stage',     String(profile.life_stage ?? '').replace(/_/g, ' ') || null],
+        ['Industry',       profile.industry],
+        ['Career stage',   String(profile.career_stage ?? '').replace(/_/g, ' ') || null],
+        ['Department',     profile.department],
+        ['Leadership role',profile.leadership_role],
+        ['Strength area',  profile.strength_area],
+        ['Member since',   fmtD(profile.created_at as string | null)],
+      ];
+      const mountains = Array.isArray(profile.mountains) ? (profile.mountains as string[]) : [];
+
+      const profileHtml = profileFields
+        .filter(([, v]) => v != null && v !== '')
+        .map(([l, v]) => `<div class="field"><span class="label">${esc(l)}</span><span class="value">${esc(v)}</span></div>`)
+        .join('\n  ');
+
+      const mountainsHtml = mountains.length > 0
+        ? `<h2>Mountains of Influence</h2>\n  <div>${mountains.map(m => `<span class="chip">${esc(m)}</span>`).join(' ')}</div>`
+        : '';
+
+      const pointsHtml = points.length === 0
+        ? '<p style="color:#888;font-size:13px">No point events recorded.</p>'
+        : points.slice(0, 10).map(e =>
+            `<div class="point-row"><span>${esc(RULE_LABELS[e.rule_key] ?? e.rule_key.replace(/_/g, ' '))}${e.note ? ` <span style="color:#aaa">· ${esc(e.note)}</span>` : ''}</span><span style="font-weight:700;color:#534AB7">+${e.points}</span><span style="color:#aaa;margin-left:12px;font-size:12px">${fmtD(e.created_at)}</span></div>`
+          ).join('\n  ');
+
+      const goalsHtml = goals.length === 0
+        ? '<p style="color:#888;font-size:13px">No goals set.</p>'
+        : goals.map(g => {
+            const color = PILLAR_COLOR[g.pillar ?? ''] ?? '#888';
+            return `<div class="goal-card"><div class="goal-title">${esc(g.title)}</div><div class="goal-meta">${g.pillar ? `<span class="tag" style="background:${color}20;color:${color}">${esc(g.pillar)}</span> ` : ''}<span class="tag">${esc(g.status ?? 'active')}</span>${g.target != null ? ` · ${esc(g.current ?? 0)} / ${esc(g.target)} ${esc(g.unit ?? '')}` : ''}${g.due_date ? ` · Due ${fmtD(g.due_date)}` : ''}</div></div>`;
+          }).join('\n  ');
+
+      const devotionHtml = devs.length === 0
+        ? '<p style="color:#888;font-size:13px">No devotion entries recorded.</p>'
+        : `<p style="font-size:13px;color:#555">${devs.length} total check-in${devs.length !== 1 ? 's' : ''}</p>\n  ` +
+          devs.slice(0, 7).map(d => {
+            const dateStr = d.checkin_date ?? d.entry_date ?? null;
+            const cl = d.checklist;
+            const done  = cl ? Object.values(cl).filter(Boolean).length : (d.completed ? 1 : 0);
+            const total = cl ? Object.keys(cl).length : 1;
+            return `<div class="dev-row"><span style="min-width:110px;color:#888">${fmtD(dateStr)}</span><span>${done}/${total} completed</span></div>`;
+          }).join('\n  ');
+
+      const refsHtml = refs.length === 0
+        ? '<p style="color:#888;font-size:13px">No referrals sent yet.</p>'
+        : refs.map(r =>
+            `<div class="ref-row"><span style="font-weight:600;min-width:140px">${esc(r.name ?? r.email)}</span><span class="tag">${esc(r.stage.replace(/_/g, ' '))}</span><span style="color:#aaa;margin-left:auto;font-size:12px">${fmtD(r.created_at)}</span></div>`
+          ).join('\n  ');
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>My SODE Profile — ${esc(member.name)}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 700px; margin: 40px auto; color: #1a1a2e; padding: 0 24px; }
+    .logo { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+    .logo span { color: #534AB7; }
+    .subtitle { font-size: 13px; color: #888; margin-bottom: 32px; }
+    h2 { font-size: 15px; font-weight: 600; color: #534AB7; border-bottom: 1px solid #eee; padding-bottom: 6px; margin-top: 32px; }
+    .field { display: flex; gap: 12px; margin-bottom: 8px; font-size: 13px; }
+    .label { color: #888; min-width: 160px; }
+    .value { font-weight: 500; }
+    .chip { display: inline-block; background: #EEEDFE; color: #3C3489; border-radius: 20px; padding: 2px 10px; font-size: 12px; margin: 2px; }
+    .goal-card { border: 1px solid #eee; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; font-size: 13px; }
+    .goal-title { font-weight: 600; margin-bottom: 4px; }
+    .goal-meta { color: #888; font-size: 12px; }
+    .point-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f5f5f5; }
+    .total { font-size: 24px; font-weight: 700; color: #534AB7; }
+    .footer { margin-top: 48px; font-size: 12px; color: #bbb; text-align: center; }
+    .tag { background: #f0f0f0; border-radius: 4px; padding: 2px 8px; font-size: 12px; color: #555; display: inline-block; }
+    .ref-row { font-size: 13px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; display: flex; gap: 12px; align-items: baseline; }
+    .dev-row { font-size: 13px; padding: 6px 0; border-bottom: 1px solid #f5f5f5; display: flex; gap: 12px; }
+  </style>
+</head>
+<body>
+  <div class="logo">S·<span>DE</span> SCHOOL OF DANIELS &amp; ESTHERS</div>
+  <div class="subtitle">Connected to Dominion City · Victoria Island, Lagos · Exported ${exportDate}</div>
+
+  <h2>Profile</h2>
+  ${profileHtml}
+
+  ${mountainsHtml}
+
+  <h2>Points — <span class="total">${totalPts.toLocaleString()} pts</span></h2>
+  ${pointsHtml}
+
+  <h2>My Goals (${goals.length})</h2>
+  ${goalsHtml}
+
+  <h2>Devotion Log</h2>
+  ${devotionHtml}
+
+  <h2>Referrals Sent (${refs.length})</h2>
+  ${refsHtml}
+
+  <div class="footer">Exported from app.thesode.org · ${esc(exportedAt)}</div>
+</body>
+</html>`;
+
+      const blob = new Blob([html], { type: 'text/html' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `sode-report-${firstName}-${exportDate}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast({ msg: 'Export downloaded!', icon: 'check' });
+      showToast({ msg: 'Report downloaded!', icon: 'check' });
     } catch {
       showToast({ msg: 'Export failed — please try again.' });
     } finally {
