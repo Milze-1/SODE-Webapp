@@ -32,6 +32,9 @@ function getInitials(name: string) {
 
 type SB = ReturnType<typeof createClient>;
 
+// All tabs use members.points — the denormalized cumulative total kept in sync
+// by /api/points/award and lib/referral.ts. This matches the admin growth page
+// and the home page rank calculation exactly.
 async function fetchAllTime(sb: SB): Promise<LeaderEntry[]> {
   const { data } = await sb
     .from('members')
@@ -47,44 +50,6 @@ async function fetchAllTime(sb: SB): Promise<LeaderEntry[]> {
     name: m.name ?? 'Member',
     points: m.points ?? 0,
   }));
-}
-
-async function fetchByEvents(sb: SB, sinceIso: string): Promise<LeaderEntry[]> {
-  const { data: events } = await sb
-    .from('point_events')
-    .select('member_id, points')
-    .gte('created_at', sinceIso);
-
-  if (!events?.length) return [];
-
-  const totals: Record<string, number> = {};
-  events.forEach(e => { totals[e.member_id] = (totals[e.member_id] ?? 0) + e.points; });
-
-  const memberIds = Object.keys(totals);
-  const { data: members } = await sb
-    .from('members')
-    .select('id, name, auth_id')
-    .in('id', memberIds);
-
-  return (members ?? [])
-    .map(m => ({ id: m.id, auth_id: m.auth_id, name: m.name ?? 'Member', points: totals[m.id] ?? 0 }))
-    .filter(m => m.points > 0)
-    .sort((a, b) => b.points - a.points)
-    .map((m, i) => ({ ...m, rank: i + 1 }));
-}
-
-async function fetchThisMonth(sb: SB): Promise<LeaderEntry[]> {
-  const now = new Date();
-  const since = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  return fetchByEvents(sb, since);
-}
-
-async function fetchThisCycle(sb: SB): Promise<LeaderEntry[]> {
-  const now = new Date();
-  const m = now.getMonth();
-  const qm = m >= 9 ? 9 : m >= 6 ? 6 : m >= 3 ? 3 : 0;
-  const since = new Date(now.getFullYear(), qm, 1).toISOString();
-  return fetchByEvents(sb, since);
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -133,10 +98,7 @@ export default function LeaderboardPage() {
     const load = async () => {
       setLoading(true);
 
-      let data: LeaderEntry[] = [];
-      if (tab === 'month')      data = await fetchThisMonth(sb);
-      else if (tab === 'cycle') data = await fetchThisCycle(sb);
-      else                      data = await fetchAllTime(sb);
+      const data = await fetchAllTime(sb);
 
       if (cancelled) return;
       setEntries(data);
