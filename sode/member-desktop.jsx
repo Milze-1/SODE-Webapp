@@ -314,7 +314,7 @@ function DProfile({ app }) {
           <DPanel>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <Avatar name="Tofunmi Adeyemi" size={68} />
-              <div><div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>Tofunmi Adeyemi</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>Young professional · Lagos</div><div style={{ marginTop: 8, display: 'flex', gap: 6 }}><PillarChip pillar="career" size="sm" /><span className="chip">Ushering</span></div></div>
+              <div><div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>Tofunmi Adeyemi</div><div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 3 }}>Professional · Lagos</div><div style={{ marginTop: 8, display: 'flex', gap: 6 }}><PillarChip pillar="career" size="sm" /><span className="chip">Ushering</span></div></div>
             </div>
           </DPanel>
           <DPanel title="Points & badges">

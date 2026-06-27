@@ -50,7 +50,7 @@ function LoginScreen() {
 }
 
 /* ============================ ONBOARDING (M1) ============================ */
-const LIFE_STAGES = ['Student', 'Young professional', 'Entrepreneur', 'Between roles'];
+const LIFE_STAGES = ['Student', 'Professional', 'Entrepreneur', 'Between roles'];
 const DEPTS = ['Ushering', 'Media', 'Choir', 'Welfare', 'Tech', 'Not yet'];
 /* ---------- Baseline Survey (the 4-minute starting-point survey) ---------- */
 const BASELINE_Q = [

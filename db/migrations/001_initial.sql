@@ -35,7 +35,7 @@ CREATE TYPE public.goal_status AS ENUM (
 
 CREATE TYPE public.life_stage AS ENUM (
   'student',
-  'young_professional',
+  'professional',
   'entrepreneur',
   'between_roles'
 );

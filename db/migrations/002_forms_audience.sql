@@ -19,7 +19,7 @@ WHERE open_at IS NOT NULL
 ALTER TABLE public.members
   ADD COLUMN IF NOT EXISTS pillar public.pillar;
 
--- life_stage: spec calls for student | young_professional | entrepreneur | employed | other.
+-- life_stage: spec calls for student | professional | entrepreneur | employed | other.
 -- Add the two missing values; existing 'between_roles' rows are left intact.
 ALTER TYPE public.life_stage ADD VALUE IF NOT EXISTS 'employed';
 ALTER TYPE public.life_stage ADD VALUE IF NOT EXISTS 'other';

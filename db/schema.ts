@@ -43,7 +43,7 @@ export const goalStatusEnum = pgEnum("goal_status", [
 
 export const lifeStageEnum = pgEnum("life_stage", [
   "student",
-  "young_professional",
+  "professional",
   "entrepreneur",
   "between_roles",
   "employed",

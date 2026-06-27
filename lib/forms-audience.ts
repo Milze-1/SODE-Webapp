@@ -14,7 +14,7 @@ export const PILLAR_OPTIONS = [
 
 export const LIFE_STAGE_OPTIONS = [
   { key: 'student', label: 'Student' },
-  { key: 'young_professional', label: 'Young professional' },
+  { key: 'professional', label: 'Professional' },
   { key: 'entrepreneur', label: 'Entrepreneur' },
   { key: 'employed', label: 'Employed' },
   { key: 'other', label: 'Other' },

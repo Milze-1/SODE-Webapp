@@ -9,13 +9,13 @@ import { Field, TextInput, OptionChips, StickyFooter } from '@/components/sode/u
 
 // ─── Life stage / dept options ────────────────────────────────────────────────
 
-const LIFE_STAGES = ['Student', 'Young professional', 'Entrepreneur', 'Between roles'];
+const LIFE_STAGES = ['Student', 'Professional', 'Entrepreneur', 'Between roles'];
 const DEPTS = ['Ushering', 'Media', 'Choir', 'Welfare', 'Tech', 'Not yet'];
 
 // Maps display labels → DB enum values (pgEnum life_stage)
 const LIFE_STAGE_MAP: Record<string, string> = {
   'Student': 'student',
-  'Young professional': 'young_professional',
+  'Professional': 'professional',
   'Entrepreneur': 'entrepreneur',
   'Between roles': 'between_roles',
 };

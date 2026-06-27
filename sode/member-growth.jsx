@@ -294,7 +294,7 @@ function ProfileScreen({ app }) {
           <Avatar name="Tofunmi Adeyemi" size={62} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-.01em' }}>Tofunmi Adeyemi</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>Young professional · Lagos</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>Professional · Lagos</div>
             <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}><PillarChip pillar="career" size="sm" /><span className="chip">Ushering</span></div>
           </div>
         </div>
