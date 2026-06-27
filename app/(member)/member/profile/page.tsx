@@ -110,12 +110,71 @@ export default function ProfilePage() {
   };
 
   const [signingOut, setSigningOut] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const signOut = async () => {
     setSigningOut(true);
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace('/login');
+  };
+
+  const exportData = async () => {
+    if (!member?.id || exporting) return;
+    setExporting(true);
+    showToast({ msg: 'Preparing your export…' });
+    try {
+      const supabase = createClient();
+      const [profileRes, pointsRes, goalsRes, devotionRes, referralsRes] = await Promise.all([
+        supabase.from('members')
+          .select('name,email,whatsapp,life_stage,industry,career_stage,mountains,leadership_role,strength_area,department,created_at')
+          .eq('id', member.id).single(),
+        supabase.from('point_events')
+          .select('rule_key,points,note,created_at')
+          .eq('member_id', member.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('goals')
+          .select('pillar,title,current,target,unit,due_date,status,notes,created_at')
+          .eq('member_id', member.id),
+        supabase.from('devotion_checkins')
+          .select('entry_date,completed,journal_entry,checklist')
+          .eq('member_id', member.id)
+          .order('entry_date', { ascending: false }),
+        supabase.from('invitations')
+          .select('name,email,phone,stage,created_at')
+          .eq('inviter_id', member.id)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      const payload = {
+        exported_at: new Date().toISOString(),
+        profile: profileRes.data,
+        points: {
+          total: liveBalance?.total_points ?? member.points,
+          history: pointsRes.data ?? [],
+        },
+        goals: goalsRes.data ?? [],
+        devotion_log: devotionRes.data ?? [],
+        referrals_sent: referralsRes.data ?? [],
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const firstName = (member.name ?? 'member').split(' ')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `sode-data-${firstName}-${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast({ msg: 'Export downloaded!', icon: 'check' });
+    } catch {
+      showToast({ msg: 'Export failed — please try again.' });
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (loading) {
@@ -216,7 +275,7 @@ export default function ProfilePage() {
           <div className="card" style={{ overflow: 'hidden' }}>
             <SettingRow icon="settings" title="Settings" sub="Password, notifications, privacy" onClick={() => router.push('/member/settings')} />
             <hr className="divider" />
-            <SettingRow icon="download" title="Export my data" onClick={() => showToast({ msg: 'Preparing your export…' })} />
+            <SettingRow icon="download" title="Export my data" sub={exporting ? 'Preparing…' : undefined} onClick={exportData} />
             <hr className="divider" />
             <SettingRow icon="x" title="Request account deletion" danger onClick={() => showToast({ msg: 'Request noted — our team will follow up.' })} />
           </div>
