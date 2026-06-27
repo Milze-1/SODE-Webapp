@@ -67,54 +67,81 @@ const EMPTY_CHECKLIST: ChecklistState = {
   made_key_declaration: false,
 };
 
-// ─── 7-day streak calendar ────────────────────────────────────────────────────
+// ─── Mon–Sun week calendar ────────────────────────────────────────────────────
+
+const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 function StreakCalendar({ checkins }: { checkins: { entry_date: string; completed: boolean }[] }) {
   const completedSet = new Set(checkins.filter(c => c.completed).map(c => c.entry_date));
-  const today = todayStr();
+
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const today = todayDate.toISOString().slice(0, 10);
+
+  // Monday of current week (ISO: Mon=1 … Sun=0 wraps to −6)
+  const dow = todayDate.getDay();
+  const monday = new Date(todayDate);
+  monday.setDate(todayDate.getDate() - (dow === 0 ? 6 : dow - 1));
+
   const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() - (6 - i)); d.setHours(0, 0, 0, 0);
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
     const dateStr = d.toISOString().slice(0, 10);
-    const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
-    const isToday = dateStr === today;
-    const isFuture = dateStr > today;
-    const done = completedSet.has(dateStr);
-    let sym = '-';
-    if (!isFuture) sym = done ? '✓' : isToday ? '•' : '✗';
-    return { dateStr, dayLabel, done, isToday, isFuture, sym };
+    const isToday  = dateStr === today;
+    const isPast   = dateStr < today;
+    const done     = completedSet.has(dateStr);
+    return { dateStr, letter: DAY_LETTERS[i], done, isToday, isPast };
   });
 
   return (
     <>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'space-between' }}>
-        {days.map((d, i) => (
-          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase' }}>
-              {d.dayLabel}
+        {days.map((d, i) => {
+          const isUpcoming = !d.isToday && !d.isPast;
+          return (
+            <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: d.isToday ? 'var(--navy)' : 'var(--muted)' }}>
+                {d.letter}
+              </div>
+              <div style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: d.done
+                  ? 'var(--navy)'
+                  : d.isToday
+                    ? 'var(--navy-tint)'
+                    : d.isPast
+                      ? 'var(--surface-2)'
+                      : 'transparent',
+                border: d.done
+                  ? 'none'
+                  : d.isToday
+                    ? '2px solid var(--navy)'
+                    : isUpcoming
+                      ? '1.5px dashed var(--line-2)'
+                      : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 700,
+                color: d.done ? '#fff' : d.isToday ? 'var(--navy)' : 'var(--faint)',
+              }}>
+                {d.done ? '✓' : d.isToday ? '•' : d.letter}
+              </div>
             </div>
-            <div style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: d.done ? 'var(--navy)' : d.isToday ? 'var(--navy-tint)' : 'var(--surface-2)',
-              border: d.isToday && !d.done ? '2px solid var(--navy)' : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 700,
-              color: d.done ? '#fff' : d.sym === '✗' ? '#ef4444' : d.isToday ? 'var(--navy)' : 'var(--faint)',
-            }}>
-              {d.sym}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <div style={{ display: 'flex', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
-        {[
-          { sym: '✓', label: 'Completed', color: 'var(--navy)' },
-          { sym: '✗', label: 'Missed', color: '#ef4444' },
-          { sym: '•', label: 'Today', color: 'var(--navy)' },
-          { sym: '-', label: 'Upcoming', color: 'var(--faint)' },
-        ].map((x, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: x.color }}>{x.sym}</span>
-            <span style={{ fontSize: 11.5, color: 'var(--muted)' }}>{x.label}</span>
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
+        {([
+          { bg: 'var(--navy)',      border: 'none',                        content: '✓', contentColor: '#fff',          label: 'Done' },
+          { bg: 'var(--navy-tint)', border: '2px solid var(--navy)',        content: '•', contentColor: 'var(--navy)',   label: 'Today' },
+          { bg: 'var(--surface-2)', border: 'none',                        content: 'M', contentColor: 'var(--faint)',  label: 'Missed' },
+          { bg: 'transparent',      border: '1.5px dashed var(--line-2)',   content: 'M', contentColor: 'var(--faint)',  label: 'Upcoming' },
+        ] as const).map((x, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ width: 18, height: 18, borderRadius: '50%', background: x.bg, border: x.border, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color: x.contentColor, flex: 'none' }}>
+              {x.content}
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>{x.label}</span>
           </div>
         ))}
       </div>
