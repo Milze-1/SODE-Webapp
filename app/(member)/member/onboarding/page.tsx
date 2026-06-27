@@ -24,7 +24,7 @@ const INDUSTRIES = [
   'Technology', 'Finance / banking', 'Healthcare', 'Law', 'Education',
   'Media / content', 'Creative arts', 'Business / consulting',
   'Government / public service', 'Real estate / construction',
-  'Non-profit / NGO', 'Agriculture', 'Ministry / theology', 'Other',
+  'Oil & gas / energy', 'Non-profit / NGO', 'Agriculture', 'Ministry / theology', 'Other',
 ];
 
 const CAREER_STAGES = [
@@ -94,8 +94,10 @@ export default function OnboardingPage() {
   const [stage, setStage] = useState<string | null>(null);
   const [dept, setDept] = useState<string | null>(null);
   const [industry, setIndustry] = useState<string | null>(null);
+  const [industryOtherText, setIndustryOtherText] = useState('');
   const [careerStage, setCareerStage] = useState<string | null>(null);
   const [strengthArea, setStrengthArea] = useState<string | null>(null);
+  const [strengthAreaOtherText, setStrengthAreaOtherText] = useState('');
   const [mountains, setMountains] = useState<string[]>([]);
   const [mountainError, setMountainError] = useState(false);
   const [leadershipRole, setLeadershipRole] = useState<string | null>(null);
@@ -116,7 +118,7 @@ export default function OnboardingPage() {
   const canNext =
     step === 0 ? firstTimer !== null :
     step === 1 ? !!(name.trim() && wa.trim()) :
-    step === 2 ? !!(stage && dept && industry && careerStage && strengthArea && mountains.length > 0 && leadershipRole) :
+    step === 2 ? !!(stage && dept && industry && (industry !== 'Other' || industryOtherText.trim()) && careerStage && strengthArea && (strengthArea !== 'Other' || strengthAreaOtherText.trim()) && mountains.length > 0 && leadershipRole) :
     step === 3 ? consent1 :
     !!(businessStatus && threeYearGoal.trim() && supportNeeded);
 
@@ -203,9 +205,9 @@ export default function OnboardingPage() {
         consent_data: consent1,
         consent_contact: consent2,
         onboarding_complete: true,
-        industry: industry || null,
+        industry: industry === 'Other' ? (industryOtherText.trim() || null) : (industry || null),
         career_stage: careerStage || null,
-        strength_area: strengthArea || null,
+        strength_area: strengthArea === 'Other' ? (strengthAreaOtherText.trim() || null) : (strengthArea || null),
         mountains: mountains.length > 0 ? mountains : null,
         leadership_role: leadershipRole || null,
         business_status: businessStatus || null,
@@ -396,23 +398,53 @@ export default function OnboardingPage() {
         {step === 2 && (
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-.02em' }}>About you</h1>
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 6, marginBottom: 20 }}>Helps us tailor your pillars.</p>
-            <Field label="Life stage">
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', marginTop: 6, marginBottom: 28 }}>Helps us tailor your pillars.</p>
+
+            {/* Life stage */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 10, lineHeight: 1.3 }}>Life stage</div>
               <OptionChips options={LIFE_STAGES} value={stage ?? ''} onChange={v => setStage(v as string)} />
-            </Field>
-            <Field label="Department / serving">
+            </div>
+
+            {/* Department */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 10, lineHeight: 1.3 }}>Department / serving</div>
               <OptionChips options={DEPTS} value={dept ?? ''} onChange={v => setDept(v as string)} />
-            </Field>
-            <Field label="What field or industry do you work in?">
-              <OptionChips options={INDUSTRIES} value={industry ?? ''} onChange={v => setIndustry(v as string)} />
-            </Field>
-            <Field label="Where are you in your career or life stage?">
+            </div>
+
+            {/* Industry */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 10, lineHeight: 1.3 }}>What field or industry do you work in?</div>
+              <OptionChips options={INDUSTRIES} value={industry ?? ''} onChange={v => { setIndustry(v as string); if (v !== 'Other') setIndustryOtherText(''); }} />
+              {industry === 'Other' && (
+                <div style={{ marginTop: 10 }}>
+                  <TextInput value={industryOtherText} onChange={setIndustryOtherText} placeholder="Please specify..." />
+                </div>
+              )}
+            </div>
+
+            {/* Career stage */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 10, lineHeight: 1.3 }}>Where are you in your career or life stage?</div>
               <OptionChips options={CAREER_STAGES} value={careerStage ?? ''} onChange={v => setCareerStage(v as string)} />
-            </Field>
-            <Field label="What is your primary area of strength?" hint="The thing people come to you for">
-              <OptionChips options={STRENGTH_AREAS} value={strengthArea ?? ''} onChange={v => setStrengthArea(v as string)} />
-            </Field>
-            <Field label="Which mountains of influence do you feel most called to?" hint="Select up to 2 — this shapes your cohort and mentor matching on SODE">
+            </div>
+
+            {/* Strength area */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 4, lineHeight: 1.3 }}>What is your primary area of strength?</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', paddingLeft: 13, marginBottom: 10 }}>The thing people come to you for</div>
+              <OptionChips options={STRENGTH_AREAS} value={strengthArea ?? ''} onChange={v => { setStrengthArea(v as string); if (v !== 'Other') setStrengthAreaOtherText(''); }} />
+              {strengthArea === 'Other' && (
+                <div style={{ marginTop: 10 }}>
+                  <TextInput value={strengthAreaOtherText} onChange={setStrengthAreaOtherText} placeholder="Please specify..." />
+                </div>
+              )}
+            </div>
+
+            {/* Mountains */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 4, lineHeight: 1.3 }}>Which mountains of influence do you feel most called to?</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', paddingLeft: 13, marginBottom: 10 }}>Select up to 2 — this shapes your cohort and mentor matching on SODE</div>
               {mountainError && (
                 <div style={{ fontSize: 12, color: '#c53030', marginBottom: 8, fontWeight: 600 }}>You can only select up to 2 mountains.</div>
               )}
@@ -446,10 +478,14 @@ export default function OnboardingPage() {
                   );
                 })}
               </div>
-            </Field>
-            <Field label="Do you currently hold any leadership role?" hint="In any sphere — workplace, church, community, or family">
+            </div>
+
+            {/* Leadership */}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--navy)', borderLeft: '3px solid var(--navy)', paddingLeft: 10, marginBottom: 4, lineHeight: 1.3 }}>Do you currently hold any leadership role?</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', paddingLeft: 13, marginBottom: 10 }}>In any sphere — workplace, church, community, or family</div>
               <OptionChips options={LEADERSHIP_OPTIONS} value={leadershipRole ?? ''} onChange={v => setLeadershipRole(v as string)} />
-            </Field>
+            </div>
           </div>
         )}
 
