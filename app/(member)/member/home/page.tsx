@@ -606,35 +606,26 @@ export default function HomePage() {
       const today = new Date().toISOString().slice(0, 10);
       const currentMonth = new Date().getMonth() + 1;
 
-      // RT2: member + queries that don't need member PK, all in parallel
-      const [memberRes, sessionRes, monthlyContentRes, fallbackContentRes, liveSessionRes] = await Promise.all([
+      // RT2: everything that doesn't need member PK or member.points.
+      // goals, wins, attendance_records have RLS policies using auth_member_id() —
+      // no explicit member_id filter required; Supabase applies it server-side.
+      const [
+        memberRes, sessionRes, monthlyContentRes, fallbackContentRes, liveSessionRes,
+        goalsRes, winsRes, attendanceRes,
+      ] = await Promise.all([
         supabase.from('members').select('id,name,points,onboarding_complete').eq('auth_id', user.id).maybeSingle(),
         supabase.from('sessions').select('title,location,scheduled_at').gt('scheduled_at', new Date().toISOString()).order('scheduled_at', { ascending: true }).limit(1).maybeSingle(),
         supabase.from('learning_content').select('id,title,content_type,author,pillar').eq('is_published', true).eq('month_number', currentMonth).order('created_at', { ascending: false }).limit(1),
         supabase.from('learning_content').select('id,title,content_type,author,pillar').eq('is_published', true).is('month_number', null).order('created_at', { ascending: false }).limit(1),
         supabase.from('sessions').select('id,title').eq('is_live', true).maybeSingle(),
+        supabase.from('goals').select('id,pillar,title,current,target,unit,due_date,status').neq('status', 'done').order('created_at', { ascending: true }),
+        supabase.from('wins').select('id,pillar,win_type,description,created_at,points_earned').order('created_at', { ascending: false }).limit(10),
+        supabase.from('attendance_records').select('session_id,checked_in_at').order('checked_in_at', { ascending: false }).limit(5),
       ]);
 
       const memberRow = memberRes.data;
       if (!memberRow) { router.replace('/member/onboarding'); return; }
       if (!memberRow.onboarding_complete) { router.replace('/member/onboarding'); return; }
-
-      const liveId = liveSessionRes.data?.id ?? null;
-
-      // RT3: member-PK-dependent queries + attendance (all parallel, attendance conditional)
-      const attendancePromise: Promise<{ data: { checked_in_at: string } | null }> = liveId
-        ? (supabase.from('attendance_records').select('checked_in_at').eq('session_id', liveId).eq('member_id', memberRow.id).maybeSingle() as unknown) as Promise<{ data: { checked_in_at: string } | null }>
-        : Promise.resolve({ data: null });
-
-      const [goalsRes, rankRes, winsRes, pairingRes, devotionPlanRes, devotionJournalRes, attendanceRes] = await Promise.all([
-        supabase.from('goals').select('id,pillar,title,current,target,unit,due_date,status').eq('member_id', memberRow.id).neq('status', 'done').order('created_at', { ascending: true }),
-        supabase.from('members').select('id', { count: 'exact', head: true }).gt('points', memberRow.points ?? 0),
-        supabase.from('wins').select('id,pillar,win_type,description,created_at,points_earned').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(10),
-        supabase.from('mentor_pairings').select('id,mentor:mentor_id(id,name,pillar)').eq('mentee_id', memberRow.id).eq('status', 'active').maybeSingle(),
-        supabase.from('bible_reading_plans').select('start_date,start_book,chapters_per_day,testament,end_book').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('devotion_journal').select('checklist').eq('member_id', memberRow.id).eq('entry_date', today).maybeSingle(),
-        attendancePromise,
-      ]);
 
       const member = { id: memberRow.id, name: memberRow.name, points: memberRow.points ?? 0 };
       setMember(member);
@@ -652,21 +643,39 @@ export default function HomePage() {
       }));
       setGoals(mappedGoals);
 
-      // Rank: O(1) count of members with more points than this member
-      const computedRank = (rankRes.count ?? 0) + 1;
-      setRank(computedRank);
-
       setNextSession(sessionRes.data ?? null);
       const mappedWins = (winsRes.data ?? []) as WinRow[];
       setWins(mappedWins);
 
-      // Content: prefer monthly, fall back to always-available (both already fetched)
       const monthlyArr = (monthlyContentRes.data ?? []) as ContentRow[];
       const fallbackArr = (fallbackContentRes.data ?? []) as ContentRow[];
       const featured = monthlyArr[0] ?? fallbackArr[0] ?? null;
       setContent(featured);
 
-      setPairing((pairingRes.data ?? null) as unknown as PairingRow | null);
+      const liveSessionData = liveSessionRes.data ?? null;
+      setLiveSession(liveSessionData);
+
+      // Find this user's check-in for the live session from the RLS-filtered batch
+      const liveId = liveSessionData?.id ?? null;
+      const checkinRow = ((attendanceRes.data ?? []) as { session_id: string; checked_in_at: string }[]).find(r => r.session_id === liveId);
+      const checkedInAt = checkinRow?.checked_in_at ?? null;
+      setLiveCheckedInAt(checkedInAt);
+
+      // Page is renderable now — show it while RT3 loads rank + member-specific data
+      setLoading(false);
+
+      // RT3: queries that genuinely need memberRow.id or memberRow.points
+      const [rankRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
+        supabase.from('members').select('id', { count: 'exact', head: true }).gt('points', memberRow.points ?? 0),
+        supabase.from('mentor_pairings').select('id,mentor:mentor_id(id,name,pillar)').eq('mentee_id', memberRow.id).eq('status', 'active').maybeSingle(),
+        supabase.from('bible_reading_plans').select('start_date,start_book,chapters_per_day,testament,end_book').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('devotion_journal').select('checklist').eq('member_id', memberRow.id).eq('entry_date', today).maybeSingle(),
+      ]);
+
+      const computedRank = (rankRes.count ?? 0) + 1;
+      setRank(computedRank);
+      const computedPairing = (pairingRes.data ?? null) as unknown as PairingRow | null;
+      setPairing(computedPairing);
 
       let computedDevotionRef: string | null = null;
       if (devotionPlanRes.data) {
@@ -686,11 +695,6 @@ export default function HomePage() {
         setDevotionDone(computedDevotionDone);
       }
 
-      const liveSessionData = liveSessionRes.data ?? null;
-      const checkedInAt = attendanceRes.data?.checked_in_at ?? null;
-      setLiveSession(liveSessionData);
-      setLiveCheckedInAt(checkedInAt);
-
       setCached(cacheKey, {
         member,
         goals: mappedGoals,
@@ -698,14 +702,12 @@ export default function HomePage() {
         rank: computedRank,
         nextSession: sessionRes.data ?? null,
         content: featured,
-        pairing: (pairingRes.data ?? null) as unknown as PairingRow | null,
+        pairing: computedPairing,
         devotionRef: computedDevotionRef,
         devotionDone: computedDevotionDone,
         liveSession: liveSessionData,
         liveCheckedInAt: checkedInAt,
       });
-
-      setLoading(false);
     })();
   }, [router]);
 
