@@ -196,7 +196,7 @@ export default function InvitePage() {
                 setTimeout(() => setCopyToast(false), 2000);
               }).catch(() => {});
             };
-            const waText = encodeURIComponent(`Hi! I've been growing with The School of Daniels & Esthers — a community helping young people thrive spiritually and in the marketplace. Join me here: ${link}`);
+            const waText = encodeURIComponent(`Hey,\n\nI want to personally invite you to something that's been sharpening me — the School of Daniels & Esthers (SODE) at Dominion City VI. It's a Sunday academy for career professionals and marketplace leaders, and the calibre of what's being taught is not what you'd expect.\n\nWe've had sessions on future readiness, building influence, personal branding, and just recently a CEO broke down how he went from being conspired against to being vindicated and promoted — live, with real detail. These are not motivational talks. They are practical, faith-grounded, and deeply strategic. The kind of content you'd pay for at a business school, delivered in a room full of people who are genuinely building.\n\nIf you've been looking for a space where your faith and your ambition don't have to compete, this is it. Come through any Sunday between 8am and 8:50am at Dominion City, Victoria Island. I promise you, after one session, you'll clear your calendar for the next.\n\n${link}`);
             return (
               <div className="card card-pad" style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.04em', textTransform: 'uppercase', marginBottom: 8 }}>Your invite link</div>
