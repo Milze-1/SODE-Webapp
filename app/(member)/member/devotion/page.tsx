@@ -31,7 +31,7 @@ interface ChecklistState {
 interface DevotionCheckin {
   id: string;
   member_id: string;
-  entry_date: string;
+  checkin_date: string;
   checklist: ChecklistState | null;
   journal_entry: string | null;
   completed: boolean;
@@ -40,21 +40,23 @@ interface DevotionCheckin {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+// WAT = UTC+1. Always derive "today" from WAT to avoid midnight-boundary bugs
+// (Lagos midnight is 23:00 UTC, so plain toISOString() returns the wrong date).
+function todayWAT() { return new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 10); }
 
 function formatTodayLong() {
-  return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return new Date(Date.now() + 60 * 60 * 1000).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-function calcStreak(checkins: { entry_date: string; completed: boolean }[]): number {
-  const completedDates = new Set(checkins.filter(c => c.completed).map(c => c.entry_date));
+function calcStreak(checkins: { checkin_date: string; completed: boolean }[]): number {
+  const completedDates = new Set(checkins.filter(c => c.completed).map(c => c.checkin_date));
   const sorted = Array.from(completedDates).sort().reverse();
   let streak = 0;
-  let cursor = new Date(); cursor.setHours(0, 0, 0, 0);
+  let cursor = todayWAT();
   for (const d of sorted) {
-    const day = new Date(d + 'T00:00:00');
-    const diff = Math.round((cursor.getTime() - day.getTime()) / 86400000);
-    if (diff === 0 || diff === 1) { streak++; cursor = day; } else break;
+    const diffMs = new Date(cursor + 'T00:00:00Z').getTime() - new Date(d + 'T00:00:00Z').getTime();
+    const diff = Math.round(diffMs / 86400000);
+    if (diff === 0 || diff === 1) { streak++; cursor = d; } else break;
   }
   return streak;
 }
@@ -71,22 +73,17 @@ const EMPTY_CHECKLIST: ChecklistState = {
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
-function StreakCalendar({ checkins }: { checkins: { entry_date: string; completed: boolean }[] }) {
-  const completedSet = new Set(checkins.filter(c => c.completed).map(c => c.entry_date));
+function StreakCalendar({ checkins }: { checkins: { checkin_date: string; completed: boolean }[] }) {
+  const completedSet = new Set(checkins.filter(c => c.completed).map(c => c.checkin_date));
 
-  const todayDate = new Date();
-  todayDate.setHours(0, 0, 0, 0);
-  const today = todayDate.toISOString().slice(0, 10);
-
-  // Monday of current week (ISO: Mon=1 … Sun=0 wraps to −6)
-  const dow = todayDate.getDay();
-  const monday = new Date(todayDate);
-  monday.setDate(todayDate.getDate() - (dow === 0 ? 6 : dow - 1));
+  // All date arithmetic in WAT (UTC+1) to match checkin_date storage
+  const today    = todayWAT();
+  const todayMs  = new Date(today + 'T00:00:00Z').getTime();
+  const dow      = new Date(today + 'T00:00:00Z').getUTCDay(); // 0=Sun
+  const mondayMs = todayMs - (dow === 0 ? 6 : dow - 1) * 86400000;
 
   const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = new Date(mondayMs + i * 86400000).toISOString().slice(0, 10);
     const isToday  = dateStr === today;
     const isPast   = dateStr < today;
     const done     = completedSet.has(dateStr);
@@ -161,11 +158,11 @@ export default function DevotionPage() {
   const [checklist, setChecklist]         = useState<ChecklistState>(EMPTY_CHECKLIST);
   const [journal, setJournal]             = useState('');
   const [completing, setCompleting]       = useState(false);
-  const [recentCheckins, setRecentCheckins] = useState<{ entry_date: string; completed: boolean }[]>([]);
+  const [recentCheckins, setRecentCheckins] = useState<{ checkin_date: string; completed: boolean }[]>([]);
   const [toast, setToast]                 = useState<{ msg: string } | null>(null);
   const toastTimer                        = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const today  = todayStr();
+  const today  = todayWAT();
   const streak = calcStreak(recentCheckins);
 
   // Checklist items — read_devotional + made_key_declaration only when a devotional exists
@@ -207,30 +204,27 @@ export default function DevotionPage() {
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }
       setMemberId(memberRow.id);
 
-      const todayDate = new Date().toISOString().split('T')[0];
       const [devotionalRes, checkinRes, recentRes] = await Promise.all([
         supabase
           .from('daily_devotionals')
           .select('id, devotional_date, title, scripture_ref, scripture_text, body, prayer_focus, key_declaration')
-          .eq('devotional_date', todayDate)
+          .eq('devotional_date', today)
           .eq('is_published', true)
           .maybeSingle(),
         supabase
           .from('devotion_checkins')
-          .select('id, member_id, entry_date, checklist, journal_entry, completed, points_awarded')
+          .select('id, member_id, checkin_date, checklist, journal_entry, completed, points_awarded')
           .eq('member_id', memberRow.id)
-          .eq('entry_date', today)
+          .eq('checkin_date', today)
           .maybeSingle(),
         supabase
           .from('devotion_checkins')
-          .select('entry_date, completed')
+          .select('checkin_date, completed')
           .eq('member_id', memberRow.id)
-          .not('entry_date', 'is', null)
-          .order('entry_date', { ascending: false })
+          .not('checkin_date', 'is', null)
+          .order('checkin_date', { ascending: false })
           .limit(35),
       ]);
-
-      console.log('[Devotion] Today devotional:', devotionalRes.data, 'for date:', todayDate);
       setDevotional((devotionalRes.data ?? null) as DailyDevotional | null);
 
       if (checkinRes.data) {
@@ -240,7 +234,7 @@ export default function DevotionPage() {
         setJournal(ci.journal_entry ?? '');
       }
 
-      setRecentCheckins((recentRes.data ?? []) as { entry_date: string; completed: boolean }[]);
+      setRecentCheckins((recentRes.data ?? []) as { checkin_date: string; completed: boolean }[]);
       setLoading(false);
     })();
   }, [router, today]);
@@ -259,13 +253,13 @@ export default function DevotionPage() {
         .eq('id', checkin.id);
     } else {
       const { data: newCi } = await supabase.from('devotion_checkins')
-        .insert({
+        .upsert({
           member_id: memberId,
-          entry_date: today,
+          checkin_date: today,
           checklist: newChecklist,
           completed: false,
           points_awarded: false,
-        })
+        }, { onConflict: 'member_id,checkin_date' })
         .select()
         .single();
       if (newCi) setCheckin(newCi as DevotionCheckin);
@@ -279,31 +273,31 @@ export default function DevotionPage() {
     setCompleting(true);
     try {
       const supabase = createClient();
-      let checkinId = checkin?.id;
 
-      if (checkinId) {
-        await supabase.from('devotion_checkins')
-          .update({ checklist, journal_entry: journal || null, completed: true, points_awarded: true })
-          .eq('id', checkinId);
-      } else {
-        const { data: newCi } = await supabase.from('devotion_checkins')
-          .insert({
-            member_id: memberId,
-            entry_date: today,
-            checklist,
-            journal_entry: journal || null,
-            completed: true,
-            points_awarded: true,
-          })
-          .select('id')
-          .single();
-        checkinId = (newCi as { id: string } | null)?.id;
+      const { data: upserted, error: upsertErr } = await supabase
+        .from('devotion_checkins')
+        .upsert({
+          member_id: memberId,
+          checkin_date: today,
+          checklist,
+          journal_entry: journal || null,
+          completed: true,
+          points_awarded: true,
+        }, { onConflict: 'member_id,checkin_date' })
+        .select('id')
+        .single();
+
+      if (upsertErr) {
+        showToast('Could not save devotion — please try again.');
+        return;
       }
+
+      const checkinId = upserted?.id ?? checkin?.id;
 
       setCheckin(c => c ? { ...c, completed: true, points_awarded: true } : {
         id: checkinId ?? '',
         member_id: memberId,
-        entry_date: today,
+        checkin_date: today,
         checklist,
         journal_entry: journal || null,
         completed: true,
@@ -323,8 +317,8 @@ export default function DevotionPage() {
 
       // Update recents for streak calc
       const updatedRecents = [
-        { entry_date: today, completed: true },
-        ...recentCheckins.filter(c => c.entry_date !== today),
+        { checkin_date: today, completed: true },
+        ...recentCheckins.filter(c => c.checkin_date !== today),
       ];
       setRecentCheckins(updatedRecents);
       const newStreak = calcStreak(updatedRecents);
