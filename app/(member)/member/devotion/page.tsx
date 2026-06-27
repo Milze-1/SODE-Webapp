@@ -33,7 +33,7 @@ interface DevotionCheckin {
   member_id: string;
   checkin_date: string;
   checklist: ChecklistState | null;
-  journal_entry: string | null;
+  notes: string | null;
   completed: boolean;
   points_awarded: boolean;
 }
@@ -213,7 +213,7 @@ export default function DevotionPage() {
           .maybeSingle(),
         supabase
           .from('devotion_checkins')
-          .select('id, member_id, checkin_date, checklist, journal_entry, completed, points_awarded')
+          .select('id, member_id, checkin_date, checklist, notes, completed, points_awarded')
           .eq('member_id', memberRow.id)
           .eq('checkin_date', today)
           .maybeSingle(),
@@ -231,7 +231,7 @@ export default function DevotionPage() {
         const ci = checkinRes.data as DevotionCheckin;
         setCheckin(ci);
         setChecklist((ci.checklist ?? EMPTY_CHECKLIST) as ChecklistState);
-        setJournal(ci.journal_entry ?? '');
+        setJournal(ci.notes ?? '');
       }
 
       setRecentCheckins((recentRes.data ?? []) as { checkin_date: string; completed: boolean }[]);
@@ -283,7 +283,7 @@ export default function DevotionPage() {
           .from('devotion_checkins')
           .update({
             checklist,
-            journal_entry: journal || null,
+            notes: journal || null,
             completed: true,
             points_awarded: true,
           })
@@ -302,7 +302,7 @@ export default function DevotionPage() {
             member_id: memberId,
             checkin_date: today,
             checklist,
-            journal_entry: journal || null,
+            notes: journal || null,
             completed: true,
             points_awarded: true,
           })
@@ -321,7 +321,7 @@ export default function DevotionPage() {
         member_id: memberId,
         checkin_date: today,
         checklist,
-        journal_entry: journal || null,
+        notes: journal || null,
         completed: true,
         points_awarded: true,
       });
