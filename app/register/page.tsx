@@ -102,6 +102,21 @@ function RegisterInner() {
         this_month_points: 0,
         updated_at: new Date().toISOString(),
       });
+
+      // Process referral on registration
+      try {
+        await fetch("/api/referral/on-register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email.trim(),
+            newMemberId: newMember.id,
+            refCode: refCode || null,
+          }),
+        });
+      } catch (e) {
+        console.error("[Register] Referral process error:", e);
+      }
     }
 
     // Award registration points (session cookie not yet set, so pass authId)
