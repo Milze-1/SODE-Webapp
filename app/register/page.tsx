@@ -226,11 +226,14 @@ function RegisterInner() {
             </div>
 
             {/* Terms */}
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-              <div onClick={() => setAgreed(v => !v)} style={{ width: 20, height: 20, borderRadius: 6, border: `1.5px solid ${agreed ? "var(--navy)" : "var(--line-2)"}`, background: agreed ? "var(--navy)" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flex: "none", marginTop: 1 }}>
-                {agreed && <Icon name="check" size={13} stroke={3} color="#fff" />}
-              </div>
-              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ display: "none" }} />
+            <label htmlFor="terms" style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+              <input
+                id="terms"
+                type="checkbox"
+                checked={agreed}
+                onChange={e => setAgreed(e.target.checked)}
+                style={{ marginTop: 2, cursor: "pointer", width: 18, height: 18, flexShrink: 0 }}
+              />
               <span style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>
                 I agree to the SODE community guidelines and privacy policy
               </span>
