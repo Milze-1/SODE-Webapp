@@ -235,6 +235,7 @@ export async function awardPointsServer(params: {
       this_month_points: pts,
       updated_at:        now,
     });
+  }
   // 11. Trigger referral milestone checks if this is an attendance check-in
   if (ruleKey === 'attendance_present') {
     try {
