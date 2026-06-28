@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
-import { awardPoints } from '@/lib/points';
+import { awardPointsServer } from '@/lib/points-server';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -34,7 +34,12 @@ export async function POST(request: Request) {
   await supabase.from('advocacy_posts').update({ share_count: (current?.share_count ?? 0) + 1 }).eq('id', post_id);
 
   // Award points for sharing
-  await awardPoints(member.id, 'advocacy_shared', 'advocacy_shares', token);
+  await awardPointsServer({
+    memberId: member.id,
+    ruleKey: 'advocacy_share',
+    refTable: 'advocacy_shares',
+    refId: token,
+  });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://thesode.org';
   return NextResponse.json({ share_url: `${appUrl}/s/${token}`, token });

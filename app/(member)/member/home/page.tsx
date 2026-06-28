@@ -204,7 +204,7 @@ function WinFlow({ memberId, onClose, onPoints, onToast, onCelebrate, onAdded }:
         .select('id,created_at')
         .single();
       if (error) throw error;
-      const awarded = await awardPoints(memberId, 'win', 'wins', newWin.id);
+      const awarded = await awardPoints(memberId, 'win_submitted', 'wins', newWin.id);
       onAdded({ id: newWin.id, pillar, win_type: type, description: desc, created_at: newWin.created_at, points_earned: awarded || 5 });
       onPoints(awarded || 5);
       onClose();
@@ -451,7 +451,7 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
     try {
       const supabase = createClient();
       await supabase.from('goals').update({ current: live.target, status: 'done', updated_at: new Date().toISOString() }).eq('id', live.id);
-      const awarded = await awardPoints(memberId, 'goal_complete', 'goals', live.id);
+      const awarded = await awardPoints(memberId, 'goal_completed', 'goals', live.id);
       onGoalsChange(goals.map(g => g.id === live.id ? { ...g, current: g.target, status: 'done' } : g));
       onPoints(awarded || 20);
       onClose();

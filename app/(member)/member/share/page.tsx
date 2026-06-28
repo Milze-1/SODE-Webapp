@@ -90,7 +90,7 @@ export default function SharePage() {
         .order('published_at', { ascending: false })
         .limit(20),
       supabase.from('advocacy_shares').select('post_id,platform,points_awarded').eq('member_id', memberRow.id),
-      supabase.from('point_rules').select('points').eq('rule_key', 'advocacy_shared').maybeSingle(),
+      supabase.from('point_rules').select('points').eq('rule_key', 'advocacy_share').maybeSingle(),
     ]);
 
     setPosts((postsRes.data ?? []) as PostRow[]);

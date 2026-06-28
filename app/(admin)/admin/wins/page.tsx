@@ -1,12 +1,13 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase';
+import { awardPoints } from '@/lib/points';
 import { Icon, pillarOf } from '@/components/sode/icons';
 import { Avatar, PillarChip } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, FilterChip, AdminSearch, TRow, THead, Panel, Skeleton } from '@/components/admin/chrome';
 
 interface WinRow {
-  id: string; pillar: string | null; win_type: string | null; description: string | null;
+  id: string; member_id: string; pillar: string | null; win_type: string | null; description: string | null;
   points_earned: number; verified: boolean | null; created_at: string;
   members: { name: string } | null;
 }
@@ -29,7 +30,7 @@ export default function WinsPage() {
       const supabase = createClient();
       const { data } = await supabase
         .from('wins')
-        .select('id,pillar,win_type,description,points_earned,verified,created_at,members:member_id(name)')
+        .select('id,member_id,pillar,win_type,description,points_earned,verified,created_at,members:member_id(name)')
         .order('created_at', { ascending: false });
       setWins((data ?? []) as unknown as WinRow[]);
       setLoading(false);
@@ -38,9 +39,17 @@ export default function WinsPage() {
 
   const verify = async (winId: string) => {
     setVerifying(winId);
+    const win = wins.find(w => w.id === winId);
+    if (!win) {
+      setVerifying(null);
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase.from('wins').update({ verified: true }).eq('id', winId);
-    if (!error) setWins(ws => ws.map(w => w.id === winId ? { ...w, verified: true } : w));
+    if (!error) {
+      setWins(ws => ws.map(w => w.id === winId ? { ...w, verified: true } : w));
+      await awardPoints(win.member_id, 'win_verified', 'wins', win.id);
+    }
     setVerifying(null);
   };
 

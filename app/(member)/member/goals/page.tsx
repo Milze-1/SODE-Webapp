@@ -531,11 +531,11 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
     await supabase.from('goal_steps').update({ milestone_status: 'completed', completed_at: now }).eq('id', id);
     const updated = milestones.map(m => m.id === id ? { ...m, milestone_status: 'completed' as MilestoneStatus, completed_at: now } : m);
     setMilestones(updated);
-    const awarded = await awardPoints(memberId, 'goal_step_completed', 'goal_steps', id);
+    const awarded = await awardPoints(memberId, 'goal_progress', 'goal_steps', id);
     if (awarded) onToast({ msg: `+${awarded} pts`, icon: 'check', points: awarded });
     const { newStatus } = await syncGoalProgress(updated);
     if (newStatus === 'done') {
-      const goalAwarded = await awardPoints(memberId, 'goal_complete', 'goals', live.id);
+      const goalAwarded = await awardPoints(memberId, 'goal_completed', 'goals', live.id);
       onPoints(goalAwarded || 20);
       onClose();
       setTimeout(() => onCelebrate({ title: 'Goal complete!', sub: p.verse, points: goalAwarded || 20 }), 350);
@@ -549,7 +549,7 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
     }).select('id, step_id, comment, created_at').single();
     if (data) {
       setAllNotes(ns => [...ns, data as MilestoneNote]);
-      const awarded = await awardPoints(memberId, 'goal_update_added', 'goal_updates', data.id);
+      const awarded = await awardPoints(memberId, 'goal_progress', 'goal_updates', data.id);
       if (awarded) onToast({ msg: `+${awarded} pts — progress noted!`, icon: 'zap', points: awarded });
     }
   };
@@ -936,7 +936,7 @@ function CommunityGoalDetail({ goal, memberId, onUpdate, onCelebrate, onPoints, 
     await supabase.from('goal_steps').update({ milestone_status: 'completed', completed_at: now }).eq('id', id);
     const updated = milestones.map(m => m.id === id ? { ...m, milestone_status: 'completed' as MilestoneStatus, completed_at: now } : m);
     setMilestones(updated);
-    const awarded = await awardPoints(memberId, 'goal_step_completed', 'goal_steps', id);
+    const awarded = await awardPoints(memberId, 'goal_progress', 'goal_steps', id);
     if (awarded) onToast({ msg: `+${awarded} pts`, icon: 'check', points: awarded });
     const { isDone } = await syncProgress(updated);
     if (isDone) {
@@ -953,7 +953,7 @@ function CommunityGoalDetail({ goal, memberId, onUpdate, onCelebrate, onPoints, 
     }).select('id, step_id, comment, created_at').single();
     if (data) {
       setAllNotes(ns => [...ns, data as MilestoneNote]);
-      const awarded = await awardPoints(memberId, 'goal_update_added', 'goal_updates', data.id);
+      const awarded = await awardPoints(memberId, 'goal_progress', 'goal_updates', data.id);
       if (awarded) onToast({ msg: `+${awarded} pts — progress noted!`, icon: 'zap', points: awarded });
     }
   };

@@ -237,6 +237,20 @@ export default function OnboardingPage() {
         memberId = inserted?.id ?? null;
       }
 
+      // Award onboarding points via API
+      if (memberId) {
+        await fetch('/api/points/award', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            memberId,
+            ruleKey: 'onboarding_complete',
+            refTable: 'members',
+            refId: memberId,
+          }),
+        }).catch((e) => console.error('[onboarding] points award error:', e));
+      }
+
       // Auto-create 3-year goal from onboarding answer (non-fatal if it fails)
       if (threeYearGoal.trim() && memberId) {
         try {

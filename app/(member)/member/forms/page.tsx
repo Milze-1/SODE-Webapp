@@ -48,7 +48,7 @@ function WinFlow({ memberId, onClose, onToast }: { memberId: string; onClose: ()
         .from('wins')
         .insert({ member_id: memberId, pillar: winPillar, win_type: type, description: desc, points_earned: 5 })
         .select('id').single();
-      const awarded = newWin ? await awardPoints(memberId, 'win', 'wins', newWin.id) : 0;
+      const awarded = newWin ? await awardPoints(memberId, 'win_submitted', 'wins', newWin.id) : 0;
       onClose();
       onToast({ msg: 'Logged. Well done.', points: awarded || 5 });
     } catch {

@@ -115,7 +115,38 @@ VALUES
   ('advocacy_click',
    'Click on shared content',
    'Someone clicks a link in content the member shared.',
-   2, 50, 'month', FALSE, TRUE)
+   2, 50, 'month', FALSE, TRUE),
+
+  -- ── Additional / code-referenced / fallback rules ───────────────────────────
+  ('community_goal_completed',
+   'Community goal completed',
+   'Member completes a community-wide goal.',
+   30, NULL, NULL, FALSE, TRUE),
+
+  ('member_registered',
+   'Registered account',
+   'Member creates an account on the SODE platform.',
+   0, NULL, NULL, FALSE, TRUE),
+
+  ('referral_joined',
+   'Referral joined',
+   'The person you invited completed onboarding.',
+   25, NULL, NULL, FALSE, TRUE),
+
+  ('member_joined',
+   'Joined via referral',
+   'Joined SODE via an invitation link.',
+   10, NULL, NULL, FALSE, TRUE),
+
+  ('referral_attended',
+   'Referral attended first session',
+   'The person you invited attended their first SODE session.',
+   50, NULL, NULL, FALSE, TRUE),
+
+  ('referral_five_meetings',
+   'Referral attended 5 sessions',
+   'The person you invited attended 5 SODE sessions.',
+   100, NULL, NULL, FALSE, TRUE)
 
 ON CONFLICT (rule_key) DO UPDATE SET
   label                 = EXCLUDED.label,

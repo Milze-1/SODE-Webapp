@@ -153,7 +153,7 @@ export default function ProfilePage() {
         win_logged: 'Win logged', goal_created: 'Goal created', goal_completed: 'Goal completed',
         form_submitted: 'Form submitted', session_attended: 'Session attended', attendance_present: 'Session attended',
         referral_joined: 'Referral joined', referral_attended: 'Referral attended',
-        referral_five_meetings: 'Referral — 5 meetings', advocacy_shared: 'Shared SODE',
+        referral_five_meetings: 'Referral — 5 meetings', advocacy_shared: 'Shared SODE', advocacy_share: 'Shared SODE',
         content_completed: 'Learning completed', member_joined: 'Joined via referral',
         leaderboard_reset: 'Cycle reset',
       };

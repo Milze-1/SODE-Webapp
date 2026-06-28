@@ -48,6 +48,7 @@ const RULE_LABELS: Record<string, string> = {
   referral_joined:      'Referral — member joined',
   referral_attended:    'Referral — member attended',
   advocacy_shared:      'Shared SODE content',
+  advocacy_share:       'Shared SODE content',
   advocacy_click:       'Content click earned',
   content_completed:    'Learning completed',
   leaderboard_reset:    'Leaderboard reset',
