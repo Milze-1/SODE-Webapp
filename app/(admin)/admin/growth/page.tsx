@@ -60,7 +60,6 @@ function ruleLabel(key: string, fallback: Record<string, string>): string {
 }
 
 export default function GrowthPage() {
-  const [vis, setVis] = useState('members');
   const [showEdit, setShowEdit] = useState<PointRule | null>(null);
   const [rules, setRules] = useState<PointRule[]>([]);
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);
