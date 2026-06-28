@@ -11,6 +11,7 @@ interface PointRule {
 }
 interface FunnelStage { l: string; v: number; }
 interface Inviter { name: string; count: number; }
+interface MonthlyGrowth { month: string; count: number; cumulative: number; }
 
 interface MemberPoints {
   auth_id: string;
@@ -64,6 +65,7 @@ export default function GrowthPage() {
   const [rules, setRules] = useState<PointRule[]>([]);
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);
   const [topInviters, setTopInviters] = useState<Inviter[]>([]);
+  const [growthTrend, setGrowthTrend] = useState<MonthlyGrowth[]>([]);
   const [editVal, setEditVal] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -127,7 +129,7 @@ export default function GrowthPage() {
       const [rulesRes, invRes, membersRes] = await Promise.all([
         supabase.from('point_rules').select('id,rule_key,label,points,cap,cap_period,requires_verification,is_active').order('points', { ascending: false }),
         supabase.from('invitations').select('inviter_id,stage'),
-        supabase.from('members').select('id,name').eq('onboarding_complete', true),
+        supabase.from('members').select('id,name,created_at').eq('onboarding_complete', true),
       ]);
 
       const ruleRows = (rulesRes.data ?? []) as PointRule[];
@@ -148,10 +150,46 @@ export default function GrowthPage() {
         inviterMap.set(inv.inviter_id, (inviterMap.get(inv.inviter_id) ?? 0) + 1);
       }
       const memberLookup = new Map<string, string>();
-      ((membersRes.data ?? []) as { id: string; name: string }[]).forEach(m => memberLookup.set(m.id, m.name));
+      const members = (membersRes.data ?? []) as { id: string; name: string; created_at: string }[];
+      members.forEach(m => memberLookup.set(m.id, m.name));
       const sorted = Array.from(inviterMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
       setTopInviters(sorted.map(([id, count]) => ({ name: memberLookup.get(id) ?? 'Unknown', count })));
 
+      // Calculate last 6 months growth
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const now = new Date();
+      const last6Months: { year: number; month: number; name: string; count: number; cumulative: number }[] = [];
+      
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        last6Months.push({
+          year: d.getFullYear(),
+          month: d.getMonth(),
+          name: `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`,
+          count: 0,
+          cumulative: 0,
+        });
+      }
+
+      members.forEach(m => {
+        const d = new Date(m.created_at);
+        const mYear = d.getFullYear();
+        const mMonth = d.getMonth();
+        const bucket = last6Months.find(b => b.year === mYear && b.month === mMonth);
+        if (bucket) {
+          bucket.count++;
+        }
+      });
+
+      const firstMonthStart = new Date(last6Months[0].year, last6Months[0].month, 1);
+      let cumulativeSum = members.filter(m => new Date(m.created_at) < firstMonthStart).length;
+
+      last6Months.forEach(b => {
+        cumulativeSum += b.count;
+        b.cumulative = cumulativeSum;
+      });
+
+      setGrowthTrend(last6Months.map(b => ({ month: b.name, count: b.count, cumulative: b.cumulative })));
       setLoading(false);
     };
 
@@ -286,30 +324,61 @@ export default function GrowthPage() {
             {(() => {
               const maxCount = Math.max(...displayFunnel.map(f => f.v), 1);
               return (
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', minHeight: 180, paddingBottom: 0 }}>
-                  {displayFunnel.map((f, i) => (
-                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 800, color: f.v > 0 ? '#1e2a52' : '#999' }} className="tnum">
-                        {f.v}
-                      </span>
-                      <div style={{
-                        width: 44,
-                        height: Math.max(f.v > 0 ? Math.round((f.v / maxCount) * 120) : 4, 4),
-                        backgroundColor: f.v > 0 ? '#1e2a52' : '#e2e8f0',
-                        borderRadius: '4px 4px 0 0',
-                        transition: 'height 0.3s ease',
-                      }} />
-                      <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, whiteSpace: 'nowrap' }}>{f.l}</span>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', minHeight: 180, paddingBottom: 0, position: 'relative' }}>
+                  {displayFunnel.map((f, i) => {
+                    // Calculate conversion percentage from previous step
+                    let conversionText = '';
+                    if (i > 0) {
+                      const prevStage = displayFunnel[i - 1];
+                      const rate = prevStage.v > 0 ? Math.round((f.v / prevStage.v) * 100) : 0;
+                      conversionText = `${rate}% conv`;
+                    }
+                    
+                    return (
+                      <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, position: 'relative', flex: 1 }}>
+                        {conversionText && (
+                          <div style={{
+                            position: 'absolute',
+                            left: '0%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--line-2)',
+                            borderRadius: '12px',
+                            padding: '3px 8px',
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            color: 'var(--muted)',
+                            zIndex: 1,
+                            boxShadow: 'var(--sh-sm)'
+                          }}>
+                            {conversionText}
+                          </div>
+                        )}
+                        <span style={{ fontSize: 16, fontWeight: 800, color: f.v > 0 ? '#1e2a52' : '#999' }} className="tnum">
+                          {f.v}
+                        </span>
+                        <div style={{
+                          width: '75%',
+                          maxWidth: 50,
+                          height: Math.max(f.v > 0 ? Math.round((f.v / maxCount) * 120) : 4, 4),
+                          background: f.v > 0 ? 'linear-gradient(to top, #1e2a52, #3b82f6)' : 'var(--line-2)',
+                          borderRadius: '6px 6px 0 0',
+                          transition: 'height 0.3s ease',
+                          boxShadow: f.v > 0 ? '0 4px 6px -1px rgba(30, 42, 82, 0.2)' : 'none',
+                        }} />
+                        <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, whiteSpace: 'nowrap', fontWeight: 600 }}>{f.l}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })()}
             <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
               {[[`${joinRate}%`, 'Sign-up rate'], [String(funnel[2]?.v ?? 0), 'First meeting'], [String(funnel[3]?.v ?? 0), '5 meetings']].map(([v, l], i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
-                  <div className="tnum" style={{ fontSize: 20, fontWeight: 800 }}>{v}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{l}</div>
+                  <div className="tnum" style={{ fontSize: 20, fontWeight: 800, color: 'var(--navy)' }}>{v}</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2, fontWeight: 600 }}>{l}</div>
                 </div>
               ))}
             </div>
@@ -332,21 +401,83 @@ export default function GrowthPage() {
             ))}
           </Panel>
 
-          <Panel title="Leaderboard visibility">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {([['members', 'Members only', 'Default — signed-in members'], ['public', 'Public link', 'Anyone with the link'], ['indexed', 'Public & indexed', 'Doubles as a growth surface']] as const).map(([k, t, d]) => {
-                const active = vis === k;
-                return (
-                  <button key={k} onClick={() => setVis(k)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px', borderRadius: 10, background: active ? 'var(--navy-tint)' : 'var(--surface)', border: active ? '1.5px solid var(--navy)' : '1px solid var(--line-2)', textAlign: 'left', cursor: 'pointer' }}>
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', flex: 'none', border: active ? '6px solid var(--navy)' : '2px solid var(--line-2)', background: '#fff' }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 700 }}>{t}</div>
-                      <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{d}</div>
+          <Panel title="Membership Growth" action={<span style={{ fontSize: 11.5, color: 'var(--muted)' }}>Cumulative sign-ups (6m)</span>}>
+            {growthTrend.length === 0 ? (
+              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 13 }}>No growth data.</div>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                {(() => {
+                  const maxVal = Math.max(...growthTrend.map(g => g.cumulative), 1);
+                  const height = 120;
+                  const width = 360;
+                  const padding = 20;
+                  
+                  const points = growthTrend.map((g, idx) => {
+                    const x = padding + (idx * (width - 2 * padding)) / (growthTrend.length - 1);
+                    const y = height - padding - (g.cumulative * (height - 2 * padding)) / maxVal;
+                    return { x, y };
+                  });
+                  
+                  const pathData = points.length > 0 
+                    ? `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ')
+                    : '';
+                    
+                  const areaData = points.length > 0
+                    ? `${pathData} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`
+                    : '';
+                    
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div className="tnum" style={{ fontSize: 24, fontWeight: 800, color: 'var(--navy)' }}>
+                            {growthTrend[growthTrend.length - 1]?.cumulative ?? 0}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>Total active SODE members</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div className="tnum" style={{ fontSize: 15, fontWeight: 700, color: 'var(--emerald)' }}>
+                            +{growthTrend[growthTrend.length - 1]?.count ?? 0} this month
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>New signups</div>
+                        </div>
+                      </div>
+                      
+                      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                        <defs>
+                          <linearGradient id="chart-area-grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#1e2a52" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#1e2a52" stopOpacity="0.0" />
+                          </linearGradient>
+                        </defs>
+                        
+                        <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--line-2)" strokeWidth={1} />
+                        <line x1={padding} y1={padding} x2={width - padding} y2={padding} stroke="var(--line-2)" strokeDasharray="3 3" strokeWidth={1} />
+                        
+                        {areaData && <path d={areaData} fill="url(#chart-area-grad)" />}
+                        
+                        {pathData && <path d={pathData} fill="none" stroke="#1e2a52" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />}
+                        
+                        {points.map((p, idx) => (
+                          <g key={idx}>
+                            <circle cx={p.x} cy={p.y} r={4} fill="#fff" stroke="#1e2a52" strokeWidth={2} />
+                            <text x={p.x} y={p.y - 8} textAnchor="middle" style={{ fontSize: 9.5, fontWeight: 800, fill: '#1e2a52', fontFamily: 'var(--font-mono)' }}>
+                              {growthTrend[idx].cumulative}
+                            </text>
+                          </g>
+                        ))}
+                      </svg>
+                      
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: `0 ${padding}px`, marginTop: -4 }}>
+                        {growthTrend.map((g, idx) => (
+                          <span key={idx} style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>{g.month.split(' ')[0]}</span>
+                        ))}
+                      </div>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  );
+                })()}
+              </div>
+            )}
           </Panel>
         </div>
 
