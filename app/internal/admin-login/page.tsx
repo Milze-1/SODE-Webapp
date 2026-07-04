@@ -60,6 +60,8 @@ function AdminLoginInner() {
       setError("You don't have admin access. Contact the Director to request access.");
     } else if (err === "mfa_required") {
       setError("Two-factor verification is required to access the admin portal.");
+    } else if (err === "session_timeout") {
+      setError("You were signed out after 30 minutes of inactivity. Please sign in again.");
     } else if (err) {
       setError(friendlyError(decodeURIComponent(err)));
     }
