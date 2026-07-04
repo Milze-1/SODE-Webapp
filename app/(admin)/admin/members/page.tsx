@@ -113,12 +113,15 @@ export default function MembersPage() {
     if (converting) return;
     setConverting(m.id);
     try {
-      const supabase = createClient();
-      const { error: convErr } = await supabase
-        .from('members')
-        .update({ onboarding_complete: true, is_first_timer: false, updated_at: new Date().toISOString() })
-        .eq('id', m.id);
-      if (convErr) throw convErr;
+      // Server-side with the admin client — RLS blocks admins updating other
+      // members' rows directly from the browser.
+      const res = await fetch('/api/admin/convert-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId: m.id }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? 'Convert failed');
       const updated = { ...m, onboarding_complete: true, updated_at: new Date().toISOString() };
       setMembers(ms => ms.map(x => x.id === m.id ? updated : x));
       setSelMember(s => (s && s.id === m.id ? updated : s));
