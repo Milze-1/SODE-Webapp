@@ -376,7 +376,7 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!historySearch.trim()) { setHistoryResults([]); return; }
     const supabase = createClient();
-    supabase.from('members').select('id,name').ilike('name', `%${historySearch.trim()}%`).limit(8)
+    supabase.from('members').select('id,name').eq('onboarding_complete', true).ilike('name', `%${historySearch.trim()}%`).limit(8)
       .then(({ data }) => setHistoryResults((data ?? []) as MemberRow[]));
   }, [historySearch]);
 

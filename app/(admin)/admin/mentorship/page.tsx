@@ -71,7 +71,7 @@ export default function MentorshipPage() {
 
   useEffect(() => {
     if (!menteeQuery.trim()) { setMenteeResults([]); return; }
-    createClient().from('members').select('id,name,email,pillar,is_mentor,mentor_capacity').ilike('name', `%${menteeQuery.trim()}%`).limit(6)
+    createClient().from('members').select('id,name,email,pillar,is_mentor,mentor_capacity').eq('onboarding_complete', true).ilike('name', `%${menteeQuery.trim()}%`).limit(6)
       .then(({ data }) => setMenteeResults((data ?? []) as MemberRow[]));
   }, [menteeQuery]);
 
@@ -182,7 +182,7 @@ export default function MentorshipPage() {
 
   useEffect(() => {
     if (!editMenteeSearch.trim()) { setEditMenteeResults([]); return; }
-    createClient().from('members').select('id,name,email,pillar,is_mentor,mentor_capacity').ilike('name', `%${editMenteeSearch}%`).limit(6)
+    createClient().from('members').select('id,name,email,pillar,is_mentor,mentor_capacity').eq('onboarding_complete', true).ilike('name', `%${editMenteeSearch}%`).limit(6)
       .then(({ data }) => setEditMenteeResults((data ?? []) as MemberRow[]));
   }, [editMenteeSearch]);
 

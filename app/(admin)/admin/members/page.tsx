@@ -105,6 +105,31 @@ export default function MembersPage() {
     setSelected(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
+  // ─── Convert first-timer → full member ─────────────────────────────────────
+
+  const [converting, setConverting] = useState<string | null>(null);
+
+  const convertToMember = async (m: MemberRow) => {
+    if (converting) return;
+    setConverting(m.id);
+    try {
+      const supabase = createClient();
+      const { error: convErr } = await supabase
+        .from('members')
+        .update({ onboarding_complete: true, is_first_timer: false, updated_at: new Date().toISOString() })
+        .eq('id', m.id);
+      if (convErr) throw convErr;
+      const updated = { ...m, onboarding_complete: true, updated_at: new Date().toISOString() };
+      setMembers(ms => ms.map(x => x.id === m.id ? updated : x));
+      setSelMember(s => (s && s.id === m.id ? updated : s));
+      showToast(`${m.name} is now a full member 🎉`);
+    } catch {
+      showToast('Could not convert — try again');
+    } finally {
+      setConverting(null);
+    }
+  };
+
   // ─── Delete member ──────────────────────────────────────────────────────────
 
   const deleteMember = async () => {
@@ -213,6 +238,16 @@ export default function MembersPage() {
                     <Avatar name={m.name} size={30} tone="grey" />
                     <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
                     {isFirstTimer(m) && <span style={{ flex: 'none', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: 'var(--navy)', color: '#fff', whiteSpace: 'nowrap' }}>FIRST-TIMER</span>}
+                    {!m.onboarding_complete && (
+                      <button
+                        onClick={e => { e.stopPropagation(); convertToMember(m); }}
+                        disabled={converting === m.id}
+                        title="Mark as a full member — they'll appear on all member lists and the leaderboard"
+                        style={{ flex: 'none', fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99, background: '#d1fae5', color: '#065f46', border: '1px solid #6ee7b7', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {converting === m.id ? 'Converting…' : '→ Convert to member'}
+                      </button>
+                    )}
                   </div>
                   {m.pillar
                     ? <PillarChip pillar={m.pillar} size="sm" />
@@ -304,6 +339,27 @@ export default function MembersPage() {
                 </>
               )}
             </div>
+
+            {/* Convert first-timer */}
+            {!selMember.onboarding_complete && (
+              <div style={{ padding: '14px 16px', borderTop: '1px solid var(--line)' }}>
+                <button
+                  onClick={() => convertToMember(selMember)}
+                  disabled={converting === selMember.id}
+                  style={{
+                    width: '100%', padding: '10px 16px', borderRadius: 9, cursor: 'pointer',
+                    border: 'none', background: 'var(--navy)', color: '#fff',
+                    fontSize: 13.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  }}
+                >
+                  <Icon name="userplus" size={15} color="#fff" />
+                  {converting === selMember.id ? 'Converting…' : 'Convert to full member'}
+                </button>
+                <p style={{ fontSize: 11.5, color: 'var(--muted)', margin: '8px 2px 0', lineHeight: 1.5 }}>
+                  Completes their onboarding — they&apos;ll appear in attendance, forms, points and the leaderboard.
+                </p>
+              </div>
+            )}
 
             {/* Delete account */}
             <div style={{ padding: '14px 16px', borderTop: '1px solid var(--line)' }}>

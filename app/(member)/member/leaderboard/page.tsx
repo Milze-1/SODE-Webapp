@@ -39,6 +39,7 @@ async function fetchAllTime(sb: SB): Promise<LeaderEntry[]> {
   const { data } = await sb
     .from('members')
     .select('id, name, auth_id, points')
+    .eq('onboarding_complete', true) // first-timers stay off the board until converted
     .gt('points', 0)
     .order('points', { ascending: false })
     .limit(100);
