@@ -10,6 +10,7 @@ import { Avatar } from '@/components/sode/ui';
 
 const NAV = [
   { href: '/member/home',        icon: 'home',          label: 'Dashboard'    },
+  { href: '/member/devotion',    icon: 'flame',         label: 'Devotion'     },
   { href: '/member/goals',       icon: 'target',        label: 'My Goals'     },
   { href: '/member/forms',       icon: 'list',          label: 'Forms'        },
   { href: '/member/learning',    icon: 'bookopen',      label: 'Learn'        },
@@ -55,7 +56,7 @@ export default function MemberSidebar() {
         <Image src="/images/sode-primary-logo.png" alt="SODE" width={120} height={48} className="object-contain" />
       </div>
 
-      <nav className="noscroll" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1 }}>
+      <nav className="noscroll" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1, minHeight: 0 }}>
         {NAV.map(n => {
           const active = pathname === n.href || pathname.startsWith(n.href + '/');
           return (

@@ -51,7 +51,7 @@ export default function AdminSidebar() {
         <Image src="/images/sode-primary-logo.png" alt="SODE" width={120} height={48} className="object-contain" />
       </div>
 
-      <nav className="noscroll" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1 }}>
+      <nav className="noscroll" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1, minHeight: 0 }}>
         {ADMIN_NAV.map(n => {
           const active = pathname === n.href || pathname.startsWith(n.href + '/');
           return (
