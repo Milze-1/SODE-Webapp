@@ -122,19 +122,24 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(memberUrl);
     }
 
-    // Step-up enforcement: if the admin has 2FA enrolled, require the session
-    // to actually be at AAL2. A session that skipped the OTP step gets sent
-    // back to the admin login to complete verification.
+    // Step-up enforcement: EVERY admin session must be at AAL2 (2FA-verified).
+    // This also catches sessions created outside the admin login flow (e.g.
+    // Google OAuth or the member login) — they get sent to the admin login,
+    // which challenges an enrolled factor or forces enrollment.
+    // NOTE: requires TOTP MFA to be enabled on the Supabase project
+    // (Authentication → Multi-Factor); if it's disabled, admins will loop on
+    // the admin login page until it's re-enabled.
     try {
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== aal.nextLevel) {
+      if (aal && aal.currentLevel !== "aal2") {
         const mfaUrl = request.nextUrl.clone();
         mfaUrl.pathname = "/internal/admin-login";
         mfaUrl.search = "?error=mfa_required";
         return NextResponse.redirect(mfaUrl);
       }
     } catch {
-      // MFA not enabled on this Supabase project — skip enforcement.
+      // Could not determine assurance level — fail open rather than lock
+      // every admin out.
     }
   }
 

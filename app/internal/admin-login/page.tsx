@@ -45,7 +45,6 @@ function AdminLoginInner() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   // MFA state
@@ -68,7 +67,8 @@ function AdminLoginInner() {
 
   // If an admin is already signed in but was bounced here for step-up
   // verification (?error=mfa_required), skip the credentials phase and go
-  // straight to the OTP challenge.
+  // straight to the OTP challenge — or to enrollment if they have no factor
+  // yet (e.g. they signed in through Google OAuth before enrolling).
   useEffect(() => {
     if (searchParams.get("error") !== "mfa_required") return;
     (async () => {
@@ -78,12 +78,21 @@ function AdminLoginInner() {
       try {
         const { data: factors } = await supabase.auth.mfa.listFactors();
         const verified = (factors?.totp ?? []).find((f) => f.status === "verified");
-        if (!verified) return;
-        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: verified.id });
-        if (challengeError) throw challengeError;
-        setFactorId(verified.id);
-        setChallengeId(challenge.id);
-        setPhase("mfa-verify");
+        if (verified) {
+          const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: verified.id });
+          if (challengeError) throw challengeError;
+          setFactorId(verified.id);
+          setChallengeId(challenge.id);
+          setPhase("mfa-verify");
+          return;
+        }
+        // Signed in but never enrolled — force enrollment now.
+        const { data: enrolled, error: enrollError } = await supabase.auth.mfa.enroll({ factorType: "totp" });
+        if (enrollError) throw enrollError;
+        setFactorId(enrolled.id);
+        setEnrollQr(enrolled.totp?.qr_code ?? null);
+        setEnrollSecret(enrolled.totp?.secret ?? null);
+        setPhase("mfa-enroll");
       } catch { /* stay on credentials phase */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,22 +227,6 @@ function AdminLoginInner() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setGoogleLoading(true);
-    setError("");
-    const supabase = createClient();
-    const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
-    callbackUrl.searchParams.set("intent", "admin");
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: callbackUrl.toString() },
-    });
-    if (oauthError) {
-      setError("Google sign-in failed. Please try again or use email and password.");
-      setGoogleLoading(false);
-    }
-  };
-
   const spinner = (
     <span style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "sode-spin .7s linear infinite", display: "inline-block" }} />
   );
@@ -344,35 +337,6 @@ function AdminLoginInner() {
                   {loading ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>{spinner} Signing in…</span> : "Sign in"}
                 </button>
               </form>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "18px 0" }}>
-                <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
-                <span style={{ fontSize: 12, color: "var(--faint)", fontWeight: 500 }}>or continue with</span>
-                <div style={{ flex: 1, height: 1, background: "var(--line)" }} />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={googleLoading}
-                style={{
-                  width: "100%", height: 44, borderRadius: 10, border: "1.5px solid var(--line-2)",
-                  background: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                  gap: 10, fontSize: 14.5, fontWeight: 600, color: "var(--ink)", cursor: "pointer",
-                }}
-              >
-                {googleLoading ? (
-                  <span style={{ width: 18, height: 18, border: "2px solid var(--line-2)", borderTopColor: "var(--navy)", borderRadius: "50%", animation: "sode-spin .7s linear infinite", display: "inline-block" }} />
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                )}
-                Continue with Google
-              </button>
 
               <p style={{ textAlign: "center", fontSize: 13, color: "var(--faint)", marginTop: 20 }}>
                 Admin access is granted by the Director. Members sign in at{" "}
