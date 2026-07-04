@@ -120,12 +120,13 @@ export default function MembersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId: m.id }),
       });
-      const json = await res.json() as { ok?: boolean; error?: string };
+      const json = await res.json() as { ok?: boolean; error?: string; pointsAwarded?: number };
       if (!res.ok || !json.ok) throw new Error(json.error ?? 'Convert failed');
-      const updated = { ...m, onboarding_complete: true, updated_at: new Date().toISOString() };
+      const pts = json.pointsAwarded ?? 0;
+      const updated = { ...m, onboarding_complete: true, updated_at: new Date().toISOString(), points: (m.points ?? 0) + pts };
       setMembers(ms => ms.map(x => x.id === m.id ? updated : x));
       setSelMember(s => (s && s.id === m.id ? updated : s));
-      showToast(`${m.name} is now a full member 🎉`);
+      showToast(pts > 0 ? `${m.name} is now a full member 🎉 (+${pts} pts)` : `${m.name} is now a full member 🎉`);
     } catch {
       showToast('Could not convert — try again');
     } finally {

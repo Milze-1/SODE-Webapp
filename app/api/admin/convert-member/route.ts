@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase-server';
+import { awardPointsServer } from '@/lib/points-server';
 
 // Convert a first-timer to a full member.
 //
@@ -62,5 +63,30 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Member not found' }, { status: 404 });
   }
 
-  return Response.json({ ok: true, member: data });
+  // Award the "onboarding complete / joined SODE" points the member would
+  // have earned by finishing onboarding themselves — but only once ever.
+  let pointsAwarded = 0;
+  try {
+    const { data: alreadyAwarded } = await adminClient
+      .from('point_events')
+      .select('id')
+      .eq('member_id', memberId)
+      .eq('rule_key', 'onboarding_complete')
+      .limit(1)
+      .maybeSingle();
+
+    if (!alreadyAwarded) {
+      const result = await awardPointsServer({
+        memberId,
+        ruleKey: 'onboarding_complete',
+        note: 'Converted from first-timer to member by admin',
+      });
+      pointsAwarded = (result as { awarded?: number }).awarded ?? 0;
+    }
+  } catch (e) {
+    // Points are a bonus — conversion itself already succeeded.
+    console.error('[convert-member] points award failed:', e);
+  }
+
+  return Response.json({ ok: true, member: data, pointsAwarded });
 }
