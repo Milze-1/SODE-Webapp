@@ -117,12 +117,12 @@ export async function GET(request: Request) {
     }
   }
 
-  // Admin tab: check role, then send to dashboard or reject
+  // Admin intent (from /internal/admin-login): check role, then send to dashboard or reject
   if (intent === "admin") {
     const roles = await getUserRoles(user.id);
     if (!hasAdminAccess(roles)) {
       await supabase.auth.signOut();
-      return NextResponse.redirect(`${origin}/login?error=not_admin`);
+      return NextResponse.redirect(`${origin}/internal/admin-login?error=not_admin`);
     }
     return NextResponse.redirect(`${origin}/admin/dashboard`);
   }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Avatar, SectionHead, EmptyState } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
@@ -21,7 +21,7 @@ export default function CheckInPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
       const { data: memberRow } = await supabase.from('members').select('id, onboarding_complete').eq('auth_id', user.id).maybeSingle();
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }

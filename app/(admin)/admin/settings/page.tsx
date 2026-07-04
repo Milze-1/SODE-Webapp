@@ -6,12 +6,15 @@ import { AdminTopbar, AdminBody, Panel } from '@/components/admin/chrome';
 import { createClient } from '@/lib/supabase';
 
 const ADMIN_ROLES = [
+  { value: 'super_admin', label: 'Super Admin' },
   { value: 'director', label: 'Director' },
   { value: 'spiritual_lead', label: 'Spiritual Lead' },
   { value: 'career_lead', label: 'Career Lead' },
   { value: 'business_lead', label: 'Business Lead' },
   { value: 'member_care_lead', label: 'Member Care Lead' },
   { value: 'data_ops_lead', label: 'Data Ops Lead' },
+  { value: 'business_dev', label: 'Business Dev (Sub-admin)' },
+  { value: 'external_mentor', label: 'External Mentor (Sub-admin)' },
 ];
 
 const ROLE_LABEL: Record<string, string> = Object.fromEntries(ADMIN_ROLES.map(r => [r.value, r.label]));
@@ -43,6 +46,7 @@ export default function SettingsPage() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDirector, setIsDirector] = useState(false);
+  const [isSuper, setIsSuper] = useState(false);
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [adminsLoading, setAdminsLoading] = useState(true);
 
@@ -89,7 +93,10 @@ export default function SettingsPage() {
       if (!user) return;
       setCurrentUserId(user.id);
       const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
-      setIsDirector((roles ?? []).some((r: { role: string }) => r.role === 'director'));
+      const roleList = (roles ?? []).map((r: { role: string }) => r.role);
+      // Super-admin can do everything the Director can (and more).
+      setIsSuper(roleList.includes('super_admin'));
+      setIsDirector(roleList.includes('director') || roleList.includes('super_admin'));
     });
     loadAdmins();
   }, [loadAdmins]);
@@ -114,6 +121,31 @@ export default function SettingsPage() {
     setGranting(true);
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
+
+    // One role per user: assigning a role REPLACES any existing assignment
+    // ("update on top") instead of stacking a duplicate row.
+    const { data: existingRoles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', selectedMember.auth_id);
+
+    if ((existingRoles ?? []).some((r: { role: string }) => r.role === selectedRole)) {
+      showToast(`${selectedMember.name} already has this role.`, 'error');
+      setGranting(false);
+      return;
+    }
+
+    if ((existingRoles ?? []).length > 0) {
+      const { error: clearError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', selectedMember.auth_id);
+      if (clearError) {
+        showToast(clearError.message, 'error');
+        setGranting(false);
+        return;
+      }
+    }
 
     const { error } = await supabase.from('user_roles').insert({
       user_id: selectedMember.auth_id,
@@ -353,11 +385,15 @@ export default function SettingsPage() {
               onChange={e => setSelectedRole(e.target.value)}
               style={{ width: '100%', height: 40, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', padding: '0 12px', fontSize: 14, fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box' }}
             >
-              {ADMIN_ROLES.filter(r => r.value !== 'director').map(r => (
+              {ADMIN_ROLES.filter(r => (isSuper ? r.value !== 'super_admin' : r.value !== 'director' && r.value !== 'super_admin')).map(r => (
                 <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
-            <p style={{ fontSize: 12, color: 'var(--faint)', marginTop: 6 }}>Director role cannot be assigned here — contact your Supabase admin.</p>
+            <p style={{ fontSize: 12, color: 'var(--faint)', marginTop: 6 }}>
+              {isSuper
+                ? 'Super Admin role cannot be assigned here — contact your Supabase admin. Assigning a role replaces the user’s existing role.'
+                : 'Director and Super Admin roles cannot be assigned here — contact your Supabase admin. Assigning a role replaces the user’s existing role.'}
+            </p>
           </div>
 
           <button

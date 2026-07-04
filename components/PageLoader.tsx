@@ -10,17 +10,18 @@ export default function PageLoader() {
       alignItems: 'center',
       justifyContent: 'center',
     }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/sode-logo.png"
+        src="/images/sode-primary-logo.png"
         alt="SODE"
-        width={120}
-        height={120}
-        style={{ animation: 'pulse 2.2s ease-in-out infinite' }}
+        width={110}
+        height={77}
+        style={{ objectFit: 'contain', animation: 'sode-loader-pulse 1.4s ease-in-out infinite' }}
       />
       <style>{`
-        @keyframes pulse {
+        @keyframes sode-loader-pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.4; transform: scale(0.92); }
+          50% { opacity: 0.4; transform: scale(0.94); }
         }
       `}</style>
     </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
 import { Icon, PILLARS } from '@/components/sode/icons';
 import { Avatar, PillarChip, OptionChips, TextInput, ProgressBar, StickyFooter } from '@/components/sode/ui';
@@ -112,7 +112,7 @@ export default function FormFillPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
       const { data: memberRow } = await supabase
         .from('members')

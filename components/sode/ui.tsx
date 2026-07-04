@@ -585,7 +585,7 @@ export function Toggle({ on, onChange }: ToggleProps) {
 
 export function StickyFooter({ children }: { children: ReactNode }) {
   return (
-    <div style={{
+    <div className="sode-sticky-footer" style={{
       position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 40,
       padding: "12px 20px calc(14px + env(safe-area-inset-bottom))",
       background: "rgba(255,255,255,.94)",

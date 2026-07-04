@@ -74,13 +74,16 @@ export const NEW_TESTAMENT: BibleBook[] = [
 
 export const ALL_BOOKS = [...OLD_TESTAMENT, ...NEW_TESTAMENT];
 
+// start_book / end_book were dropped from the bible_reading_plans table.
+// They remain optional here for backward compatibility: when absent, a plan
+// spans the full testament range.
 export interface BibleReadingPlanRow {
   id: string;
   member_id: string | null;
   devotion_plan_id: string | null;
   testament: 'old' | 'new' | 'both';
-  start_book: string;
-  end_book: string;
+  start_book?: string | null;
+  end_book?: string | null;
   chapters_per_day: number;
   start_date: string;
   created_at: string;
@@ -98,15 +101,16 @@ function booksForTestament(testament: 'old' | 'new' | 'both'): BibleBook[] {
   return testament === 'old' ? OLD_TESTAMENT : testament === 'new' ? NEW_TESTAMENT : ALL_BOOKS;
 }
 
-function getBooksInRange(testament: 'old' | 'new' | 'both', startBook: string, endBook: string): BibleBook[] {
+function getBooksInRange(testament: 'old' | 'new' | 'both', startBook?: string | null, endBook?: string | null): BibleBook[] {
   const pool = booksForTestament(testament);
+  if (!startBook || !endBook) return pool;
   const si = pool.findIndex(b => b.name === startBook);
   const ei = pool.findIndex(b => b.name === endBook);
   if (si === -1 || ei === -1) return pool;
   return pool.slice(si, Math.max(si, ei) + 1);
 }
 
-export function getTotalChapters(testament: 'old' | 'new' | 'both', startBook: string, endBook: string): number {
+export function getTotalChapters(testament: 'old' | 'new' | 'both', startBook?: string | null, endBook?: string | null): number {
   return getBooksInRange(testament, startBook, endBook).reduce((s, b) => s + b.chapters, 0);
 }
 

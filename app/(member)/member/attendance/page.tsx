@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
 import Image from 'next/image';
 import { Icon } from '@/components/sode/icons';
@@ -70,7 +70,7 @@ function AttendanceContent() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
       const { data: memberRow } = await supabase.from('members').select('id, onboarding_complete').eq('auth_id', user.id).maybeSingle();
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon, pillarOf } from '@/components/sode/icons';
 import { Stat, Toast, EmptyState, Sheet } from '@/components/sode/ui';
 import { CountdownRing } from '@/components/member/CountdownRing';
@@ -75,7 +75,7 @@ export default function SharePage() {
 
   const loadData = useCallback(async () => {
     const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) { router.replace('/login'); return; }
     const { data: memberRow } = await supabase.from('members').select('id, onboarding_complete').eq('auth_id', user.id).maybeSingle();
     if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }

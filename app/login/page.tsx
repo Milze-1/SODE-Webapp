@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase";
 import { Icon } from "@/components/sode/icons";
 
-type LoginMode = "member" | "admin";
+// Admin access moved to its own internal route: /internal/admin-login.
+// This page is member-only.
 
 function friendlyError(msg: string): string {
   if (msg.toLowerCase().includes("invalid login credentials"))
@@ -20,12 +21,9 @@ function friendlyError(msg: string): string {
   return msg;
 }
 
-const ADMIN_ROLES = new Set(["director","spiritual_lead","career_lead","business_lead","member_care_lead","data_ops_lead"]);
-
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<LoginMode>("member");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -36,7 +34,6 @@ function LoginInner() {
   useEffect(() => {
     const err = searchParams.get("error");
     if (err === "not_admin") {
-      setMode("admin");
       setError("You don't have admin access. Contact the Director to request access.");
     } else if (err) {
       setError(friendlyError(decodeURIComponent(err)));
@@ -68,26 +65,8 @@ function LoginInner() {
       return;
     }
 
-    const { data: rolesData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id);
-
-    const isAdmin = (rolesData ?? []).some((r: { role: string }) => ADMIN_ROLES.has(r.role));
-
-    if (mode === "admin") {
-      // Admin tab: must have admin role
-      if (!isAdmin) {
-        await supabase.auth.signOut();
-        setError("You don't have admin access. Contact the Director to request access.");
-        setLoading(false);
-        return;
-      }
-      router.push("/admin/dashboard");
-      return;
-    }
-
-    // Member tab: always go to member, even if they also have admin role
+    // Member login: always go to member, even if they also have an admin role.
+    // Admins use /internal/admin-login for the back office.
     const { data: member } = await supabase
       .from("members")
       .select("onboarding_complete")
@@ -102,7 +81,6 @@ function LoginInner() {
     setError("");
     const supabase = createClient();
     const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
-    if (mode === "admin") callbackUrl.searchParams.set("intent", "admin");
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: callbackUrl.toString() },
@@ -148,32 +126,6 @@ function LoginInner() {
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em" }}>Welcome back</h1>
             <p style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 4 }}>Sign in to continue</p>
           </div>
-
-          {/* Role switcher */}
-          <div style={{ display: "flex", gap: 6, background: "var(--surface)", borderRadius: 10, padding: 4, marginBottom: 18 }}>
-            {(["member", "admin"] as LoginMode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                style={{
-                  flex: 1, padding: "8px 0", borderRadius: 7, fontSize: 13.5, fontWeight: 700,
-                  background: mode === m ? "var(--navy)" : "transparent",
-                  color: mode === m ? "#fff" : "var(--muted)",
-                  transition: "background .15s, color .15s",
-                  textTransform: "capitalize",
-                }}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-          {mode === "admin" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", marginBottom: 16, padding: "7px 12px", background: "var(--navy-tint)", borderRadius: 8 }}>
-              <Icon name="lock" size={13} color="var(--navy)" />
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--navy)" }}>Leadership access</span>
-            </div>
-          )}
 
           {/* Form */}
           <form onSubmit={handleEmailLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -301,11 +253,7 @@ function LoginInner() {
 
           {/* Footer note */}
           <p style={{ textAlign: "center", fontSize: 13, color: "var(--muted)", marginTop: 20 }}>
-            {mode === "member" ? (
-              <>New to SODE?{" "}<a href="/register" style={{ color: "var(--navy)", fontWeight: 700, textDecoration: "none" }}>Create an account</a></>
-            ) : (
-              <span style={{ color: "var(--faint)" }}>Admin access is granted by the Director.</span>
-            )}
+            New to SODE?{" "}<a href="/register" style={{ color: "var(--navy)", fontWeight: 700, textDecoration: "none" }}>Create an account</a>
           </p>
         </div>
       </div>

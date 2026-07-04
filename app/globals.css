@@ -256,6 +256,9 @@ select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://ww
 @media (min-width: 768px) {
   .member-shell { display: flex !important; height: 100dvh; overflow: hidden; }
   .member-sidebar { display: flex !important; }
+  /* Keep the fixed footer (Done/Submit/Continue) inside the content column so
+     it never covers the sidebar's profile block and Sign out button. */
+  .member-shell .sode-sticky-footer { left: 240px !important; }
   .member-main { overflow: hidden; }
   .member-page { height: 100% !important; }
   .member-bottom-nav { display: none !important; }

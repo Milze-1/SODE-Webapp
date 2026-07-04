@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Avatar } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
@@ -74,7 +74,7 @@ export default function LeaderboardPage() {
   useEffect(() => {
     (async () => {
       const sb = createClient();
-      const { data: { user } } = await sb.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
 
       const { data: meRow } = await sb

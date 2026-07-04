@@ -113,9 +113,9 @@ export default function MemberSidebar() {
             await supabase.auth.signOut();
             router.push('/login');
           }}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', height: 34, borderRadius: 8, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--faint)', fontSize: 12.5, fontWeight: 600, marginTop: 6 }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, width: '100%', height: 38, borderRadius: 9, background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#dc2626', fontSize: 13, fontWeight: 700, marginTop: 6 }}
         >
-          <Icon name="logout" size={14} color="var(--faint)" /> Sign out
+          <Icon name="logout" size={15} color="#dc2626" /> Sign out
         </button>
       </div>
     </aside>

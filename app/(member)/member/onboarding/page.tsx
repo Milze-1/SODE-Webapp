@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import Image from 'next/image';
 import { Icon } from '@/components/sode/icons';
 import { Field, TextInput, OptionChips, StickyFooter } from '@/components/sode/ui';
+import PageLoader from '@/components/PageLoader';
 
 // ─── Life stage / dept options ────────────────────────────────────────────────
 
@@ -125,7 +126,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
 
       setUserId(user.id);
@@ -289,13 +290,7 @@ export default function OnboardingPage() {
   };
 
   if (loading) {
-    return (
-      <div style={{ height: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--navy-tint)', animation: 'sode-spin 1s linear infinite' }}>
-          <Icon name="refresh" size={22} color="var(--navy)" />
-        </div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   // Completion / welcome screen

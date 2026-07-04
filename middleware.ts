@@ -3,13 +3,46 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { hasAdminAccess } from "@/lib/roles";
 import type { Role } from "@/lib/roles";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 // Routes that don't require authentication
-const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/register"]);
+const PUBLIC_PATHS = new Set(["/login", "/forgot-password", "/register", "/internal/admin-login"]);
 // Auth routes that may be accessed with or without a session
 const AUTH_PATHS = ["/auth/callback", "/auth/reset-password", "/auth/set-password"];
 
+// ── Rate limits (per IP, sliding window) ─────────────────────────────────────
+// Best-effort in-memory protection against scripted/AI abuse. Pair with
+// Cloudflare + Supabase rate limits for hard guarantees (direct Supabase REST
+// calls bypass this middleware entirely).
+const API_LIMIT = { limit: 120, windowMs: 60_000 };   // API routes
+const AUTH_LIMIT = { limit: 20, windowMs: 60_000 };   // login / register / password pages
+const PAGE_LIMIT = { limit: 300, windowMs: 60_000 };  // everything else
+
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ── Rate limiting ──────────────────────────────────────────────────────────
+  const ip = clientIp(request);
+  const isApi = pathname.startsWith("/api");
+  const isAuthSensitive =
+    PUBLIC_PATHS.has(pathname) || pathname.startsWith("/auth/") || pathname === "/register";
+  const { limit, windowMs } = isApi ? API_LIMIT : isAuthSensitive ? AUTH_LIMIT : PAGE_LIMIT;
+  const scope = isApi ? "api" : isAuthSensitive ? "auth" : "page";
+  const rl = rateLimit(`${scope}:${ip}`, limit, windowMs);
+
+  if (!rl.ok) {
+    return new NextResponse(
+      isApi ? JSON.stringify({ error: "Too many requests. Slow down." }) : "Too many requests. Slow down.",
+      {
+        status: 429,
+        headers: {
+          "Content-Type": isApi ? "application/json" : "text/plain",
+          "Retry-After": String(rl.retryAfterSeconds),
+        },
+      },
+    );
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -36,8 +69,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-
   // Auth flow routes — always accessible
   if (AUTH_PATHS.some((p) => pathname.startsWith(p))) {
     return supabaseResponse;
@@ -45,7 +76,12 @@ export async function middleware(request: NextRequest) {
 
   // ── Unauthenticated ───────────────────────────────────────────────────────
   if (!user) {
-    if (pathname.startsWith("/member") || pathname.startsWith("/admin")) {
+    if (pathname.startsWith("/admin")) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/internal/admin-login";
+      return NextResponse.redirect(loginUrl);
+    }
+    if (pathname.startsWith("/member")) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
@@ -66,8 +102,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(setupUrl);
   }
 
-  // Redirect away from login/forgot-password if already signed in
-  if (PUBLIC_PATHS.has(pathname)) {
+  // Redirect away from member login/forgot-password if already signed in.
+  // The admin login page stays accessible while signed in so an admin can
+  // complete the 2FA challenge / enrollment step.
+  if (PUBLIC_PATHS.has(pathname) && pathname !== "/internal/admin-login") {
     const roles = await fetchRoles(supabase, user.id);
     const dest = hasAdminAccess(roles) ? "/admin/dashboard" : "/member/home";
     const destUrl = request.nextUrl.clone();
@@ -82,6 +120,21 @@ export async function middleware(request: NextRequest) {
       const memberUrl = request.nextUrl.clone();
       memberUrl.pathname = "/member/home";
       return NextResponse.redirect(memberUrl);
+    }
+
+    // Step-up enforcement: if the admin has 2FA enrolled, require the session
+    // to actually be at AAL2. A session that skipped the OTP step gets sent
+    // back to the admin login to complete verification.
+    try {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal && aal.nextLevel === "aal2" && aal.currentLevel !== aal.nextLevel) {
+        const mfaUrl = request.nextUrl.clone();
+        mfaUrl.pathname = "/internal/admin-login";
+        mfaUrl.search = "?error=mfa_required";
+        return NextResponse.redirect(mfaUrl);
+      }
+    } catch {
+      // MFA not enabled on this Supabase project — skip enforcement.
     }
   }
 

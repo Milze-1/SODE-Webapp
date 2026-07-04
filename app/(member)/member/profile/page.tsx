@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import Image from 'next/image';
 import { Icon } from '@/components/sode/icons';
 import { Avatar, Toggle, Segmented, Field, TextInput, Sheet, Toast } from '@/components/sode/ui';
@@ -10,6 +10,31 @@ import BottomNav from '@/components/member/bottom-nav';
 import { usePoints } from '@/lib/hooks/useRealtimeData';
 
 interface ToastPayload { msg: string; icon?: string; }
+
+type ExportFormat = 'pdf' | 'csv' | 'html';
+
+const EXPORT_FORMATS: { value: ExportFormat; label: string; sub: string }[] = [
+  { value: 'pdf',  label: 'PDF',         sub: 'Print-ready report — save as PDF' },
+  { value: 'csv',  label: 'CSV (Excel)', sub: 'Spreadsheet — opens in Excel / Sheets' },
+  { value: 'html', label: 'HTML',        sub: 'Styled web page you can open anywhere' },
+];
+
+function downloadBlob(content: string, mime: string, filename: string) {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(v: unknown): string {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 interface MemberData {
   id: string; name: string; email: string | null; whatsapp: string | null;
@@ -58,7 +83,7 @@ export default function ProfilePage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
       setAuthEmail(user.email ?? null);
       const { data: memberRow } = await supabase.from('members').select('id,name,email,whatsapp,life_stage,department,points,consent_contact,leaderboard_opt_in,onboarding_complete').eq('auth_id', user.id).maybeSingle();
@@ -111,6 +136,8 @@ export default function ProfilePage() {
 
   const [signingOut, setSigningOut] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportSheet, setExportSheet] = useState(false);
+  const [exportFmt, setExportFmt] = useState<ExportFormat>('pdf');
 
   const signOut = async () => {
     setSigningOut(true);
@@ -119,7 +146,7 @@ export default function ProfilePage() {
     router.replace('/login');
   };
 
-  const exportData = async () => {
+  const exportData = async (fmt: ExportFormat) => {
     if (!member?.id || exporting) return;
     setExporting(true);
     showToast({ msg: 'Preparing your export…' });
@@ -265,16 +292,59 @@ export default function ProfilePage() {
 </body>
 </html>`;
 
-      const blob = new Blob([html], { type: 'text/html' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `sode-report-${firstName}-${exportDate}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast({ msg: 'Report downloaded!', icon: 'check' });
+      if (fmt === 'html') {
+        downloadBlob(html, 'text/html', `sode-report-${firstName}-${exportDate}.html`);
+        showToast({ msg: 'Report downloaded!', icon: 'check' });
+      } else if (fmt === 'pdf') {
+        // Open the styled report and trigger the print dialog — user saves as PDF.
+        const w = window.open('', '_blank');
+        if (w) {
+          w.document.write(html);
+          w.document.close();
+          w.focus();
+          setTimeout(() => { try { w.print(); } catch { /* user can print manually */ } }, 400);
+          showToast({ msg: 'Use the print dialog to save as PDF.', icon: 'check' });
+        } else {
+          downloadBlob(html, 'text/html', `sode-report-${firstName}-${exportDate}.html`);
+          showToast({ msg: 'Pop-up blocked — downloaded HTML instead.' });
+        }
+      } else {
+        // CSV — one file with clearly separated sections; opens in Excel/Sheets.
+        const rows: string[] = [];
+        rows.push('SODE DATA EXPORT');
+        rows.push(`Exported,${exportDate}`);
+        rows.push('');
+        rows.push('PROFILE');
+        rows.push('Field,Value');
+        profileFields
+          .filter(([, v]) => v != null && v !== '')
+          .forEach(([l, v]) => rows.push(`${csvEscape(l)},${csvEscape(v)}`));
+        if (mountains.length) rows.push(`Mountains of influence,${csvEscape(mountains.join('; '))}`);
+        rows.push(`Total points,${totalPts}`);
+        rows.push('');
+        rows.push('POINTS');
+        rows.push('Event,Points,Note,Date');
+        points.forEach(e => rows.push([RULE_LABELS[e.rule_key] ?? e.rule_key.replace(/_/g, ' '), e.points, e.note ?? '', fmtD(e.created_at)].map(csvEscape).join(',')));
+        rows.push('');
+        rows.push('GOALS');
+        rows.push('Title,Pillar,Status,Current,Target,Unit,Due');
+        goals.forEach(g => rows.push([g.title, g.pillar ?? '', g.status ?? 'active', g.current ?? 0, g.target ?? '', g.unit ?? '', fmtD(g.due_date)].map(csvEscape).join(',')));
+        rows.push('');
+        rows.push('DEVOTION LOG');
+        rows.push('Date,Completed,Total');
+        devs.forEach(d => {
+          const cl = d.checklist;
+          const done  = cl ? Object.values(cl).filter(Boolean).length : (d.completed ? 1 : 0);
+          const total = cl ? Object.keys(cl).length : 1;
+          rows.push([fmtD(d.checkin_date ?? d.entry_date ?? null), done, total].map(csvEscape).join(','));
+        });
+        rows.push('');
+        rows.push('REFERRALS');
+        rows.push('Name,Email,Stage,Date');
+        refs.forEach(r => rows.push([r.name ?? '', r.email ?? '', r.stage.replace(/_/g, ' '), fmtD(r.created_at)].map(csvEscape).join(',')));
+        downloadBlob('\uFEFF' + rows.join('\r\n'), 'text/csv;charset=utf-8', `sode-data-${firstName}-${exportDate}.csv`);
+        showToast({ msg: 'Spreadsheet downloaded!', icon: 'check' });
+      }
     } catch {
       showToast({ msg: 'Export failed — please try again.' });
     } finally {
@@ -380,7 +450,7 @@ export default function ProfilePage() {
           <div className="card" style={{ overflow: 'hidden' }}>
             <SettingRow icon="settings" title="Settings" sub="Password, notifications, privacy" onClick={() => router.push('/member/settings')} />
             <hr className="divider" />
-            <SettingRow icon="download" title="Export my data" sub={exporting ? 'Preparing…' : undefined} onClick={exportData} />
+            <SettingRow icon="download" title="Export my data" sub={exporting ? 'Preparing…' : 'PDF, spreadsheet or web page'} onClick={() => setExportSheet(true)} />
             <hr className="divider" />
             <SettingRow icon="x" title="Request account deletion" danger onClick={() => showToast({ msg: 'Request noted — our team will follow up.' })} />
           </div>
@@ -418,6 +488,42 @@ export default function ProfilePage() {
           </Field>
           <button onClick={saveEdit} disabled={saving || !editName.trim()} className="btn btn-primary btn-block btn-lg" style={{ marginTop: 8 }}>
             {saving ? 'Saving…' : 'Save changes'}
+          </button>
+        </div>
+      </Sheet>
+
+      <Sheet open={exportSheet} onClose={() => setExportSheet(false)} title="Export my data">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted)', margin: 0, lineHeight: 1.5 }}>
+            Choose how you&apos;d like your SODE data exported.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {EXPORT_FORMATS.map(f => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setExportFmt(f.value)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', textAlign: 'left',
+                  borderRadius: 12, cursor: 'pointer',
+                  border: exportFmt === f.value ? '2px solid var(--navy)' : '1.5px solid var(--line-2)',
+                  background: exportFmt === f.value ? 'var(--navy-tint)' : 'var(--surface)',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>{f.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 1 }}>{f.sub}</div>
+                </div>
+                {exportFmt === f.value && <Icon name="check" size={17} stroke={2.6} color="var(--navy)" />}
+              </button>
+            ))}
+          </div>
+          <button
+            className="btn btn-primary btn-block btn-lg"
+            disabled={exporting}
+            onClick={async () => { setExportSheet(false); await exportData(exportFmt); }}
+          >
+            {exporting ? 'Preparing…' : `Export as ${EXPORT_FORMATS.find(f => f.value === exportFmt)?.label ?? ''}`}
           </button>
         </div>
       </Sheet>

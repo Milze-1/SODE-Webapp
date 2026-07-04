@@ -2,28 +2,46 @@
 // that importing this file from middleware does NOT pull in next/headers.
 
 export const ROLES = {
+  SUPER_ADMIN:       "super_admin",
   DIRECTOR:          "director",
   SPIRITUAL_LEAD:    "spiritual_lead",
   CAREER_LEAD:       "career_lead",
   BUSINESS_LEAD:     "business_lead",
   MEMBER_CARE_LEAD:  "member_care_lead",
   DATA_OPS_LEAD:     "data_ops_lead",
+  BUSINESS_DEV:      "business_dev",
+  EXTERNAL_MENTOR:   "external_mentor",
   MEMBER:            "member",
 } as const;
 
 export type Role = (typeof ROLES)[keyof typeof ROLES];
 
 const ADMIN_ROLES = new Set<Role>([
+  ROLES.SUPER_ADMIN,
   ROLES.DIRECTOR,
   ROLES.SPIRITUAL_LEAD,
   ROLES.CAREER_LEAD,
   ROLES.BUSINESS_LEAD,
   ROLES.MEMBER_CARE_LEAD,
   ROLES.DATA_OPS_LEAD,
+  // Sub-admins — scoped back-office access
+  ROLES.BUSINESS_DEV,
+  ROLES.EXTERNAL_MENTOR,
 ]);
 
 export function hasAdminAccess(roles: Role[]): boolean {
   return roles.some((r) => ADMIN_ROLES.has(r));
+}
+
+// Super-admin has unrestricted access to everything, including assigning and
+// unassigning any access. The Director keeps the same powers for backward
+// compatibility.
+export function isSuperAdmin(roles: Role[]): boolean {
+  return roles.includes(ROLES.SUPER_ADMIN);
+}
+
+export function canManageAccess(roles: Role[]): boolean {
+  return roles.includes(ROLES.SUPER_ADMIN) || roles.includes(ROLES.DIRECTOR);
 }
 
 // Server-only (Node.js runtime). Dynamic import keeps this file edge-safe.

@@ -18,12 +18,15 @@ import {
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 export const roleEnum = pgEnum("role", [
+  "super_admin",
   "director",
   "spiritual_lead",
   "career_lead",
   "business_lead",
   "member_care_lead",
   "data_ops_lead",
+  "business_dev",
+  "external_mentor",
   "member",
 ]);
 

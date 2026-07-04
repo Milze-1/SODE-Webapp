@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon, PILLARS, pillarOf } from '@/components/sode/icons';
 import {
   Avatar, PillarChip, ProgressRing, ProgressBar, StatusPill,
@@ -581,7 +581,7 @@ export default function HomePage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
 
       const cacheKey = `home-${user.id}`;
@@ -668,7 +668,7 @@ export default function HomePage() {
       const [rankRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
         supabase.from('members').select('id', { count: 'exact', head: true }).gt('points', memberRow.points ?? 0),
         supabase.from('mentor_pairings').select('id,mentor:mentor_id(id,name,pillar)').eq('mentee_id', memberRow.id).eq('status', 'active').maybeSingle(),
-        supabase.from('bible_reading_plans').select('start_date,start_book,chapters_per_day,testament,end_book').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('bible_reading_plans').select('start_date,chapters_per_day,testament').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('devotion_journal').select('checklist').eq('member_id', memberRow.id).eq('entry_date', today).maybeSingle(),
       ]);
 
@@ -679,7 +679,7 @@ export default function HomePage() {
 
       let computedDevotionRef: string | null = null;
       if (devotionPlanRes.data) {
-        const brp = devotionPlanRes.data as { start_date: string; start_book: string; chapters_per_day: number; testament: string; end_book: string };
+        const brp = devotionPlanRes.data as { start_date: string; chapters_per_day: number; testament: string };
         try {
           const { getDayPassage: gdp, getDayNumber: gdn } = await import('@/lib/bible-structure');
           const dn = gdn(brp.start_date);

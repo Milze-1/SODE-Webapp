@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Toggle, Toast } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
@@ -92,7 +92,7 @@ export default function SettingsPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
       setAuthEmail(user.email ?? '');
       const { data: row } = await supabase

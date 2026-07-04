@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
 import { Icon, PILLARS, pillarOf } from '@/components/sode/icons';
 import {
@@ -372,9 +372,10 @@ function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
       if (pillar === 'spiritual' && tpl.t === 'Daily devotion streak') {
         const { data: existingPlan } = await supabase.from('bible_reading_plans').select('id').eq('member_id', memberId).limit(1).maybeSingle();
         if (!existingPlan) {
+          // start_book / end_book columns were removed — a plan now spans the
+          // full testament (New Testament: Matthew → Revelation).
           await supabase.from('bible_reading_plans').insert({
-            member_id: memberId, testament: 'new', start_book: 'Matthew',
-            end_book: 'Revelation', chapters_per_day: 1,
+            member_id: memberId, testament: 'new', chapters_per_day: 1,
             start_date: new Date().toISOString().slice(0, 10),
           });
         }
@@ -1144,7 +1145,7 @@ export default function GoalsPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
       const { data: memberRow } = await supabase.from('members').select('id, points, onboarding_complete').eq('auth_id', user.id).maybeSingle();
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }

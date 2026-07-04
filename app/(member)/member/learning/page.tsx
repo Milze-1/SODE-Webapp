@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { PillarChip, SectionHead, EmptyState, StatusPill } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
@@ -48,7 +48,7 @@ export default function LearningPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
       const { data: memberRow } = await supabase.from('members').select('id, onboarding_complete').eq('auth_id', user.id).maybeSingle();
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }

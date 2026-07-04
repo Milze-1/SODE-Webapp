@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase';
+import { createClient, getAuthUser } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
 import { Icon } from '@/components/sode/icons';
 import BottomNav from '@/components/member/bottom-nav';
@@ -191,7 +191,7 @@ export default function DevotionPage() {
   useEffect(() => {
     (async () => {
       const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthUser();
       if (!user) { router.replace('/login'); return; }
 
       const { data: memberRow } = await supabase
