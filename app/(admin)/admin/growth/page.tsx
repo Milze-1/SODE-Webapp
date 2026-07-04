@@ -344,7 +344,7 @@ export default function GrowthPage() {
         }
       />
       <AdminBody>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 16, marginBottom: 16, alignItems: 'start' }}>
           <Panel title="Points rules" action={<span style={{ fontSize: 11.5, color: 'var(--muted)' }}>Invitations stay highest</span>} pad={false}>
             {loading ? (
               <div style={{ padding: 20, color: 'var(--muted)', fontSize: 13 }}>Loading rules…</div>
@@ -365,6 +365,7 @@ export default function GrowthPage() {
             )}
           </Panel>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Panel title="Referral funnel">
             {(() => {
               const maxCount = Math.max(...displayFunnel.map(f => f.v), 1);
@@ -428,10 +429,8 @@ export default function GrowthPage() {
               ))}
             </div>
           </Panel>
-        </div>
 
-        {/* ── Registration funnel (all members, not just referrals) ── */}
-        <div style={{ marginBottom: 16 }}>
+          {/* ── Registration funnel (all members, not just referrals) ── */}
           <Panel title="Registration funnel" action={<span style={{ fontSize: 11.5, color: 'var(--muted)' }}>All members · sign-up → 5 meetings</span>}>
             {(() => {
               const displayReg = regFunnel.length > 0 ? regFunnel : [
@@ -440,7 +439,7 @@ export default function GrowthPage() {
               const maxCount = Math.max(...displayReg.map(f => f.v), 1);
               return (
                 <>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', minHeight: 180, paddingBottom: 0, position: 'relative', maxWidth: 640, margin: '0 auto' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', minHeight: 150, paddingBottom: 0, position: 'relative' }}>
                     {displayReg.map((f, i) => {
                       let conversionText = '';
                       if (i > 0) {
@@ -475,7 +474,7 @@ export default function GrowthPage() {
                           <div style={{
                             width: '75%',
                             maxWidth: 50,
-                            height: Math.max(f.v > 0 ? Math.round((f.v / maxCount) * 120) : 4, 4),
+                            height: Math.max(f.v > 0 ? Math.round((f.v / maxCount) * 96) : 4, 4),
                             background: f.v > 0 ? 'linear-gradient(to top, #1e2a52, #3b82f6)' : 'var(--line-2)',
                             borderRadius: '6px 6px 0 0',
                             transition: 'height 0.3s ease',
@@ -502,18 +501,16 @@ export default function GrowthPage() {
               );
             })()}
           </Panel>
-        </div>
 
-        {/* ── Daily devotion close-outs vs platform members ── */}
-        <div style={{ marginBottom: 16 }}>
+          {/* ── Daily devotion close-outs vs platform members ── */}
           <Panel title="Daily devotion close-outs" action={<span style={{ fontSize: 11.5, color: 'var(--muted)' }}>Last 14 days · vs members on the platform</span>}>
             {devotionTrend.length === 0 ? (
               <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 13 }}>No devotion data yet.</div>
             ) : (
               (() => {
-                const width = 720;
-                const height = 170;
-                const padding = 26;
+                const width = 420;
+                const height = 150;
+                const padding = 22;
                 const maxVal = Math.max(totalMembers, ...devotionTrend.map(d => d.completed), 1);
                 const n = devotionTrend.length;
                 const xFor = (idx: number) => padding + (idx * (width - 2 * padding)) / (n - 1);
@@ -530,12 +527,12 @@ export default function GrowthPage() {
 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                       <div>
-                        <div className="tnum" style={{ fontSize: 24, fontWeight: 800, color: 'var(--navy)' }}>{today.completed} / {totalMembers}</div>
+                        <div className="tnum" style={{ fontSize: 22, fontWeight: 800, color: 'var(--navy)' }}>{today.completed} / {totalMembers}</div>
                         <div style={{ fontSize: 11, color: 'var(--muted)' }}>Closed out devotion today ({todayRate}%)</div>
                       </div>
-                      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>
                           <span style={{ width: 18, height: 3, borderRadius: 2, background: '#1e2a52', display: 'inline-block' }} /> Devotions closed
                         </div>
@@ -579,7 +576,7 @@ export default function GrowthPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: `0 ${padding}px`, marginTop: -4 }}>
                       {devotionTrend.map((d, idx) => (
                         <span key={idx} style={{ fontSize: 9.5, color: 'var(--muted)', fontWeight: 600, transform: 'rotate(0deg)' }}>
-                          {idx % 2 === 0 ? d.label.split(' ')[0] + ' ' + d.label.split(' ')[1] : ''}
+                          {idx % 3 === 0 ? d.label.split(' ')[0] + ' ' + d.label.split(' ')[1] : ''}
                         </span>
                       ))}
                     </div>
@@ -601,6 +598,7 @@ export default function GrowthPage() {
               })()
             )}
           </Panel>
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
