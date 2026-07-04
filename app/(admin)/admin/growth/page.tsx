@@ -12,6 +12,7 @@ interface PointRule {
 interface FunnelStage { l: string; v: number; }
 interface Inviter { name: string; count: number; }
 interface MonthlyGrowth { month: string; count: number; cumulative: number; }
+interface DevotionDay { date: string; label: string; completed: number; }
 
 interface MemberPoints {
   auth_id: string;
@@ -63,6 +64,9 @@ export default function GrowthPage() {
   const [showEdit, setShowEdit] = useState<PointRule | null>(null);
   const [rules, setRules] = useState<PointRule[]>([]);
   const [funnel, setFunnel] = useState<FunnelStage[]>([]);
+  const [regFunnel, setRegFunnel] = useState<FunnelStage[]>([]);
+  const [devotionTrend, setDevotionTrend] = useState<DevotionDay[]>([]);
+  const [totalMembers, setTotalMembers] = useState(0);
   const [topInviters, setTopInviters] = useState<Inviter[]>([]);
   const [growthTrend, setGrowthTrend] = useState<MonthlyGrowth[]>([]);
   const [editVal, setEditVal] = useState(0);
@@ -125,10 +129,16 @@ export default function GrowthPage() {
     const supabase = createClient();
 
     const load = async () => {
-      const [rulesRes, invRes, membersRes] = await Promise.all([
+      const devotionFrom = new Date();
+      devotionFrom.setDate(devotionFrom.getDate() - 13);
+      const devotionFromStr = devotionFrom.toISOString().slice(0, 10);
+
+      const [rulesRes, invRes, membersRes, attendanceRes, devotionRes] = await Promise.all([
         supabase.from('point_rules').select('id,rule_key,label,points,cap,cap_period,requires_verification,is_active').order('points', { ascending: false }),
         supabase.from('invitations').select('inviter_id,stage'),
         supabase.from('members').select('id,name,created_at').eq('onboarding_complete', true),
+        supabase.from('attendance_records').select('member_id').eq('status', 'present'),
+        supabase.from('devotion_checkins').select('member_id,checkin_date,completed').gte('checkin_date', devotionFromStr),
       ]);
 
       const ruleRows = (rulesRes.data ?? []) as PointRule[];
@@ -143,6 +153,40 @@ export default function GrowthPage() {
         { l: 'First Meeting', v: invitations.filter(i => ['first_attended','five_meetings','active'].includes(i.stage)).length },
         { l: '5 Meetings',    v: invitations.filter(i => ['five_meetings','active'].includes(i.stage)).length },
       ]);
+
+      // ── Registration funnel: all members, signup → first meeting → 5 meetings ──
+      const allMembers = (membersRes.data ?? []) as { id: string; name: string; created_at: string }[];
+      const attendanceCounts = new Map<string, number>();
+      ((attendanceRes.data ?? []) as { member_id: string }[]).forEach(a => {
+        attendanceCounts.set(a.member_id, (attendanceCounts.get(a.member_id) ?? 0) + 1);
+      });
+      const memberIds = new Set(allMembers.map(m => m.id));
+      const withFirstMeeting = allMembers.filter(m => (attendanceCounts.get(m.id) ?? 0) >= 1).length;
+      const withFiveMeetings = allMembers.filter(m => (attendanceCounts.get(m.id) ?? 0) >= 5).length;
+      setRegFunnel([
+        { l: 'Signed Up',     v: allMembers.length },
+        { l: 'First Meeting', v: withFirstMeeting },
+        { l: '5 Meetings',    v: withFiveMeetings },
+      ]);
+      setTotalMembers(allMembers.length);
+
+      // ── Devotion close-outs per day (last 14 days) ─────────────────────────
+      const devotionRows = ((devotionRes.data ?? []) as { member_id: string; checkin_date: string; completed: boolean }[])
+        .filter(d => d.completed && memberIds.has(d.member_id));
+      const perDay = new Map<string, number>();
+      devotionRows.forEach(d => perDay.set(d.checkin_date, (perDay.get(d.checkin_date) ?? 0) + 1));
+      const days: DevotionDay[] = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = d.toISOString().slice(0, 10);
+        days.push({
+          date: key,
+          label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+          completed: perDay.get(key) ?? 0,
+        });
+      }
+      setDevotionTrend(days);
 
       const inviterMap = new Map<string, number>();
       for (const inv of invitations) {
@@ -198,6 +242,8 @@ export default function GrowthPage() {
     const channel = supabase.channel('admin-growth')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invitations' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'point_rules' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_records' }, load)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'devotion_checkins' }, load)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, loadMemberPoints)
       .subscribe();
 
@@ -381,6 +427,179 @@ export default function GrowthPage() {
                 </div>
               ))}
             </div>
+          </Panel>
+        </div>
+
+        {/* ── Registration funnel (all members, not just referrals) ── */}
+        <div style={{ marginBottom: 16 }}>
+          <Panel title="Registration funnel" action={<span style={{ fontSize: 11.5, color: 'var(--muted)' }}>All members · sign-up → 5 meetings</span>}>
+            {(() => {
+              const displayReg = regFunnel.length > 0 ? regFunnel : [
+                { l: 'Signed Up', v: 0 }, { l: 'First Meeting', v: 0 }, { l: '5 Meetings', v: 0 },
+              ];
+              const maxCount = Math.max(...displayReg.map(f => f.v), 1);
+              return (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', minHeight: 180, paddingBottom: 0, position: 'relative', maxWidth: 640, margin: '0 auto' }}>
+                    {displayReg.map((f, i) => {
+                      let conversionText = '';
+                      if (i > 0) {
+                        const prevStage = displayReg[i - 1];
+                        const rate = prevStage.v > 0 ? Math.round((f.v / prevStage.v) * 100) : 0;
+                        conversionText = `${rate}% conv`;
+                      }
+                      return (
+                        <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, position: 'relative', flex: 1 }}>
+                          {conversionText && (
+                            <div style={{
+                              position: 'absolute',
+                              left: '0%',
+                              top: '50%',
+                              transform: 'translate(-50%, -50%)',
+                              background: 'var(--surface)',
+                              border: '1px solid var(--line-2)',
+                              borderRadius: '12px',
+                              padding: '3px 8px',
+                              fontSize: '9px',
+                              fontWeight: 700,
+                              color: 'var(--muted)',
+                              zIndex: 1,
+                              boxShadow: 'var(--sh-sm)'
+                            }}>
+                              {conversionText}
+                            </div>
+                          )}
+                          <span style={{ fontSize: 16, fontWeight: 800, color: f.v > 0 ? '#1e2a52' : '#999' }} className="tnum">
+                            {f.v}
+                          </span>
+                          <div style={{
+                            width: '75%',
+                            maxWidth: 50,
+                            height: Math.max(f.v > 0 ? Math.round((f.v / maxCount) * 120) : 4, 4),
+                            background: f.v > 0 ? 'linear-gradient(to top, #1e2a52, #3b82f6)' : 'var(--line-2)',
+                            borderRadius: '6px 6px 0 0',
+                            transition: 'height 0.3s ease',
+                            boxShadow: f.v > 0 ? '0 4px 6px -1px rgba(30, 42, 82, 0.2)' : 'none',
+                          }} />
+                          <span style={{ fontSize: 11, color: '#6b7280', marginTop: 2, whiteSpace: 'nowrap', fontWeight: 600 }}>{f.l}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+                    {[
+                      [String(regFunnel[0]?.v ?? 0), 'Signed up'],
+                      [regFunnel[0]?.v ? `${Math.round(((regFunnel[1]?.v ?? 0) / regFunnel[0].v) * 100)}%` : '0%', 'Attend a meeting'],
+                      [regFunnel[0]?.v ? `${Math.round(((regFunnel[2]?.v ?? 0) / regFunnel[0].v) * 100)}%` : '0%', 'Reach 5 meetings'],
+                    ].map(([v, l], i) => (
+                      <div key={i} style={{ textAlign: 'center' }}>
+                        <div className="tnum" style={{ fontSize: 20, fontWeight: 800, color: 'var(--navy)' }}>{v}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2, fontWeight: 600 }}>{l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
+          </Panel>
+        </div>
+
+        {/* ── Daily devotion close-outs vs platform members ── */}
+        <div style={{ marginBottom: 16 }}>
+          <Panel title="Daily devotion close-outs" action={<span style={{ fontSize: 11.5, color: 'var(--muted)' }}>Last 14 days · vs members on the platform</span>}>
+            {devotionTrend.length === 0 ? (
+              <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 13 }}>No devotion data yet.</div>
+            ) : (
+              (() => {
+                const width = 720;
+                const height = 170;
+                const padding = 26;
+                const maxVal = Math.max(totalMembers, ...devotionTrend.map(d => d.completed), 1);
+                const n = devotionTrend.length;
+                const xFor = (idx: number) => padding + (idx * (width - 2 * padding)) / (n - 1);
+                const yFor = (v: number) => height - padding - (v * (height - 2 * padding)) / maxVal;
+
+                const points = devotionTrend.map((d, idx) => ({ x: xFor(idx), y: yFor(d.completed) }));
+                const pathData = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+                const areaData = `${pathData} L ${points[n - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+                const membersY = yFor(totalMembers);
+
+                const today = devotionTrend[n - 1];
+                const todayRate = totalMembers > 0 ? Math.round((today.completed / totalMembers) * 100) : 0;
+                const avg = Math.round(devotionTrend.reduce((s, d) => s + d.completed, 0) / n);
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div className="tnum" style={{ fontSize: 24, fontWeight: 800, color: 'var(--navy)' }}>{today.completed} / {totalMembers}</div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)' }}>Closed out devotion today ({todayRate}%)</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>
+                          <span style={{ width: 18, height: 3, borderRadius: 2, background: '#1e2a52', display: 'inline-block' }} /> Devotions closed
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--muted)', fontWeight: 600 }}>
+                          <span style={{ width: 18, height: 0, borderTop: '2px dashed #10b981', display: 'inline-block' }} /> Members on platform ({totalMembers})
+                        </div>
+                      </div>
+                    </div>
+
+                    <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}>
+                      <defs>
+                        <linearGradient id="devotion-area-grad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#1e2a52" stopOpacity="0.15" />
+                          <stop offset="100%" stopColor="#1e2a52" stopOpacity="0.0" />
+                        </linearGradient>
+                      </defs>
+
+                      <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="var(--line-2)" strokeWidth={1} />
+
+                      {/* Reference: total members on the platform */}
+                      <line x1={padding} y1={membersY} x2={width - padding} y2={membersY} stroke="#10b981" strokeWidth={1.5} strokeDasharray="5 4" />
+                      <text x={width - padding} y={membersY - 5} textAnchor="end" style={{ fontSize: 9.5, fontWeight: 800, fill: '#10b981', fontFamily: 'var(--font-mono)' }}>
+                        {totalMembers} members
+                      </text>
+
+                      <path d={areaData} fill="url(#devotion-area-grad)" />
+                      <path d={pathData} fill="none" stroke="#1e2a52" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+
+                      {points.map((p, idx) => (
+                        <g key={idx}>
+                          <circle cx={p.x} cy={p.y} r={3.5} fill="#fff" stroke="#1e2a52" strokeWidth={2} />
+                          {devotionTrend[idx].completed > 0 && (
+                            <text x={p.x} y={p.y - 8} textAnchor="middle" style={{ fontSize: 9, fontWeight: 800, fill: '#1e2a52', fontFamily: 'var(--font-mono)' }}>
+                              {devotionTrend[idx].completed}
+                            </text>
+                          )}
+                        </g>
+                      ))}
+                    </svg>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: `0 ${padding}px`, marginTop: -4 }}>
+                      {devotionTrend.map((d, idx) => (
+                        <span key={idx} style={{ fontSize: 9.5, color: 'var(--muted)', fontWeight: 600, transform: 'rotate(0deg)' }}>
+                          {idx % 2 === 0 ? d.label.split(' ')[0] + ' ' + d.label.split(' ')[1] : ''}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-around', paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+                      {[
+                        [`${todayRate}%`, "Today's close-out rate"],
+                        [String(avg), 'Avg close-outs / day (14d)'],
+                        [String(Math.max(...devotionTrend.map(d => d.completed))), 'Best day (14d)'],
+                      ].map(([v, l], i) => (
+                        <div key={i} style={{ textAlign: 'center' }}>
+                          <div className="tnum" style={{ fontSize: 20, fontWeight: 800, color: 'var(--navy)' }}>{v}</div>
+                          <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2, fontWeight: 600 }}>{l}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()
+            )}
           </Panel>
         </div>
 
