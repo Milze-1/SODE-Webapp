@@ -22,7 +22,7 @@ export function AdminBody({ children }: { children: React.ReactNode }) {
   // minHeight: 0 lets this flex child shrink below its content height so
   // overflowY: auto actually engages (otherwise tall pages get clipped with
   // no scroll on shorter laptop screens).
-  return <div className="noscroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 24 }}>{children}</div>;
+  return <div className="slim-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 24 }}>{children}</div>;
 }
 
 export function Panel({ title, action, children, pad = true }: {

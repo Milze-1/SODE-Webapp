@@ -56,7 +56,7 @@ export default function MemberSidebar() {
         <Image src="/images/sode-primary-logo.png" alt="SODE" width={120} height={48} className="object-contain" />
       </div>
 
-      <nav className="noscroll" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+      <nav className="slim-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1, minHeight: 0 }}>
         {NAV.map(n => {
           const active = pathname === n.href || pathname.startsWith(n.href + '/');
           return (
