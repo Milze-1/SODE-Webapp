@@ -62,6 +62,8 @@ function AdminLoginInner() {
       setError("Two-factor verification is required to access the admin portal.");
     } else if (err === "session_timeout") {
       setError("You were signed out after 30 minutes of inactivity. Please sign in again.");
+      // Kill the Supabase session too — the middleware only redirected.
+      createClient().auth.signOut().catch(() => {});
     } else if (err) {
       setError(friendlyError(decodeURIComponent(err)));
     }

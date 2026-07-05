@@ -18,6 +18,11 @@ const API_LIMIT = { limit: 120, windowMs: 60_000 };   // API routes
 const AUTH_LIMIT = { limit: 20, windowMs: 60_000 };   // login / register / password pages
 const PAGE_LIMIT = { limit: 300, windowMs: 60_000 };  // everything else
 
+// Admin idle timeout — enforced server-side via a last-activity cookie so a
+// stale/frozen tab can never re-enter the admin area after the gap.
+const ADMIN_IDLE_MS = 30 * 60 * 1000;
+const ADMIN_IDLE_COOKIE = "sode-admin-la";
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -141,6 +146,26 @@ export async function middleware(request: NextRequest) {
       // Could not determine assurance level — fail open rather than lock
       // every admin out.
     }
+
+    // Idle timeout: if the last admin request was more than 30 minutes ago,
+    // force a fresh sign-in. The admin login page clears the Supabase session
+    // when it receives ?error=session_timeout.
+    const lastActiveRaw = request.cookies.get(ADMIN_IDLE_COOKIE)?.value;
+    const lastActive = Number(lastActiveRaw);
+    if (lastActiveRaw && Number.isFinite(lastActive) && Date.now() - lastActive > ADMIN_IDLE_MS) {
+      const timeoutUrl = request.nextUrl.clone();
+      timeoutUrl.pathname = "/internal/admin-login";
+      timeoutUrl.search = "?error=session_timeout";
+      const timeoutRes = NextResponse.redirect(timeoutUrl);
+      timeoutRes.cookies.set(ADMIN_IDLE_COOKIE, "", { path: "/", maxAge: 0 });
+      return timeoutRes;
+    }
+    supabaseResponse.cookies.set(ADMIN_IDLE_COOKIE, String(Date.now()), {
+      path: "/",
+      maxAge: 60 * 60 * 12,
+      httpOnly: true,
+      sameSite: "lax",
+    });
   }
 
   return supabaseResponse;
