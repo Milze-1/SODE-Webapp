@@ -345,6 +345,21 @@ export const invites = pgTable("invites", {
   updatedAt:        timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+// External mentor invites — pending until the invitee registers
+export const mentorInvites = pgTable("mentor_invites", {
+  id:               uuid("id").primaryKey().defaultRandom(),
+  name:             text("name").notNull(),
+  email:            varchar("email", { length: 255 }).notNull(),
+  pillar:           pillarEnum("pillar"),
+  mentorCapacity:   integer("mentor_capacity").notNull().default(3),
+  status:           text("status").notNull().default("pending"), // 'pending' | 'accepted' | 'revoked'
+  invitedBy:        uuid("invited_by"),                          // auth.users.id
+  acceptedMemberId: uuid("accepted_member_id").references(() => members.id, { onDelete: "set null" }),
+  acceptedAt:       timestamp("accepted_at", { withTimezone: true }),
+  createdAt:        timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt:        timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 export const pointsLog = pgTable("points_log", {
   id:        uuid("id").primaryKey().defaultRandom(),
   memberId:  uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),

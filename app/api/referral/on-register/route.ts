@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { processReferralOnRegister } from '@/lib/referral';
+import { applyMentorInvite } from '@/lib/mentor-invite';
 
 export async function POST(req: Request) {
   const body = await req.json() as {
@@ -41,6 +42,15 @@ export async function POST(req: Request) {
   if (!resolvedMemberId) {
     console.error('[on-register] Could not resolve memberId');
     return Response.json({ error: 'Could not resolve memberId' }, { status: 400 });
+  }
+
+  // Apply a pending external-mentor invite, if one exists for this email
+  if (email) {
+    try {
+      await applyMentorInvite(email, resolvedMemberId);
+    } catch (err) {
+      console.error('[on-register] mentor invite apply failed (non-fatal):', err);
+    }
   }
 
   try {

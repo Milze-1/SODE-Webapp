@@ -7,7 +7,7 @@ import { AdminTopbar, AdminBody, FilterChip, AdminSearch, Panel, THead, TRow, Sk
 
 interface MemberRow {
   id: string; name: string; email: string | null; whatsapp: string | null; pillar: string | null;
-  life_stage: string | null; department: string | null; is_leader: boolean | null;
+  life_stage: string | null; department: string | null; is_leader: boolean | null; is_mentor: boolean | null;
   onboarding_complete: boolean; created_at: string; updated_at: string | null;
   points: number | null; auth_id: string | null;
 }
@@ -72,7 +72,7 @@ export default function MembersPage() {
 
         const { data } = await supabase
           .from('members')
-          .select('id,name,email,whatsapp,pillar,life_stage,department,is_leader,onboarding_complete,created_at,updated_at,points,auth_id')
+          .select('id,name,email,whatsapp,pillar,life_stage,department,is_leader,is_mentor,onboarding_complete,created_at,updated_at,points,auth_id')
           .order('created_at', { ascending: false });
         setMembers((data ?? []) as MemberRow[]);
       } catch { setError(true); }
@@ -257,9 +257,11 @@ export default function MembersPage() {
                     ? <PillarChip pillar={m.pillar} size="sm" />
                     : <span style={{ color: 'var(--faint)', fontSize: 12 }}>{m.life_stage?.replace(/_/g, ' ') ?? '—'}</span>}
                   <span style={{ color: m.department ? 'var(--ink)' : 'var(--faint)' }}>{m.department ?? '—'}</span>
-                  {m.is_leader
-                    ? <span style={{ fontWeight: 600, color: 'var(--navy)' }}>Leader</span>
-                    : <span style={{ color: 'var(--muted)' }}>Member</span>}
+                  {m.is_mentor
+                    ? <span style={{ fontWeight: 600, color: 'var(--navy)' }}>Mentor{m.is_leader ? ' · Leader' : ''}</span>
+                    : m.is_leader
+                      ? <span style={{ fontWeight: 600, color: 'var(--navy)' }}>Leader</span>
+                      : <span style={{ color: 'var(--muted)' }}>Member</span>}
                   <span className="tnum" style={{ color: 'var(--muted)' }}>{relTime(m.updated_at)}</span>
                 </TRow>
               ))}

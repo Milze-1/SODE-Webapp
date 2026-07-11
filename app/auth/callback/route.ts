@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
 import { getUserRoles, hasAdminAccess } from "@/lib/roles";
 import { processReferralOnRegister } from "@/lib/referral";
+import { applyMentorInvite } from "@/lib/mentor-invite";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -81,6 +82,10 @@ export async function GET(request: Request) {
       // Process referral for the new Google OAuth member (fire and forget)
       if (newMemberId && user.email) {
         processReferralOnRegister(user.email, newMemberId, refCode ?? null).catch(() => {});
+        // Apply a pending external-mentor invite, if one exists for this email
+        await applyMentorInvite(user.email, newMemberId).catch((e) =>
+          console.error("[callback] mentor invite apply failed (non-fatal):", e)
+        );
       }
     }
   }
@@ -111,6 +116,10 @@ export async function GET(request: Request) {
 
       if (memberId) {
         processReferralOnRegister(storedEmail, memberId, storedRefCode).catch(console.error);
+        // Apply a pending external-mentor invite, if one exists for this email
+        await applyMentorInvite(user.email ?? storedEmail, memberId).catch((e) =>
+          console.error("[callback] mentor invite apply failed (non-fatal):", e)
+        );
       } else {
         console.error("[callback] Could not find member record for auth_id:", user.id);
       }

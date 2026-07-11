@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase';
 import { PILLAR_OPTIONS } from '@/lib/forms-audience';
 
 interface MemberRow { id: string; name: string; email: string | null; pillar: string | null; is_mentor: boolean; mentor_capacity: number | null; }
+interface MentorInviteRow { id: string; name: string; email: string; pillar: string | null; mentor_capacity: number | null; status: string; created_at: string | null; }
 interface PairingRow {
   id: string; status: string; pillar: string | null; matched_at: string | null;
   mentee: { id: string; name: string } | null;
@@ -47,16 +48,20 @@ export default function MentorshipPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [invitePillar, setInvitePillar] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<MentorInviteRow[]>([]);
+  const [resendingId, setResendingId] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
     const supabase = createClient();
-    const [mentorsRes, pairingsRes] = await Promise.all([
+    const [mentorsRes, pairingsRes, invitesRes] = await Promise.all([
       supabase.from('members').select('id,name,email,pillar,is_mentor,mentor_capacity').eq('is_mentor', true).order('name'),
       supabase.from('mentor_pairings').select('id,status,pillar,matched_at,mentee:mentee_id(id,name),mentor:mentor_id(id,name)').order('matched_at', { ascending: false }),
+      supabase.from('mentor_invites').select('id,name,email,pillar,mentor_capacity,status,created_at').eq('status', 'pending').order('created_at', { ascending: false }),
     ]);
     const mentorRows = (mentorsRes.data ?? []) as unknown as MemberRow[];
     setMentors(mentorRows);
     setPairings((pairingsRes.data ?? []) as unknown as PairingRow[]);
+    setPendingInvites((invitesRes.data ?? []) as unknown as MentorInviteRow[]);
 
     if (mentorRows.length) {
       const { data: activePairs } = await supabase.from('mentor_pairings').select('mentor_id').eq('status', 'active');
@@ -130,27 +135,60 @@ export default function MentorshipPage() {
     if (!inviteName || !inviteEmail) return;
     setInviting(true);
     try {
-      const supabase = createClient();
-      const { data: newMember, error } = await supabase
-        .from('members')
-        .insert({ name: inviteName, email: inviteEmail, pillar: invitePillar || null, is_mentor: true, onboarding_complete: false })
-        .select('id')
-        .single();
-      if (error || !newMember) { showToast('Could not send invite.', 'x'); return; }
-      await supabase.from('reminders').insert({
-        member_id: newMember.id,
-        type: 'custom',
-        message: `Welcome to SODE, ${inviteName} — complete your mentor profile to get matched with mentees.`,
-        scheduled_at: new Date().toISOString(),
-        channel: 'email',
+      const res = await fetch('/api/admin/invite-mentor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: inviteName, email: inviteEmail, pillar: invitePillar || null }),
       });
-      showToast(`Invite sent to ${inviteName} ✓`, 'mail');
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        showToast(data.error ?? 'Could not send invite.', 'x');
+        return;
+      }
+      if (data.outcome === 'existing_member_promoted') {
+        showToast(`${data.memberName} is already a member — set as mentor ✓`, 'check');
+      } else if (data.outcome === 'already_mentor') {
+        showToast(`${data.memberName} is already a mentor.`, 'check');
+      } else {
+        showToast(`Invite sent to ${inviteName} ✓`, 'mail');
+      }
       setInviteName(''); setInviteEmail(''); setInvitePillar('');
       setShowInvite(false);
       loadAll();
+    } catch {
+      showToast('Could not send invite.', 'x');
     } finally {
       setInviting(false);
     }
+  };
+
+  const resendInvite = async (inv: MentorInviteRow) => {
+    setResendingId(inv.id);
+    try {
+      const res = await fetch('/api/admin/invite-mentor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: inv.name, email: inv.email, pillar: inv.pillar, capacity: inv.mentor_capacity }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) showToast(`Invite re-sent to ${inv.name} ✓`, 'mail');
+      else showToast(data.error ?? 'Could not resend invite.', 'x');
+    } catch {
+      showToast('Could not resend invite.', 'x');
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const revokeInvite = async (inv: MentorInviteRow) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('mentor_invites')
+      .update({ status: 'revoked', updated_at: new Date().toISOString() })
+      .eq('id', inv.id);
+    if (error) { showToast('Could not revoke invite.', 'x'); return; }
+    showToast(`Invite to ${inv.name} revoked.`, 'check');
+    setPendingInvites(rows => rows.filter(r => r.id !== inv.id));
   };
 
   const updateStatus = async (pairingId: string, status: string) => {
@@ -350,6 +388,31 @@ export default function MentorshipPage() {
                 </div>
               </Panel>
             </div>
+
+            {/* Pending mentor invites */}
+            {pendingInvites.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+              <Panel title="Pending mentor invites" pad={false}>
+                <THead cols={['Name', 'Email', 'Pillar', 'Invited', '']} template="1fr 1.3fr .7fr .7fr .9fr" />
+                {pendingInvites.map(inv => (
+                  <TRow key={inv.id} template="1fr 1.3fr .7fr .7fr .9fr">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Avatar name={inv.name} size={26} tone="grey" />{inv.name}
+                    </div>
+                    <div style={{ color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{inv.email}</div>
+                    <div>{inv.pillar ?? '—'}</div>
+                    <div className="tnum" style={{ color: 'var(--muted)' }}>{inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}</div>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button className="btn btn-ghost btn-sm" style={{ height: 28, fontSize: 12 }} disabled={resendingId === inv.id} onClick={() => resendInvite(inv)}>
+                        {resendingId === inv.id ? 'Sending…' : 'Resend'}
+                      </button>
+                      <button className="btn btn-ghost btn-sm" style={{ height: 28, fontSize: 12, color: 'var(--muted)' }} onClick={() => revokeInvite(inv)}>Revoke</button>
+                    </div>
+                  </TRow>
+                ))}
+              </Panel>
+              </div>
+            )}
 
             {/* Pairing log */}
             <Panel title="Pairing log" pad={false}>
