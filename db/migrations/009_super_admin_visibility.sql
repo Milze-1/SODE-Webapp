@@ -25,14 +25,14 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
   )
 $$;
 
-CREATE POLICY "goals_read_super_admin"
+CREATE POLICY goals_read_super_admin
   ON public.goals FOR SELECT TO authenticated
   USING (public.auth_is_super_admin());
 
-CREATE POLICY "wins_read_super_admin"
+CREATE POLICY wins_read_super_admin
   ON public.wins FOR SELECT TO authenticated
   USING (public.auth_is_super_admin());
 
-CREATE POLICY "course_completions_read_super_admin"
+CREATE POLICY course_completions_read_super_admin
   ON public.course_completions FOR SELECT TO authenticated
   USING (public.auth_is_super_admin());
