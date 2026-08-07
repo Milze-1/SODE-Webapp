@@ -1,0 +1,5278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The School of Daniels & Esthers - Dominion City Victoria Island</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Outfit:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --navy: #0D1B4B;
+      --royal: #1A3A8C;
+      --royal-mid: #2952B3;
+      --royal-soft: #E8EEFF;
+      --gold: #B8922A;
+      --gold-light: #F5E9C8;
+      --white: #FFFFFF;
+      --off-white: #FAFBFF;
+      --gray-100: #F2F4FA;
+      --gray-200: #E2E6F0;
+      --gray-400: #8892AB;
+      --gray-700: #3A4460;
+      --black: #0A0E1A;
+      --ff-display: 'Cormorant Garamond', Georgia, serif;
+      --ff-body: 'Outfit', sans-serif;
+      --radius: 12px;
+      --radius-lg: 20px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--ff-body);
+      background: var(--off-white);
+      color: var(--gray-700);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ NAV ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--gray-200);
+      transition: box-shadow 0.3s;
+    }
+
+    nav.scrolled {
+      box-shadow: 0 4px 24px rgba(13, 27, 75, 0.08);
+    }
+
+    .nav-logo img {
+      height: 52px;
+      width: auto;
+      display: block;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 28px;
+      list-style: none;
+      align-items: center;
+    }
+
+    .nav-links a {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--gray-700);
+      text-decoration: none;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      position: relative;
+      padding-bottom: 2px;
+      transition: color 0.2s;
+    }
+
+    .nav-links a::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 1.5px;
+      background: var(--royal);
+      transition: width 0.25s ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--royal);
+    }
+
+    .nav-links a:hover::after {
+      width: 100%;
+    }
+
+    .nav-cta {
+      background: var(--royal) !important;
+      color: var(--white) !important;
+      padding: 10px 22px !important;
+      border-radius: 6px !important;
+      font-size: 12px !important;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .nav-cta:hover {
+      background: var(--navy) !important;
+      transform: translateY(-1px);
+    }
+
+    .nav-cta::after {
+      display: none !important;
+    }
+
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 6px;
+    }
+
+    .hamburger span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--navy);
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ HERO ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #home {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      align-items: center;
+      padding: 100px 5% 80px;
+      gap: 60px;
+      position: relative;
+      overflow: hidden;
+      background: var(--white);
+    }
+
+    .hero-bg-pattern {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle at 75% 30%, rgba(26, 58, 140, 0.06) 0%, transparent 55%),
+        radial-gradient(circle at 20% 80%, rgba(184, 146, 42, 0.07) 0%, transparent 45%);
+      pointer-events: none;
+    }
+
+    .hero-grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: linear-gradient(rgba(26, 58, 140, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 58, 140, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      animation: fadeUp 0.9s ease both;
+    }
+
+    .hero-aside {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      animation: fadeUp 1s 0.1s ease both;
+    }
+
+    .hero-visual {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 20px 50px rgba(13, 27, 75, 0.16);
+    }
+
+    .hero-visual img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.45s ease;
+    }
+
+    .hero-visual:hover img {
+      transform: scale(1.04);
+    }
+
+    .hero-visual-caption {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      background: rgba(10, 14, 26, 0.65);
+      color: var(--white);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      backdrop-filter: blur(4px);
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--royal);
+      margin-bottom: 20px;
+    }
+
+    .hero-eyebrow::before {
+      content: '';
+      display: block;
+      width: 32px;
+      height: 1.5px;
+      background: var(--gold);
+    }
+
+    .hero-title {
+      font-family: var(--ff-display);
+      font-size: clamp(52px, 7.5vw, 92px);
+      font-weight: 600;
+      line-height: 1.02;
+      color: var(--navy);
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .hero-title em {
+      font-style: italic;
+      color: var(--royal);
+      font-weight: 400;
+    }
+
+    .hero-tagline {
+      font-size: clamp(17px, 2.2vw, 22px);
+      font-weight: 400;
+      color: var(--gray-700);
+      max-width: 520px;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .hero-meta {
+      display: flex;
+      gap: 28px;
+      margin-bottom: 44px;
+      flex-wrap: wrap;
+    }
+
+    .hero-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--gray-700);
+    }
+
+    .hero-meta-item .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--royal-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .hero-meta-item .icon svg {
+      width: 15px;
+      height: 15px;
+      stroke: var(--royal);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--royal);
+      color: var(--white);
+      padding: 15px 34px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      background: var(--navy);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(13, 27, 75, 0.2);
+    }
+
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--navy);
+      padding: 15px 28px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-decoration: none;
+      border: 1.5px solid var(--gray-200);
+      transition: border-color 0.2s, color 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--royal);
+      color: var(--royal);
+      transform: translateY(-2px);
+    }
+
+    .hero-stat-row {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius);
+      padding: 20px 28px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(13, 27, 75, 0.06);
+      min-width: 130px;
+      flex: 1 1 130px;
+    }
+
+    .stat-card .stat-num {
+      font-family: var(--ff-display);
+      font-size: 38px;
+      font-weight: 600;
+      color: var(--royal);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-card .stat-label {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gray-400);
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ SECTION SHELL ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    section {
+      padding: 100px 5%;
+    }
+
+    .section-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--royal);
+      margin-bottom: 16px;
+    }
+
+    .section-label::before {
+      content: '';
+      display: block;
+      width: 24px;
+      height: 1.5px;
+      background: var(--gold);
+    }
+
+    .section-title {
+      font-family: var(--ff-display);
+      font-size: clamp(34px, 4vw, 56px);
+      font-weight: 600;
+      line-height: 1.12;
+      color: var(--navy);
+      margin-bottom: 16px;
+    }
+
+    .section-title em {
+      font-style: italic;
+      color: var(--royal);
+      font-weight: 400;
+    }
+
+    .section-body {
+      font-size: 16px;
+      color: var(--gray-400);
+      max-width: 600px;
+      line-height: 1.8;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ VISION ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #vision {
+      background: var(--white);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: center;
+    }
+
+    .vision-image {
+      margin-top: 26px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 10px 30px rgba(13, 27, 75, 0.09);
+    }
+
+    .vision-image img {
+      width: 100%;
+      display: block;
+      height: 280px;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .vision-image:hover img {
+      transform: scale(1.05);
+    }
+
+    .vision-right {
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    .vision-card {
+      padding: 28px 32px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--gray-200);
+      background: var(--off-white);
+      transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+    }
+
+    .vision-card:hover {
+      border-color: rgba(26, 58, 140, 0.3);
+      box-shadow: 0 8px 32px rgba(26, 58, 140, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .vision-card .vc-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--royal-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .vision-card .vc-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--royal);
+      fill: none;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .vision-card h4 {
+      font-family: var(--ff-display);
+      font-size: 21px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+
+    .vision-card p {
+      font-size: 14px;
+      color: var(--gray-400);
+      line-height: 1.75;
+    }
+
+    .vision-quote {
+      margin-top: 32px;
+      padding: 28px 32px;
+      background: var(--navy);
+      border-radius: var(--radius-lg);
+      color: var(--white);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .vision-quote::before {
+      content: '\201C';
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      font-family: var(--ff-display);
+      font-size: 120px;
+      color: rgba(255, 255, 255, 0.06);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .vision-quote p {
+      font-family: var(--ff-display);
+      font-size: 20px;
+      font-style: italic;
+      font-weight: 300;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .vision-quote cite {
+      display: block;
+      margin-top: 12px;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.45);
+      font-style: normal;
+      position: relative;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ CURRICULUM ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #curriculum {
+      background: var(--gray-100);
+    }
+
+    .curriculum-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 56px;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .curriculum-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--gold-light);
+      color: var(--gold);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .curriculum-badge::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+
+    .curriculum-stats {
+      display: flex;
+      gap: 40px;
+    }
+
+    .cs-item {
+      text-align: center;
+    }
+
+    .cs-num {
+      font-family: var(--ff-display);
+      font-size: 40px;
+      font-weight: 600;
+      color: var(--royal);
+      line-height: 1;
+    }
+
+    .cs-label {
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gray-400);
+      margin-top: 4px;
+    }
+
+    .courses-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .course-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .course-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--royal), var(--gold));
+      transition: width 0.35s ease;
+    }
+
+    .course-card:hover {
+      border-color: rgba(26, 58, 140, 0.25);
+      box-shadow: 0 12px 36px rgba(26, 58, 140, 0.1);
+      transform: translateY(-3px);
+    }
+
+    .course-card:hover::after {
+      width: 100%;
+    }
+
+    .course-num {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--royal-mid);
+      opacity: 0.6;
+    }
+
+    .course-card h3 {
+      font-family: var(--ff-display);
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--navy);
+      line-height: 1.25;
+    }
+
+    .course-arrow {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--royal);
+      text-decoration: none;
+    }
+
+    .course-arrow svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--royal);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 0.2s;
+    }
+
+    .course-card:hover .course-arrow svg {
+      transform: translateX(4px);
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ EVENTS ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #events {
+      background: var(--white);
+    }
+
+    .events-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 64px;
+      align-items: start;
+      margin-top: 56px;
+    }
+
+    .events-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .event-item {
+      display: flex;
+      gap: 24px;
+      padding: 26px 0;
+      border-bottom: 1px solid var(--gray-200);
+      cursor: pointer;
+      transition: padding-left 0.2s;
+      align-items: flex-start;
+    }
+
+    .event-item:first-child {
+      border-top: 1px solid var(--gray-200);
+    }
+
+    .event-item:hover {
+      padding-left: 8px;
+    }
+
+    .event-date-box {
+      flex-shrink: 0;
+      width: 58px;
+      height: 66px;
+      background: var(--royal-soft);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+    }
+
+    .event-date-box .ed-day {
+      font-family: var(--ff-display);
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--royal);
+      line-height: 1;
+    }
+
+    .event-date-box .ed-mon {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--royal-mid);
+      font-weight: 500;
+    }
+
+    .event-info h4 {
+      font-family: var(--ff-display);
+      font-size: 19px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 4px;
+      line-height: 1.25;
+    }
+
+    .event-info p {
+      font-size: 13px;
+      color: var(--gray-400);
+      line-height: 1.5;
+    }
+
+    .event-tag {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--royal-soft);
+      color: var(--royal);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+    }
+
+    .event-cal-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .cal-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      text-transform: uppercase;
+      border: 1px solid var(--gray-200);
+      color: var(--gray-700);
+      cursor: pointer;
+      background: var(--white);
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .cal-btn:hover {
+      border-color: var(--royal);
+      color: var(--royal);
+    }
+
+    .cal-btn svg {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .events-cta-panel {
+      background: var(--navy);
+      border-radius: var(--radius-lg);
+      padding: 48px 40px;
+      color: var(--white);
+      position: sticky;
+      top: 100px;
+    }
+
+    .events-cta-panel h3 {
+      font-family: var(--ff-display);
+      font-size: 34px;
+      font-weight: 400;
+      line-height: 1.25;
+      margin-bottom: 16px;
+    }
+
+    .events-cta-panel h3 em {
+      font-style: italic;
+      color: #7FA3E8;
+    }
+
+    .events-cta-panel p {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.55);
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ UPCOMING EVENTS: SPEAKER FLIP CARD ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    .ue-speaker-wrap {
+      margin: 18px 0 8px;
+      position: relative;
+      perspective: 1400px;
+      z-index: 2;
+    }
+
+    @keyframes ueGlow {
+      to { transform: rotate(360deg); }
+    }
+
+    .ue-image-top {
+      width: 100%;
+      height: 170px;
+      border-radius: 16px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 14px 34px rgba(0,0,0,0.28);
+      background: rgba(255,255,255,0.06);
+      z-index: 1;
+    }
+
+    .ue-image-top img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transform: scale(1.06);
+      filter: saturate(1.06) contrast(1.05);
+      opacity: 0;
+      transition: opacity 400ms ease;
+    }
+
+    .ue-image-top::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(127,163,232,0.22), rgba(184,146,42,0.14));
+      mix-blend-mode: overlay;
+      pointer-events: none;
+    }
+
+    .ue-date-pill {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.85);
+      background: rgba(13,27,75,0.40);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .ue-card3d {
+      margin-top: 12px;
+      position: relative;
+      z-index: 1;
+      perspective: 1000px;
+    }
+
+    .ue-flip {
+      position: relative;
+      min-height: 86px;
+      transform-style: preserve-3d;
+      transition: transform 900ms cubic-bezier(.2,.8,.2,1);
+    }
+
+    .ue-flip.is-flipped {
+      transform: rotateX(180deg);
+    }
+
+    .ue-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: 14px;
+      padding: 14px 14px 12px;
+      background: rgba(13,27,75,0.30);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .ue-face-back {
+      transform: rotateX(180deg);
+    }
+
+    .ue-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.95);
+      letter-spacing: 0.01em;
+      margin-bottom: 4px;
+    }
+
+    .ue-role {
+      font-size: 12px;
+      color: rgba(255,255,255,0.70);
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+
+    .ue-topic {
+      font-size: 12px;
+      color: rgba(127,163,232,0.95);
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .ue-bio {
+      font-size: 12px;
+      color: rgba(255,255,255,0.70);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .ue-mini {
+      margin-top: 10px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.42);
+      font-weight: 900;
+    }
+
+    .ue-cta-big {
+      padding: 18px 20px !important;
+      font-size: 16px !important;
+      font-weight: 800 !important;
+      letter-spacing: 0.02em;
+      border-radius: 14px !important;
+      min-height: 58px;
+      box-shadow: 0 16px 44px rgba(0,0,0,0.32);
+    }
+
+    .ue-cta-big svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ue-speaker-wrap::before { animation: none; }
+      .ue-flip { transition: none; }
+    }
+
+    .schedule-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 16px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .schedule-row:last-of-type {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 32px;
+    }
+
+    .sr-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .sr-icon svg {
+      width: 16px;
+      height: 16px;
+      stroke: rgba(255, 255, 255, 0.7);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .sr-label {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .sr-value {
+      font-size: 14px;
+      color: var(--white);
+      font-weight: 500;
+      margin-top: 2px;
+    }
+
+    .sr-value a {
+      color: var(--white);
+      text-decoration: none;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.4);
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ SPEAKER SHOWCASE ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #speakers {
+      background: var(--navy);
+      padding: 100px 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .spk-section-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .spk-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .spk-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(184,146,42,0.15);
+      border: 1px solid rgba(184,146,42,0.3);
+      color: var(--gold);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .spk-label::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+      animation: spk-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes spk-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .spk-title {
+      font-family: var(--ff-display);
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 400;
+      color: var(--white);
+      line-height: 1.15;
+    }
+
+    .spk-title em {
+      font-style: italic;
+      background: linear-gradient(135deg, #B8922A, #F5E9C8, #B8922A);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: spk-shimmer 3s linear infinite;
+    }
+
+    @keyframes spk-shimmer {
+      0% { background-position: 0% center; }
+      100% { background-position: 200% center; }
+    }
+
+    /* Floating orbs */
+    .spk-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
+      animation: spk-drift linear infinite;
+    }
+
+    .spk-orb-1 { width: 400px; height: 400px; background: rgba(26,58,140,0.5); top: -100px; left: -100px; animation-duration: 18s; }
+    .spk-orb-2 { width: 300px; height: 300px; background: rgba(184,146,42,0.2); bottom: -80px; right: 10%; animation-duration: 22s; animation-direction: reverse; }
+    .spk-orb-3 { width: 250px; height: 250px; background: rgba(41,82,179,0.35); top: 40%; left: 50%; animation-duration: 15s; }
+
+    @keyframes spk-drift {
+      0%   { transform: translate(0, 0) rotate(0deg); }
+      25%  { transform: translate(30px, -20px) rotate(90deg); }
+      50%  { transform: translate(60px, 10px) rotate(180deg); }
+      75%  { transform: translate(20px, 30px) rotate(270deg); }
+      100% { transform: translate(0, 0) rotate(360deg); }
+    }
+
+    /* Stage */
+    .spk-stage {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      min-height: 520px;
+    }
+
+    /* Flip card */
+    .spk-flip-wrap {
+      perspective: 1200px;
+      height: 500px;
+      position: relative;
+    }
+
+    .spk-flip-card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 1s cubic-bezier(0.77, 0, 0.175, 1);
+    }
+
+    .spk-flip-card.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .spk-face {
+      position: absolute;
+      inset: 0;
+      border-radius: 24px;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    /* Front - photo */
+    .spk-face-front {
+      background: var(--gray-200);
+    }
+
+    .spk-face-front img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      transition: transform 6s ease;
+    }
+
+    .spk-flip-card:not(.flipped) .spk-face-front img {
+      transform: scale(1.06);
+    }
+
+    .spk-photo-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(13,27,75,0.95) 0%, rgba(13,27,75,0.3) 50%, transparent 100%);
+    }
+
+    .spk-photo-name {
+      position: absolute;
+      bottom: 28px;
+      left: 28px;
+      right: 28px;
+    }
+
+    .spk-photo-name-text {
+      font-family: var(--ff-display);
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--white);
+      line-height: 1.2;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+
+    .spk-photo-role-text {
+      font-size: 13px;
+      color: rgba(255,255,255,0.65);
+      margin-top: 4px;
+    }
+
+    .spk-flip-hint {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.7);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      animation: spk-bounce 2s ease-in-out infinite;
+    }
+
+    @keyframes spk-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    /* Back - bio */
+    .spk-face-back {
+      transform: rotateY(180deg);
+      background: linear-gradient(145deg, #0f2060 0%, #0D1B4B 100%);
+      border: 1px solid rgba(184,146,42,0.3);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px;
+      gap: 0;
+    }
+
+    .spk-back-module {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(184,146,42,0.15);
+      border: 1px solid rgba(184,146,42,0.4);
+      color: var(--gold);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      width: fit-content;
+    }
+
+    .spk-back-name {
+      font-family: var(--ff-display);
+      font-size: 30px;
+      font-weight: 600;
+      color: var(--white);
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .spk-back-role {
+      font-size: 13px;
+      color: rgba(184,146,42,0.9);
+      font-weight: 500;
+      margin-bottom: 24px;
+      line-height: 1.4;
+    }
+
+    .spk-back-divider {
+      width: 40px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold), transparent);
+      margin-bottom: 24px;
+    }
+
+    .spk-back-bio {
+      font-size: 14.5px;
+      color: rgba(255,255,255,0.72);
+      line-height: 1.8;
+      margin-bottom: 28px;
+    }
+
+    .spk-back-date {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .spk-back-date svg {
+      width: 14px; height: 14px;
+      stroke: rgba(255,255,255,0.45);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    /* Right panel */
+    .spk-info-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .spk-count {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.3);
+      margin-bottom: 20px;
+    }
+
+    .spk-name-big {
+      font-family: var(--ff-display);
+      font-size: clamp(26px, 3.5vw, 44px);
+      font-weight: 600;
+      color: var(--white);
+      line-height: 1.15;
+      margin-bottom: 8px;
+      transition: all 0.5s ease;
+    }
+
+    .spk-role-big {
+      font-size: 14px;
+      color: var(--gold);
+      font-weight: 500;
+      margin-bottom: 28px;
+      line-height: 1.4;
+      transition: all 0.5s ease;
+    }
+
+    .spk-bio-big {
+      font-size: 15px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.85;
+      margin-bottom: 36px;
+      transition: all 0.5s ease;
+    }
+
+    .spk-module-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.5);
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 40px;
+      width: fit-content;
+    }
+
+    .spk-module-badge span {
+      color: rgba(255,255,255,0.8);
+      font-weight: 600;
+    }
+
+    /* Progress + Navigation */
+    .spk-nav {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .spk-arrow {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .spk-arrow:hover {
+      border-color: var(--gold);
+      background: rgba(184,146,42,0.15);
+    }
+
+    .spk-arrow svg {
+      width: 16px; height: 16px;
+      stroke: rgba(255,255,255,0.7);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .spk-arrow:hover svg { stroke: var(--gold); }
+
+    .spk-dots {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .spk-dot {
+      position: relative;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      cursor: pointer;
+      transition: all 0.3s;
+      overflow: visible;
+    }
+
+    .spk-dot.active {
+      background: var(--gold);
+      width: 28px;
+      border-radius: 4px;
+    }
+
+    .spk-progress-bar {
+      position: absolute;
+      top: 0; left: 0;
+      height: 100%;
+      background: rgba(255,255,255,0.35);
+      border-radius: 4px;
+      width: 0%;
+      transition: width linear;
+    }
+
+    .spk-flip-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-left: auto;
+    }
+
+    .spk-flip-toggle:hover {
+      border-color: rgba(255,255,255,0.3);
+      color: var(--white);
+    }
+
+    .spk-flip-toggle svg {
+      width: 13px; height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Scan line animation */
+    .spk-scanline {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(184,146,42,0.6), transparent);
+      z-index: 1;
+      animation: spk-scan 4s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    @keyframes spk-scan {
+      0%   { top: 0; opacity: 0; }
+      5%   { opacity: 1; }
+      95%  { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    /* Fade transition for info panel */
+    .spk-info-panel.transitioning .spk-name-big,
+    .spk-info-panel.transitioning .spk-role-big,
+    .spk-info-panel.transitioning .spk-bio-big,
+    .spk-info-panel.transitioning .spk-module-badge {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+
+    @media (max-width: 900px) {
+      .spk-stage { grid-template-columns: 1fr; gap: 40px; }
+      .spk-flip-wrap { height: 380px; }
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ MEDIA & GALLERY ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #media {
+      background: var(--gray-100);
+    }
+
+    .media-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--gray-200);
+      padding: 4px;
+      border-radius: 10px;
+      width: fit-content;
+      margin-bottom: 40px;
+    }
+
+    .media-tab {
+      padding: 9px 20px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      color: var(--gray-400);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .media-tab.active {
+      background: var(--white);
+      color: var(--navy);
+      box-shadow: 0 2px 8px rgba(13, 27, 75, 0.1);
+    }
+
+    .media-panel {
+      display: none;
+    }
+
+    .media-panel.active {
+      display: block;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .gallery-item {
+      border-radius: var(--radius);
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      position: relative;
+      cursor: pointer;
+      background: var(--gray-200);
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .gallery-item:hover img {
+      transform: scale(1.06);
+    }
+
+    .gallery-item .gallery-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(13, 27, 75, 0.5);
+      opacity: 0;
+      transition: opacity 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gallery-item:hover .gallery-overlay {
+      opacity: 1;
+    }
+
+    .gallery-overlay svg {
+      width: 40px;
+      height: 40px;
+      stroke: white;
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .gallery-placeholder {
+      border: 2px dashed var(--gray-200);
+      border-radius: var(--radius);
+      aspect-ratio: 4/3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      color: var(--gray-400);
+      font-size: 13px;
+    }
+
+    .gallery-placeholder svg {
+      width: 32px;
+      height: 32px;
+      stroke: var(--gray-400);
+      fill: none;
+      stroke-width: 1.5;
+    }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .video-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .video-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 36px rgba(13, 27, 75, 0.1);
+    }
+
+    .video-thumb {
+      aspect-ratio: 16/9;
+      background: var(--navy);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .video-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .video-play-btn {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(13, 27, 75, 0.35);
+    }
+
+    .video-play-btn svg {
+      width: 52px;
+      height: 52px;
+    }
+
+    .video-info {
+      padding: 16px 20px;
+    }
+
+    .video-info h4 {
+      font-family: var(--ff-display);
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .video-info p {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+
+    .media-cta-row {
+      margin-top: 36px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .media-more-link {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--royal);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .media-more-link svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ BLOG / MEDIA PAGE TEASER ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #blog-teaser {
+      background: var(--white);
+    }
+
+    .blog-teaser-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 40px;
+      margin-top: 48px;
+      align-items: start;
+    }
+
+    .blog-featured {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+      display: block;
+    }
+
+    .blog-featured:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 36px rgba(13, 27, 75, 0.1);
+    }
+
+    .blog-featured-img {
+      aspect-ratio: 16/9;
+      overflow: hidden;
+    }
+
+    .blog-featured-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .blog-featured:hover .blog-featured-img img {
+      transform: scale(1.04);
+    }
+
+    .blog-featured-body {
+      padding: 28px;
+    }
+
+    .blog-tag {
+      display: inline-block;
+      padding: 4px 10px;
+      background: var(--royal-soft);
+      color: var(--royal);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .blog-tag.podcast {
+      background: var(--gold-light);
+      color: var(--gold);
+    }
+
+    .blog-featured-body h3 {
+      font-family: var(--ff-display);
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--navy);
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .blog-featured-body p {
+      font-size: 14px;
+      color: var(--gray-400);
+      line-height: 1.7;
+      margin-bottom: 16px;
+    }
+
+    .blog-read-more {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--royal);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .blog-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .blog-mini {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      background: var(--off-white);
+      transition: border-color 0.2s, transform 0.2s;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .blog-mini:hover {
+      border-color: rgba(26, 58, 140, 0.3);
+      transform: translateX(4px);
+    }
+
+    .blog-mini-img {
+      width: 80px;
+      height: 60px;
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .blog-mini-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .blog-mini h4 {
+      font-family: var(--ff-display);
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--navy);
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+
+    .blog-mini p {
+      font-size: 12px;
+      color: var(--gray-400);
+    }
+
+    .blog-teaser-cta {
+      margin-top: 36px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ MODULE MODAL ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    .module-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 14, 26, 0.62);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 24px;
+    }
+
+    .module-modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .module-modal {
+      width: min(920px, 100%);
+      max-height: min(88vh, 900px);
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--gray-200);
+      box-shadow: 0 20px 52px rgba(13, 27, 75, 0.28);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .module-modal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--gray-200);
+      background: linear-gradient(90deg, #ffffff, #f9fbff);
+    }
+
+    .module-modal-kicker {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--royal-mid);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .module-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .module-youtube {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      background: #ff0000;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+      padding: 9px 14px;
+      transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .module-youtube:hover {
+      background: #d90000;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(217, 0, 0, 0.25);
+    }
+
+    .module-modal-title {
+      font-family: var(--ff-display);
+      font-size: clamp(24px, 3vw, 34px);
+      color: var(--navy);
+      line-height: 1.2;
+    }
+
+    .module-close {
+      border: 1px solid var(--gray-200);
+      background: var(--white);
+      color: var(--gray-700);
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 24px;
+      line-height: 1;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .module-close:hover {
+      background: var(--royal);
+      color: var(--white);
+      border-color: var(--royal);
+    }
+
+    .module-modal-body {
+      overflow: auto;
+      padding: 22px 24px 26px;
+    }
+
+    .modal-section {
+      margin-bottom: 22px;
+    }
+
+    .modal-section h4 {
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--royal-mid);
+      margin-bottom: 10px;
+    }
+
+    .modal-list {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .modal-list li {
+      font-size: 14px;
+      color: var(--gray-700);
+      line-height: 1.7;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .modal-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 11px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+
+    .modal-steps {
+      display: grid;
+      gap: 12px;
+    }
+
+    .modal-step {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .modal-step-num {
+      background: var(--royal-soft);
+      color: var(--royal);
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-align: center;
+      padding: 9px 8px;
+    }
+
+    .modal-step-text {
+      font-size: 14px;
+      color: var(--gray-700);
+      line-height: 1.7;
+      padding-top: 7px;
+    }
+
+    .modal-application {
+      background: var(--off-white);
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 16px;
+      color: var(--gray-700);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ REGISTER ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #register {
+      background: var(--gray-100);
+    }
+
+    .register-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+      margin-top: 56px;
+    }
+
+    .register-form-wrap {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gray-700);
+      margin-bottom: 8px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 8px;
+      font-family: var(--ff-body);
+      font-size: 14px;
+      color: var(--navy);
+      background: var(--off-white);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      outline: none;
+      appearance: none;
+      resize: vertical;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--royal);
+      box-shadow: 0 0 0 4px rgba(26, 58, 140, 0.08);
+      background: var(--white);
+    }
+
+    .form-group input::placeholder,
+    .form-group textarea::placeholder {
+      color: var(--gray-400);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .form-submit {
+      width: 100%;
+      margin-top: 8px;
+      padding: 16px;
+      background: var(--royal);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-family: var(--ff-body);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+
+    .form-submit:hover {
+      background: var(--navy);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(13, 27, 75, 0.2);
+    }
+
+    .register-info h3 {
+      font-family: var(--ff-display);
+      font-size: 38px;
+      font-weight: 400;
+      color: var(--navy);
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .register-info h3 em {
+      font-style: italic;
+      color: var(--royal);
+    }
+
+    .register-info > p {
+      font-size: 15px;
+      color: var(--gray-400);
+      line-height: 1.8;
+      margin-bottom: 32px;
+    }
+
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .benefit-card {
+      background: var(--off-white);
+      border: 1px solid var(--gray-200);
+      border-radius: 14px;
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .benefit-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--royal), var(--gold));
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .benefit-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(26, 58, 140, 0.1);
+      border-color: var(--royal-soft);
+    }
+
+    .benefit-card:hover::before {
+      opacity: 1;
+    }
+
+    .benefit-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--royal-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .benefit-icon svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--royal);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .benefit-card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--navy);
+      line-height: 1.4;
+    }
+
+    .benefit-card-desc {
+      font-size: 12px;
+      color: var(--gray-400);
+      line-height: 1.6;
+    }
+
+    .program-stats-row {
+      display: flex;
+      gap: 0;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 28px;
+      border: 1px solid var(--gray-200);
+    }
+
+    .pstat {
+      flex: 1;
+      padding: 16px 14px;
+      text-align: center;
+      border-right: 1px solid var(--gray-200);
+      background: var(--white);
+    }
+
+    .pstat:last-child {
+      border-right: none;
+    }
+
+    .pstat-val {
+      font-family: var(--ff-display);
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--navy);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .pstat-label {
+      font-size: 11px;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-weight: 500;
+    }
+
+    .program-detail-card {
+      padding: 24px 28px;
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--navy) 0%, #1A3A8C 100%);
+      color: var(--white);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .program-detail-card::after {
+      content: '';
+      position: absolute;
+      top: -40px;
+      right: -40px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(184, 146, 42, 0.12);
+    }
+
+    .pdc-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 14px;
+    }
+
+    .pdc-row:last-child {
+      border-bottom: none;
+    }
+
+    .pdc-row .pdc-k {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .pdc-row .pdc-v {
+      color: var(--white);
+      font-weight: 500;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ CONTACT ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #contact {
+      background: var(--white);
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: start;
+      margin-top: 56px;
+    }
+
+    .contact-info {}
+
+    .contact-info h3 {
+      font-family: var(--ff-display);
+      font-size: 36px;
+      font-weight: 400;
+      color: var(--navy);
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+
+    .contact-info h3 em {
+      font-style: italic;
+      color: var(--royal);
+    }
+
+    .contact-item {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+
+    .contact-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: var(--royal-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .contact-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke: var(--royal);
+      fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .contact-item h5 {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gray-400);
+      margin-bottom: 4px;
+    }
+
+    .contact-item a,
+    .contact-item p {
+      font-size: 15px;
+      color: var(--navy);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .contact-item a:hover {
+      color: var(--royal);
+    }
+
+    .social-links {
+      display: flex;
+      gap: 10px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .social-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--navy);
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+
+    .social-link:hover {
+      border-color: var(--royal);
+      color: var(--royal);
+      background: var(--royal-soft);
+    }
+
+    .social-link svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ MAP ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    #map {
+      background: var(--off-white);
+      padding-top: 0;
+      padding-bottom: 100px;
+    }
+
+    .map-wrap {
+      display: grid;
+      grid-template-columns: 1fr 1.35fr;
+      gap: 30px;
+      align-items: stretch;
+    }
+
+    .map-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 30px;
+    }
+
+    .map-card h3 {
+      font-family: var(--ff-display);
+      color: var(--navy);
+      font-size: 30px;
+      line-height: 1.25;
+      font-weight: 400;
+      margin-bottom: 10px;
+    }
+
+    .map-card p {
+      color: var(--gray-400);
+      font-size: 14px;
+      line-height: 1.8;
+      margin-bottom: 18px;
+    }
+
+    .map-address {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--royal);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      text-decoration: none;
+    }
+
+    .map-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .map-actions a {
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 8px;
+      padding: 11px 14px;
+    }
+
+    .map-btn-primary {
+      background: var(--royal);
+      color: var(--white);
+    }
+
+    .map-btn-primary:hover {
+      background: var(--navy);
+    }
+
+    .map-btn-ghost {
+      border: 1px solid var(--gray-200);
+      color: var(--navy);
+      background: var(--white);
+    }
+
+    .map-btn-ghost:hover {
+      border-color: var(--royal);
+      color: var(--royal);
+    }
+
+    .map-frame {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      min-height: 380px;
+    }
+
+    .map-frame iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 380px;
+      border: 0;
+      display: block;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ FOOTER ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    footer {
+      background: var(--black);
+      color: rgba(255, 255, 255, 0.45);
+      padding: 70px 5% 40px;
+    }
+
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-bottom: 40px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      gap: 32px;
+    }
+
+    .footer-logo img {
+      height: 50px;
+      width: auto;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .footer-logo p {
+      font-size: 13px;
+      line-height: 1.7;
+      max-width: 260px;
+      margin-top: 16px;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 60px;
+      flex-wrap: wrap;
+    }
+
+    .footer-col h5 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 16px;
+    }
+
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .footer-col ul a {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.35);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-col ul a:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-bottom p {
+      font-size: 12px;
+    }
+
+    .footer-bottom a {
+      color: rgba(255, 255, 255, 0.3);
+      text-decoration: none;
+      font-size: 12px;
+    }
+
+    .dc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .footer-socials {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .footer-social-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .footer-social-icon:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .footer-social-icon svg {
+      width: 16px;
+      height: 16px;
+      fill: rgba(255, 255, 255, 0.5);
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ LIGHTBOX ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .lightbox.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 32px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ ANIMATIONS ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ¢...â‚¬¢...â‚¬¢...â‚¬ MOBILE ¢...â‚¬¢...â‚¬¢...â‚¬ */
+    @media (max-width: 900px) {
+      nav {
+        padding: 0 4%;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .hamburger {
+        display: flex;
+      }
+
+      .nav-links.open {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        inset: 72px 0 0;
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(12px);
+        padding: 32px 6%;
+        gap: 8px;
+        z-index: 99;
+        overflow-y: auto;
+      }
+
+      .nav-links.open a {
+        font-size: 16px;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--gray-200);
+      }
+
+      .nav-links.open .nav-cta {
+        margin-top: 16px;
+        display: inline-block;
+        text-align: center;
+        padding: 14px 24px !important;
+      }
+
+      #home {
+        padding: 100px 4% 60px;
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+
+      .hero-stat-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .hero-aside {
+        width: 100%;
+      }
+
+      #vision {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .curriculum-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .curriculum-stats {
+        gap: 24px;
+      }
+
+      .events-layout {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .events-cta-panel {
+        position: static;
+      }
+
+      .map-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .register-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .contact-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .blog-teaser-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      section {
+        padding: 72px 4%;
+      }
+
+      .footer-top {
+        flex-direction: column;
+      }
+
+      .footer-links {
+        gap: 36px;
+      }
+
+      .module-modal-overlay {
+        padding: 14px;
+      }
+
+      .module-modal-body {
+        padding: 18px;
+      }
+
+      .module-modal-head {
+        padding: 18px;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .hero-title {
+        font-size: 40px;
+      }
+
+      .hero-meta {
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+      }
+
+      .btn-primary,
+      .btn-ghost {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .hero-stat-row {
+        grid-template-columns: 1fr;
+      }
+
+      .courses-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .curriculum-stats {
+        flex-wrap: wrap;
+      }
+
+      .gallery-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* BLOG VIEWER MODAL */
+    .viewer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 14, 26, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      padding: 20px;
+    }
+
+    .viewer-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .viewer-modal {
+      background: var(--off-white);
+      border-radius: 16px;
+      width: min(800px, 100%);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 52px rgba(0, 0, 0, 0.5);
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+
+    .viewer-overlay.open .viewer-modal {
+      transform: translateY(0);
+    }
+
+    .viewer-head {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--white);
+    }
+
+    .viewer-head h3 {
+      font-family: var(--ff-display);
+      font-size: 20px;
+      color: var(--navy);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 20px;
+    }
+
+    .viewer-close {
+      background: none;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      width: 34px;
+      height: 34px;
+      min-width: 34px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gray-700);
+      transition: 0.2s;
+      font-size: 20px;
+    }
+
+    .viewer-close:hover {
+      background: var(--royal);
+      color: white;
+      border-color: var(--royal);
+    }
+
+    .viewer-body {
+      padding: 30px;
+      overflow-y: auto;
+      background: var(--white);
+    }
+
+    .viewer-meta {
+      display: flex;
+      gap: 15px;
+      font-size: 13px;
+      color: var(--gray-400);
+      margin-top: 10px;
+      margin-bottom: 24px;
+    }
+
+    .viewer-image {
+      width: 100%;
+      height: auto;
+      max-height: 400px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+
+    .viewer-video {
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+
+    .viewer-video iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .viewer-content {
+      font-family: var(--ff-body);
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--gray-700);
+    }
+
+    .viewer-content h2,
+    .viewer-content h3 {
+      font-family: var(--ff-display);
+      color: var(--navy);
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    .viewer-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--gray-400);
+      font-style: italic;
+    }
+
+    /* ─── WEEKLY FLYER ─── */
+    #weekly-flyer {
+      padding: 0 5% 80px;
+      background: var(--white);
+    }
+
+    .flyer-wrap {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      min-height: 480px;
+      box-shadow: 0 8px 32px rgba(13, 27, 75, 0.08);
+      transition: box-shadow 0.3s;
+    }
+
+    .flyer-wrap:hover {
+      box-shadow: 0 20px 56px rgba(13, 27, 75, 0.13);
+    }
+
+    .flyer-img-col {
+      position: relative;
+      background: var(--navy);
+      overflow: hidden;
+    }
+
+    .flyer-img-col img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      position: absolute;
+      inset: 0;
+      transition: transform 0.55s ease;
+    }
+
+    .flyer-wrap:hover .flyer-img-col img {
+      transform: scale(1.04);
+    }
+
+    .flyer-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: rgba(255, 255, 255, 0.35);
+      padding: 32px;
+      text-align: center;
+    }
+
+    .flyer-placeholder svg {
+      width: 52px;
+      height: 52px;
+      stroke: rgba(255, 255, 255, 0.22);
+      fill: none;
+      stroke-width: 1.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .flyer-placeholder p {
+      font-size: 13px;
+      line-height: 1.6;
+      max-width: 180px;
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .flyer-info-col {
+      padding: 44px 52px;
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .flyer-week-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .flyer-week-label::before {
+      content: '';
+      width: 18px;
+      height: 1.5px;
+      background: var(--gold);
+    }
+
+    .flyer-session-title {
+      font-family: var(--ff-display);
+      font-size: clamp(22px, 2.6vw, 34px);
+      font-weight: 600;
+      color: var(--navy);
+      line-height: 1.2;
+    }
+
+    .flyer-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+    }
+
+    .flyer-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      color: var(--gray-400);
+    }
+
+    .flyer-meta-item svg {
+      width: 14px;
+      height: 14px;
+      stroke: var(--royal);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .flyer-cta-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 768px) {
+      .flyer-wrap {
+        grid-template-columns: 1fr;
+      }
+      .flyer-img-col {
+        height: auto;
+        min-height: auto;
+        aspect-ratio: 4 / 5;
+      }
+      .flyer-info-col {
+        padding: 28px 24px;
+      }
+    }
+
+    /* ─── SODE WEBAPP SHOWCASE & PHONE MOCKUP ─── */
+    .webapp-showcase-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      perspective: 1000px;
+      width: 100%;
+    }
+
+    .phone-mockup {
+      width: 320px;
+      height: 640px;
+      background: #000;
+      border-radius: 40px;
+      border: 12px solid #1a1a1a;
+      box-shadow: 0 25px 50px -12px rgba(13, 27, 75, 0.4), 
+                  0 0 0 1px rgba(255,255,255,0.05),
+                  inset 0 0 3px 2px rgba(255,255,255,0.1);
+      position: relative;
+      overflow: hidden;
+      transform: rotateY(-5deg) rotateX(5deg);
+      transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.6s ease;
+      cursor: pointer;
+    }
+
+    .phone-mockup:hover {
+      transform: rotateY(0deg) rotateX(0deg) translateY(-10px);
+      box-shadow: 0 35px 60px -10px rgba(13, 27, 75, 0.55), 
+                  0 0 0 2px rgba(26, 58, 140, 0.25);
+    }
+
+    /* Notch / Dynamic Island */
+    .phone-notch {
+      width: 110px;
+      height: 24px;
+      background: #000;
+      border-radius: 20px;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 10px;
+    }
+
+    .phone-notch::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #111;
+      border-radius: 50%;
+      box-shadow: 0 0 1px 1px rgba(255,255,255,0.1);
+    }
+
+    .phone-notch::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #05051a;
+      border-radius: 50%;
+      border: 1.5px solid #111;
+    }
+
+    /* Screen container */
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg, #091338 0%, #070d24 100%);
+      font-family: var(--ff-body);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 40px 18px 20px;
+      box-sizing: border-box;
+      position: relative;
+      user-select: none;
+    }
+
+    /* Glossy reflection overlay */
+    .phone-screen::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 40%, transparent 40%);
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    /* Status Bar */
+    .phone-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.75);
+      margin-bottom: 20px;
+      padding: 0 4px;
+    }
+
+    .phone-status-icons {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .phone-status-icons svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
+
+    /* App Header */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .app-logo-text {
+      font-family: var(--ff-display);
+      font-weight: 600;
+      font-size: 18px;
+      letter-spacing: 0.05em;
+      color: var(--gold-light);
+    }
+
+    .app-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--royal-soft);
+      border: 1px solid var(--gold);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .app-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Mock Content / Widgets */
+    .app-welcome {
+      margin-bottom: 18px;
+    }
+
+    .app-welcome h4 {
+      font-size: 14px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .app-welcome p {
+      font-family: var(--ff-display);
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .mock-widget {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease, border-color 0.3s;
+    }
+
+    .mock-widget:hover {
+      border-color: rgba(184, 146, 42, 0.4);
+      transform: scale(1.02);
+    }
+
+    /* Growth widget */
+    .widget-progress {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      animation: floatWidget-1 5s ease-in-out infinite alternate;
+    }
+
+    .widget-progress-circle {
+      width: 48px;
+      height: 48px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .widget-progress-circle svg {
+      transform: rotate(-90deg);
+      width: 48px;
+      height: 48px;
+    }
+
+    .widget-progress-text {
+      position: absolute;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold-light);
+    }
+
+    .widget-progress-info h5 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 2px;
+    }
+
+    .widget-progress-info p {
+      font-size: 11px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    /* Checklist Widget */
+    .widget-checklist {
+      animation: floatWidget-2 6s ease-in-out infinite alternate;
+      animation-delay: 0.5s;
+    }
+
+    .widget-checklist h5 {
+      font-size: 12px;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .checklist-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 11.5px;
+    }
+
+    .checklist-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .chk-icon {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .chk-icon.done {
+      background: rgba(46, 125, 50, 0.2);
+      color: #2e7d32;
+      border: 1px solid rgba(46, 125, 50, 0.4);
+    }
+
+    .chk-icon.pending {
+      background: rgba(184, 146, 42, 0.15);
+      color: var(--gold);
+      border: 1px solid rgba(184, 146, 42, 0.4);
+      animation: pulseIndicator 1.5s ease-in-out infinite alternate;
+    }
+
+    .checklist-item span.done-text {
+      color: rgba(255,255,255,0.4);
+      text-decoration: line-through;
+    }
+
+    .checklist-item span.pending-text {
+      color: rgba(255,255,255,0.85);
+      font-weight: 500;
+    }
+
+    /* Mentorship Widget */
+    .widget-mentorship {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      animation: floatWidget-3 5.5s ease-in-out infinite alternate;
+      animation-delay: 1s;
+    }
+
+    .mentor-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .mentor-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--royal-soft);
+      border: 1px solid rgba(255,255,255,0.15);
+      overflow: hidden;
+    }
+
+    .mentor-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .mentor-info h6 {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .mentor-info p {
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .mentor-status {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(26, 58, 140, 0.3);
+      color: #7FA3E8;
+      border: 1px solid rgba(127,163,232,0.2);
+      font-weight: 500;
+    }
+
+    /* App mini cta */
+    .app-mini-cta {
+      margin-top: auto;
+      background: var(--royal);
+      color: #fff;
+      text-align: center;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      border: none;
+      box-shadow: 0 4px 15px rgba(26, 58, 140, 0.4);
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      z-index: 6;
+      text-decoration: none;
+    }
+
+    .app-mini-cta:hover {
+      background: var(--navy);
+      box-shadow: 0 6px 20px rgba(13, 27, 75, 0.5);
+      transform: translateY(-1px);
+    }
+
+    /* Keyframes animations */
+    @keyframes floatWidget-1 {
+      0% { transform: translateY(0px) rotate(0deg); }
+      100% { transform: translateY(-6px) rotate(0.5deg); }
+    }
+    @keyframes floatWidget-2 {
+      0% { transform: translateY(0px) rotate(0deg); }
+      100% { transform: translateY(-8px) rotate(-0.5deg); }
+    }
+    @keyframes floatWidget-3 {
+      0% { transform: translateY(0px) rotate(0deg); }
+      100% { transform: translateY(-5px) rotate(0.3deg); }
+    }
+    @keyframes pulseIndicator {
+      0% { box-shadow: 0 0 0 0 rgba(184, 146, 42, 0.4); }
+      100% { box-shadow: 0 0 0 4px rgba(184, 146, 42, 0); }
+    }
+
+    /* Webapp showcase section adjustments */
+    .register-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .app-cta-card {
+      background: var(--white);
+      border: 1px solid var(--gray-200);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(13, 27, 75, 0.05);
+    }
+
+    .app-cta-card h3 {
+      font-family: var(--ff-display);
+      font-size: 32px;
+      color: var(--navy);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .app-cta-card h3 em {
+      font-style: italic;
+      color: var(--royal);
+    }
+
+    .app-cta-card p {
+      font-size: 15px;
+      color: var(--gray-400);
+      line-height: 1.8;
+      margin-bottom: 24px;
+    }
+
+    .app-features-list {
+      margin-bottom: 30px;
+    }
+
+    .app-feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .app-feature-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .app-feature-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--royal-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .app-feature-icon svg {
+      width: 12px;
+      height: 12px;
+      stroke: var(--royal);
+      fill: none;
+      stroke-width: 2.5;
+    }
+
+    .app-feature-content h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 2px;
+    }
+
+    .app-feature-content p {
+      font-size: 13px;
+      color: var(--gray-400);
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+
+    .webapp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--royal-soft);
+      border-radius: 30px;
+      padding: 6px 14px;
+      margin-bottom: 18px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--royal);
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      width: fit-content;
+    }
+
+    .webapp-badge svg {
+      animation: pulseWebappBadge 2s infinite alternate;
+    }
+
+    @keyframes pulseWebappBadge {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(1.1); opacity: 1; }
+    }
+
+    /* Media query overrides */
+    @media (max-width: 900px) {
+      .register-grid {
+        grid-template-columns: 1fr !important;
+        gap: 48px;
+      }
+      .webapp-showcase-container {
+        order: 2; /* Mobile mockup flows below description on small screens */
+      }
+      .app-cta-card {
+        padding: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- BLOG VIEWER MODAL -->
+  <div class="viewer-overlay" id="blogViewerOverlay" onclick="if(event.target===this) closeBlogViewer()">
+    <div class="viewer-modal">
+      <div class="viewer-head">
+        <h3 id="viewerTitle">Read Article</h3>
+        <button class="viewer-close" onclick="closeBlogViewer()">&times;</button>
+      </div>
+      <div class="viewer-body">
+        <h1 id="viewerMainTitle" style="font-family:var(--ff-display);font-size:32px;color:var(--navy);"></h1>
+        <div class="viewer-meta" id="viewerMeta"></div>
+        <div id="viewerMedia"></div>
+        <div class="viewer-content" id="viewerContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav id="navbar">
+    <div class="nav-logo">
+      <img src="Images/SODE_Colored Vertical Lockup (Head).png" alt="School of Daniels and Esthers">
+    </div>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#vision">Vision</a></li>
+      <li><a href="#curriculum">Curriculum</a></li>
+      <li><a href="#events">Events</a></li>
+      <li><a href="#media">Media</a></li>
+      <li><a href="#blog-teaser">Blog</a></li>
+      <li><a href="#contact">Contact</a></li>
+      <li><a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="nav-cta">Launch App</a></li>
+    </ul>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </nav>
+
+  <!-- HERO -->
+  <section id="home">
+    <div class="hero-bg-pattern"></div>
+    <div class="hero-grid-overlay"></div>
+
+    <div class="hero-content">
+      <div class="hero-eyebrow">Dominion City Victoria Island</div>
+      <h1 class="hero-title">The School of<br><em>Daniels &<br>Esthers</em></h1>
+      <p class="hero-tagline">Raising purpose-driven professionals who <strong>dominate the marketplace</strong> through
+        Biblical wisdom, strategic excellence, and transformative mentorship.</p>
+
+      <div class="hero-meta">
+        <div class="hero-meta-item">
+          <div class="icon">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <div>
+            <div style="font-weight:600;color:var(--navy);font-size:13px;">Every Sunday</div>
+            <div style="font-size:12px;color:var(--gray-400);">8:00 AM - 8:50 AM</div>
+          </div>
+        </div>
+        <div class="hero-meta-item">
+          <div class="icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+          </div>
+          <div>
+            <div style="font-weight:600;color:var(--navy);font-size:13px;">Nigerian Law School</div>
+            <div style="font-size:12px;color:var(--gray-400);">Victoria Island, Lagos</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-actions">
+        <a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="btn-primary">
+          Register
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px;">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/>
+          </svg>
+        </a>
+        <a href="#register" class="btn-ghost">Explore SODE Webapp</a>
+      </div>
+    </div>
+
+    <div class="hero-aside">
+      <div class="hero-visual">
+        <img src="sode_register_team.jpg"
+          alt="SODE Community - Professionals in Lagos, Nigeria">
+        <div class="hero-visual-caption">SODE - Lagos, Nigeria</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WEEKLY FLYER -->
+  <section id="weekly-flyer">
+    <div class="reveal">
+      <div class="section-label">This Week</div>
+      <h2 class="section-title" style="margin-bottom:32px;">Weekly <em>Session Flyer</em></h2>
+    </div>
+    <div id="flyerContainer" class="reveal" style="transition-delay:0.12s;">
+      <!-- rendered by JS -->
+    </div>
+  </section>
+
+  <!-- VISION -->
+  <section id="vision">
+    <div class="vision-left reveal">
+      <div class="section-label">Our Vision</div>
+      <h2 class="section-title">Raising <em>Kings &<br>Priests</em> in the<br>Marketplace</h2>
+      <p class="section-body">This program is dedicated to imparting the exact knowledge required for career and
+        business excellence - raising balanced professionals who understand their place in the marketplace and are
+        equipped to excel in all areas.</p>
+      <p class="section-body" style="margin-top:16px;">Expect rapid career growth, transformation of existing
+        businesses, and the creation of new ventures solving real-world problems.</p>
+      <div class="vision-quote">
+        <p>Mentorship, excellence, and vision - the three pillars of marketplace dominion.</p>
+        <cite>- The SODE Mandate</cite>
+      </div>
+      <div class="vision-image">
+        <img src="sode_office.jpg" alt="SODE Community - Professionals in Lagos, Nigeria">
+      </div>
+    </div>
+    <div class="vision-right reveal" style="transition-delay:0.15s;">
+      <div class="vision-card" style="padding: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <h4 style="margin-bottom:0;">Our Objectives</h4>
+        <ul class="modal-list" style="display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+          <li>Raise a community of successful and Impact-Conscious christian career and Business professionals through trainings.</li>
+          <li>Encourage the christian community to strive to take our position at the top ("you shall be above only").</li>
+          <li><strong>Thy Kingdom Come:</strong> Awaken consciousness of christian career and business professionals to the enormous responsibility ahead of us as it relates enforcing and establishing God's kingdom agenda.</li>
+          <li><strong>Raising Christian Leaders:</strong> Raise christians who will lead at various levels within the career and business world.</li>
+          <li>Provide mentorship and guidance to aspiring christian career and Business professionals.</li>
+          <li>Raise a christian support group community - Iron sharpens Iron.</li>
+          <li>Leverage lessons from Daniel, Joseph, and Esther as the core source of truth throughout the training.</li>
+        </ul>
+        <div style="background: var(--royal-soft); padding: 16px; border-radius: 8px; margin-top: 8px;">
+          <h4 style="margin-bottom: 4px; font-size: 14px; color: var(--navy)">Who Should Attend</h4>
+          <p style="font-size: 13px; color: var(--gray-700)">Every christian or individual that intends to attain success in business and career through scriptural principles.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CURRICULUM -->
+  <section id="curriculum">
+    <div class="curriculum-header reveal">
+      <div>
+        <h2 class="section-title" style="margin-bottom:0;">What You <em>Will Learn</em></h2>
+      </div>
+      <div>
+        <a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="btn-primary" style="padding: 12px 24px;">Get Started on Webapp</a>
+      </div>
+    </div>
+    <p class="section-body reveal" style="margin-bottom:48px;transition-delay:0.1s;">A comprehensive curriculum designed
+      to transform your professional life and business outlook. We bridge the gap between spiritual principles and
+      marketplace excellence.</p>
+    <div class="courses-grid" id="coursesGrid">
+      <!-- Injected by JS -->
+    </div>
+  </section>
+
+  <!-- EVENTS -->
+  <section id="events">
+    <div class="reveal">
+      <div class="section-label">Stay Updated</div>
+      <h2 class="section-title">Upcoming <em>Events</em></h2>
+      <p class="section-body">Stay updated with our latest programs and special sessions designed for your growth.</p>
+    </div>
+    <div class="events-layout">
+      <div class="events-list reveal" id="eventsList">
+        <!-- Injected by JS -->
+      </div>
+      <div class="events-cta-panel reveal" style="transition-delay:0.15s;">
+        <div style="margin-bottom: 24px;">
+          <div class="spk-label" style="font-size: 10px; margin-bottom: 12px; display: inline-flex; align-items: center; justify-content: center; padding: 4px 12px; background: rgba(127, 163, 232, 0.1); border: 1px solid rgba(127, 163, 232, 0.2); border-radius: 20px; color: var(--gold); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;">
+            <span style="display:inline-block; width:4px; height:4px; border-radius:50%; background:var(--gold); margin-right:6px;"></span> Meet The Speakers
+          </div>
+          <h3 style="font-family: var(--ff-display); font-size: 28px; line-height: 1.2; color: var(--off-white); font-weight: 500; margin: 0;">Seasoned Voices.<br><em style="font-style: italic; color: var(--gold);">Extraordinary Minds.</em></h3>
+        </div>
+        <!-- Dynamic Speaker/Profile (auto-animated) -->
+        <div class="ue-speaker-wrap" id="ueSpeakerWrap" aria-label="Upcoming event speaker"></div>
+        <a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="btn-primary ue-cta-big" style="width:100%;justify-content:center;margin-top:14px;">
+          Register
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px;">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+
+
+
+  <!-- MEDIA & GALLERY -->
+  <section id="media">
+    <div class="reveal">
+      <div class="section-label">Our Media</div>
+      <h2 class="section-title">Gallery & <em>Videos</em></h2>
+      <p class="section-body" style="margin-bottom:32px;">Moments from our sessions, milestones, and transformational
+        stories from the SODE community.</p>
+    </div>
+    <div class="media-tabs reveal">
+      <button class="media-tab active" onclick="switchTab('gallery',this)">Photos</button>
+      <button class="media-tab" onclick="switchTab('videos',this)">Videos</button>
+    </div>
+    <div id="panel-gallery" class="media-panel active">
+      <div class="gallery-grid" id="thesodeGalleryGrid">
+        <!-- Injected by JS -->
+      </div>
+      <div class="media-cta-row">
+        <a href="https://www.instagram.com/thesodeglobal?igsh=MWpzdXhwd2ZhZnB5bQ%3D%3D" target="_blank"
+          rel="noopener noreferrer" class="media-more-link">View More on Instagram <svg viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg></a>
+      </div>
+    </div>
+    <div id="panel-videos" class="media-panel">
+      <div class="video-grid" id="thesodeVideosGrid">
+        <!-- Injected by JS -->
+      </div>
+      <div class="media-cta-row">
+        <a href="https://youtube.com/@theschoolofdanielsandesthers?si=b04ethB8pPlQFjQe" target="_blank"
+          rel="noopener noreferrer" class="btn-primary" style="font-size:13px;padding:12px 24px;">Subscribe on
+          YouTube</a>
+        <a href="https://www.instagram.com/thesodeglobal?igsh=MWpzdXhwd2ZhZnB5bQ==" target="_blank"
+          rel="noopener noreferrer" class="media-more-link">View More on Instagram <svg viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg></a>
+        <a href="blog.html" class="media-more-link">Explore Podcast Episodes <svg viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- BLOG TEASER -->
+  <section id="blog-teaser">
+    <div class="reveal">
+      <div class="section-label">Insights & Stories</div>
+      <h2 class="section-title">Blog, Articles<br>& <em>Podcasts</em></h2>
+      <p class="section-body">Practical wisdom for the faith-driven professional - articles, devotionals, and podcast
+        episodes from the SODE community.</p>
+    </div>
+    <div class="blog-teaser-grid reveal" style="transition-delay:0.1s;" id="blogTeaserGrid">
+      <!-- Rendered by JS -->
+    </div>
+    <div class="blog-teaser-cta reveal" style="transition-delay:0.2s;">
+      <a href="blog.html" class="btn-primary">Visit Full Blog & Podcast</a>
+      <a href="blog.html" class="btn-ghost">All Articles</a>
+    </div>
+  </section>
+
+  <!-- MODULE MODAL -->
+  <div id="moduleOverlay" class="module-modal-overlay" aria-hidden="true">
+    <div class="module-modal" role="dialog" aria-modal="true" aria-labelledby="moduleTitle">
+      <div class="module-modal-head">
+        <div>
+          <div class="module-modal-kicker" id="moduleKicker">Module</div>
+          <h3 class="module-modal-title" id="moduleTitle">Module Details</h3>
+        </div>
+        <button id="moduleClose" class="module-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="module-modal-body">
+        <div class="modal-section">
+          <h4>Module Focus</h4>
+          <div id="modalFocus" class="modal-application"></div>
+        </div>
+        <div class="modal-section">
+          <h4>Detailed Schedule</h4>
+          <div id="modalSchedule"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGISTER -->
+  <section id="register">
+    <div class="reveal">
+      <div class="section-label">SODE Webapp</div>
+      <h2 class="section-title">Take the First Step Towards<br><em>Marketplace Dominion</em></h2>
+    </div>
+    <div class="register-grid">
+      
+      <!-- Left Column: CSS Phone Mockup of Webapp -->
+      <div class="webapp-showcase-container reveal">
+        <div class="phone-mockup" onclick="window.open('https://app.thesode.org/', '_blank')">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="phone-status-bar">
+              <span class="phone-time">9:41</span>
+              <div class="phone-status-icons">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M2 22h20V2z"/></svg>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 21.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-5.05-5.05a7.14 7.14 0 0 1 10.1 0l-1.42 1.42a5.13 5.13 0 0 0-7.26 0l-1.42-1.42zm-2.83-2.83a11.14 11.14 0 0 1 15.76 0l-1.42 1.42a9.13 9.13 0 0 0-12.92 0L4.12 13.62z"/></svg>
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm1 9h2v-4h-2v4z"/></svg>
+              </div>
+            </div>
+            
+            <div class="app-header">
+              <span class="app-logo-text">SODE App</span>
+              <div class="app-avatar">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--gold)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              </div>
+            </div>
+
+            <div class="app-welcome">
+              <h4>Welcome back,</h4>
+              <p>Daniel Covenant</p>
+            </div>
+
+            <!-- Widget 1: Circular Progress -->
+            <div class="mock-widget widget-progress">
+              <div class="widget-progress-circle">
+                <svg viewBox="0 0 36 36">
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3"/>
+                  <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--gold)" stroke-width="3" stroke-dasharray="78, 100"/>
+                </svg>
+                <span class="widget-progress-text">78%</span>
+              </div>
+              <div class="widget-progress-info">
+                <h5>Daniel Standard</h5>
+                <p>Module 2: Workplace Mastery</p>
+              </div>
+            </div>
+
+            <!-- Widget 2: Checklist -->
+            <div class="mock-widget widget-checklist">
+              <h5>My Milestones</h5>
+              <div class="checklist-item">
+                <div class="chk-icon done">✓</div>
+                <span class="done-text">Personal Brand Statement</span>
+              </div>
+              <div class="checklist-item">
+                <div class="chk-icon done">✓</div>
+                <span class="done-text">Kingdom identity clarity</span>
+              </div>
+              <div class="checklist-item">
+                <div class="chk-icon pending"></div>
+                <span class="pending-text">Drafting 5-Year Roadmap</span>
+              </div>
+            </div>
+
+            <!-- Widget 3: Mentorship -->
+            <div class="mock-widget widget-mentorship">
+              <div class="mentor-profile">
+                <div class="mentor-avatar">
+                  <img src="Mrs. Sam-Obioha.jpg.jpeg" alt="Mentor Mrs. Sam-Obioha">
+                </div>
+                <div class="mentor-info">
+                  <h6>Mrs. Sam-Obioha</h6>
+                  <p>Corporate Strategy</p>
+                </div>
+              </div>
+              <span class="mentor-status">Active Mentor</span>
+            </div>
+
+            <a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="app-mini-cta">
+              Open Dashboard →
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: SODE Webapp Launch Copy -->
+      <div class="register-info reveal" style="transition-delay:0.15s;">
+        <div class="webapp-badge">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 4px;"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          SODE Webapp Live
+        </div>
+        
+        <h3 style="font-family:var(--ff-display);font-size:38px;color:var(--navy);margin-bottom:16px;font-weight:600;line-height:1.2;">
+          Welcome to the New<br><em>SODE Webapp! 🚀</em>
+        </h3>
+        
+        <p style="font-size:15px;color:var(--gray-400);line-height:1.8;margin-bottom:28px;">
+          The official School of Daniel and Esthers (SODE) Webapp is live! The platform is your digital companion to seamlessly track your training progress, set career and business milestones, and stay connected with our mentorship network.
+        </p>
+
+        <div class="app-features-list">
+          <div class="app-feature-item">
+            <div class="app-feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="app-feature-content">
+              <h4>Kingdom Consciousness &amp; Excellence</h4>
+              <p>Equipping you with practical tools to dominate your industry and establish God's agenda.</p>
+            </div>
+          </div>
+          
+          <div class="app-feature-item">
+            <div class="app-feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="app-feature-content">
+              <h4>Biblical Truths</h4>
+              <p>Accelerating your career growth using proven strategies from Daniel, Joseph, and Esther.</p>
+            </div>
+          </div>
+
+          <div class="app-feature-item">
+            <div class="app-feature-icon">
+              <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div class="app-feature-content">
+              <h4>Active Mentorship &amp; Milestones</h4>
+              <p>Set strategic milestones and connect with mentors who sharpen and guide your journey.</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="background: var(--off-white); border: 1.5px dashed var(--gray-200); padding: 18px; border-radius: 12px; margin-bottom: 28px; font-size: 13.5px; color: var(--gray-700); line-height: 1.6;">
+          <strong>Next Step:</strong> Visit <strong>app.thesode.org</strong>, register using your existing email address, and explore your new personalized dashboard.
+        </div>
+
+        <a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="btn-primary" style="padding: 16px 36px; font-size: 15px; border-radius: 10px; box-shadow: 0 10px 24px rgba(26,58,140,0.15);">
+          Get Started on SODE Webapp →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact">
+    <div class="reveal">
+      <div class="section-label">Reach Us</div>
+      <h2 class="section-title">Get in <em>Touch</em></h2>
+      <p class="section-body">Have questions about the program? We'd love to hear from you. Reach out and our team will
+        respond promptly.</p>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-info reveal">
+        <div class="contact-item">
+          <div class="contact-icon"><svg viewBox="0 0 24 24">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg></div>
+          <div>
+            <h5>Email</h5><a href="mailto:connect@thesode.org">connect@thesode.org</a>
+          </div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon"><svg viewBox="0 0 24 24">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 11.61 19a19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 3.09 4.18 2 2 0 0 1 5.07 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L9.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 23 17z" />
+            </svg></div>
+          <div>
+            <h5>Phone / WhatsApp</h5><a href="tel:+2348160069344">+234 816 006 9344</a>
+          </div>
+        </div>
+        <div class="contact-item">
+          <div class="contact-icon"><svg viewBox="0 0 24 24">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg></div>
+          <div>
+            <h5>Venue</h5>
+            <p>Nigerian Law School, Victoria Island, Lagos</p>
+          </div>
+        </div>
+        <div class="social-links">
+          <a href="https://www.linkedin.com/in/the-school-of-daniels-and-esthers-sode-a3a2b73b9?utm_source=share_via&utm_content=profile&utm_medium=member_android"
+            target="_blank" rel="noopener noreferrer" class="social-link">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+            </svg>
+            LinkedIn
+          </a>
+          <a href="https://www.instagram.com/thesodeglobal?igsh=MWpzdXhwd2ZhZnB5bQ==" target="_blank"
+            rel="noopener noreferrer" class="social-link">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+            </svg>
+            Instagram
+          </a>
+          <a href="https://www.tiktok.com/@school.of.daniels?_r=1&_t=ZS-95QVL9RKJ4W" target="_blank"
+            rel="noopener noreferrer" class="social-link">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93v7.2c0 1.96-.5 3.96-1.82 5.36-1.35 1.48-3.5 2.22-5.5 1.83-2.19-.44-4.04-2.1-4.63-4.25-.56-2.02-.13-4.3 1.11-5.94 1.25-1.68 3.32-2.56 5.34-2.31v4.06c-1.07-.12-2.2.14-2.92.89-.83.85-.92 2.23-.39 3.25.59 1.11 1.94 1.55 3.12 1.14 1.18-.38 1.96-1.5 1.96-2.74V.02z" />
+            </svg>
+            TikTok
+          </a>
+          <a href="https://www.facebook.com/share/1E1MHDMxNF/" target="_blank" rel="noopener noreferrer"
+            class="social-link">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+            </svg>
+            Facebook
+          </a>
+          <a href="https://youtube.com/@theschoolofdanielsandesthers?si=b04ethB8pPlQFjQe" target="_blank"
+            rel="noopener noreferrer" class="social-link">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z" />
+            </svg>
+            YouTube
+          </a>
+        </div>
+      </div>
+      <div class="register-form-wrap reveal" style="transition-delay:0.15s;">
+        <h3 style="font-family:var(--ff-display);font-size:22px;color:var(--navy);margin-bottom:24px;font-weight:600;">
+          Send Us a Message</h3>
+        <form id="contactForm">
+          <div class="form-row">
+            <div class="form-group"><label>First Name</label><input type="text" name="firstName" placeholder="Your name"
+                required></div>
+            <div class="form-group"><label>Last Name</label><input type="text" name="lastName"
+                placeholder="Your surname" required></div>
+          </div>
+          <div class="form-group"><label>Email Address</label><input type="email" name="email"
+              placeholder="you@example.com" required></div>
+          <div class="form-group"><label>Subject</label><input type="text" name="subject"
+              placeholder="What's this about?" required></div>
+          <div class="form-group"><label>Message</label><textarea name="message" rows="5"
+              placeholder="Your message here..." required></textarea></div>
+          <button type="submit" class="form-submit" id="contactSubmitBtn">Send Message →</button>
+          <div id="contactFormMessage" style="margin-top:16px;text-align:center;font-size:14px;"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAP -->
+  <section id="map" style="padding-top:0;">
+    <div class="map-wrap reveal">
+      <div class="map-card">
+        <h3>Nigerian Law School, Victoria Island</h3>
+        <p>The School of Daniels and Esthers holds physically at this venue every Sunday morning as part of the Dominion
+          City Victoria Island service.</p>
+        <a class="map-address"
+          href="https://www.google.com/maps/search/?api=1&query=Nigerian+Law+School+Victoria+Island+Lagos"
+          target="_blank" rel="noopener noreferrer">°Å¸" Nigerian Law School, Victoria Island, Lagos</a>
+        <div class="map-actions">
+          <a class="map-btn-primary"
+            href="https://www.google.com/maps/dir/?api=1&destination=Nigerian+Law+School+Victoria+Island+Lagos"
+            target="_blank" rel="noopener noreferrer">Get Directions</a>
+          <a class="map-btn-ghost"
+            href="https://www.google.com/maps/search/?api=1&query=Nigerian+Law+School+Victoria+Island+Lagos"
+            target="_blank" rel="noopener noreferrer">Open in Maps</a>
+        </div>
+      </div>
+      <div class="map-frame">
+        <iframe title="Map to Nigerian Law School, Victoria Island, Lagos" loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://maps.google.com/maps?q=Nigerian%20Law%20School%20Victoria%20Island%20Lagos&t=&z=15&ie=UTF8&iwloc=&output=embed"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENT DETAIL MODAL -->
+  <div class="module-modal-overlay" id="eventDetailOverlay" onclick="closeEventDetail(event)">
+    <div class="module-modal" id="eventDetailModal" style="max-width:560px;">
+      <div class="module-modal-head">
+        <div>
+          <div class="module-modal-kicker" id="evDetailDate">Date</div>
+          <h3 class="module-modal-title" id="evDetailTitle">Session Title</h3>
+        </div>
+        <button class="module-close" onclick="document.getElementById('eventDetailOverlay').classList.remove('open');document.body.style.overflow='';" aria-label="Close">&times;</button>
+      </div>
+      <div class="module-modal-body">
+        <div class="modal-section" id="evDetailSpeakerWrap">
+          <h4>Facilitator</h4>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:10px;">
+            <img id="evDetailSpeakerImg" src="" alt="Facilitator" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2.5px solid var(--royal-soft);display:none;flex-shrink:0;box-shadow:0 4px 14px rgba(13,27,75,0.12);">
+            <p id="evDetailSpeaker" style="font-size:15px;color:var(--navy);margin:0;line-height:1.5;"></p>
+          </div>
+        </div>
+        <div class="modal-section" id="evDetailOutcomesWrap">
+          <h4>What You Will Learn</h4>
+          <ul class="modal-list" id="evDetailOutcomes"></ul>
+        </div>
+        <div class="modal-section">
+          <h4>Add to Calendar</h4>
+          <div class="event-cal-btns" id="evDetailCalBtns" style="flex-wrap:wrap;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer id="footer">
+    <div class="footer-top">
+      <div class="footer-logo">
+        <img src="Images/SODE_White Primary Logo(footer).png" alt="School of Daniels and Esthers">
+        <p>Equipping professionals with practical skills, knowledge and insights to excel at the marketplace.</p>
+        <div class="footer-socials">
+          <a href="https://www.linkedin.com/in/the-school-of-daniels-and-esthers-sode-a3a2b73b9?utm_source=share_via&utm_content=profile&utm_medium=member_android"
+            target="_blank" rel="noopener noreferrer" class="footer-social-icon" aria-label="LinkedIn"><svg
+              viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+            </svg></a>
+          <a href="https://www.instagram.com/thesodeglobal?igsh=MWpzdXhwd2ZhZnB5bQ==" target="_blank"
+            rel="noopener noreferrer" class="footer-social-icon" aria-label="Instagram"><svg viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+            </svg></a>
+          <a href="https://www.tiktok.com/@school.of.daniels?_r=1&_t=ZS-95QVL9RKJ4W" target="_blank"
+            rel="noopener noreferrer" class="footer-social-icon" aria-label="TikTok"><svg viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93v7.2c0 1.96-.5 3.96-1.82 5.36-1.35 1.48-3.5 2.22-5.5 1.83-2.19-.44-4.04-2.1-4.63-4.25-.56-2.02-.13-4.3 1.11-5.94 1.25-1.68 3.32-2.56 5.34-2.31v4.06c-1.07-.12-2.2.14-2.92.89-.83.85-.92 2.23-.39 3.25.59 1.11 1.94 1.55 3.12 1.14 1.18-.38 1.96-1.5 1.96-2.74V.02z" />
+            </svg></a>
+          <a href="https://www.facebook.com/share/1E1MHDMxNF/" target="_blank" rel="noopener noreferrer"
+            class="footer-social-icon" aria-label="Facebook"><svg viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+            </svg></a>
+          <a href="https://youtube.com/@theschoolofdanielsandesthers?si=b04ethB8pPlQFjQe" target="_blank"
+            rel="noopener noreferrer" class="footer-social-icon" aria-label="YouTube"><svg viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z" />
+            </svg></a>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col">
+          <h5>Navigate</h5>
+          <ul>
+            <li><a href="#home">Home</a></li>
+            <li><a href="#vision">Vision</a></li>
+            <li><a href="#curriculum">Curriculum</a></li>
+            <li><a href="#events">Events</a></li>
+            <li><a href="#media">Media</a></li>
+            <li><a href="blog.html">Blog & Podcast</a></li>
+            <li><a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer">Register</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h5>Contact</h5>
+          <ul>
+            <li><a href="mailto:connect@thesode.org">connect@thesode.org</a></li>
+            <li><a href="tel:+2348160069344">+234 816 006 9344</a></li>
+            <li><a href="https://www.google.com/maps/search/?api=1&query=Nigerian+Law+School+Victoria+Island+Lagos"
+                target="_blank" rel="noopener noreferrer">Nigerian Law School, VI</a></li>
+
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 The School of Daniels and Esthers. All Rights Reserved.</p>
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;">A <a href="admin.html" class="dc-badge" style="text-decoration:none;" aria-label="Admin Panel">Dominion City</a> Initiative</div>
+    </div>
+  </footer>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close">&times;</button>
+    <img id="lightboxImg" src="" alt="Gallery image">
+  </div>
+
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-analytics-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCP-fJ-cuD-mbzghvRTbbI5GDSrJHPhb0Y",
+      authDomain: "sode-website.firebaseapp.com",
+      projectId: "sode-website",
+      storageBucket: "sode-website.firebasestorage.app",
+      messagingSenderId: "503305041954",
+      appId: "1:503305041954:web:55964ce11196728cd1327b",
+      measurementId: "G-ZRVMKQGR83"
+    };
+    firebase.initializeApp(firebaseConfig);
+    firebase.analytics();
+    const db = firebase.firestore();
+  </script>
+
+  <script>
+    // ¢...â‚¬¢...â‚¬¢...â‚¬ DATA STORE (syncs with admin.html via localStorage) ¢...â‚¬¢...â‚¬¢...â‚¬
+    const DEFAULT_MODULES = [
+      { 
+        id: 1, 
+        title: 'Kingdom Identity & Personal Excellence', 
+        focus: 'Laying the spiritual and personal foundation - understanding who you are as a kingdom professional and committing to the standard of excellence that Daniel, Joseph, and Esther exemplified.', 
+        schedule: 'Apr 12-26 (2 courses + panel)',
+        detailedSessions: [
+          { date: "April 12, 2026", course: "Kingdom Professionals - Lessons from Daniel, Joseph & Esther", facilitator: "Pastor Okey Eze", outcomes: ["Attendees understand the scriptural foundations of the programme and the calling of marketplace professionals.", "Attendees identify with the character and positioning of Daniel, Joseph, and Esther as models for their own careers and businesses.", "Attendees articulate a personal vision for impact as kingdom professionals."] },
+          { date: "April 19, 2026", course: "Becoming Excellent in All Things: The Daniel Standard", facilitator: "Mrs. Kemi Okusanya, CEO, Hydrogen Payments Services Limited", outcomes: ["Attendees identify areas requiring improvement in their professional lives.", "Attendees develop a personal excellence action plan.", "Understanding of how scriptural excellence principles apply in modern workplaces."] },
+          { date: "April 26, 2026", course: "Panel & Q&A - Identity & Excellence Review", facilitator: "Panel of Facilitators & SODE Team", outcomes: ["Attendees revisit and consolidate lessons on kingdom identity and personal excellence.", "Attendees ask questions and receive personalised guidance from the panel.", "Attendees refine their personal excellence action plans based on panel feedback."] }
+        ]
+      },
+      { 
+        id: 2, 
+        title: 'Career Positioning & Workplace Mastery', 
+        focus: 'Building your professional presence and navigating workplace realities - from crafting a compelling personal brand, to thriving under pressure, managing upward, and building meaningful career relationships.', 
+        schedule: 'May 3-31 (4 courses + panel)',
+        detailedSessions: [
+          { date: "May 3, 2026", course: "Building a Winning Personal Brand", facilitator: "Eric Gugua", outcomes: ["Attendees understand the principles of personal branding.", "Each attendee drafts a personal brand statement.", "Attendees learn practical steps for increasing visibility in the workplace and industry.", "Understanding the importance of appearance and personal grooming."] },
+          { date: "May 10, 2026", course: "Navigating Difficult Work Environments", facilitator: "Ekundayo Onajobi, Partner, Udo Udoma & Belo-Osagie", outcomes: ["Attendees learn strategies for managing difficult bosses and toxic work cultures.", "Attendees understand scriptural principles for maintaining integrity under pressure.", "Attendees develop a personal coping and excellence framework for their workplace."] },
+          { date: "May 17, 2026", course: "Relating to Superiors & Managing Up", facilitator: "Ekundayo Onajobi, Partner, Udo Udoma & Belo-Osagie", outcomes: ["Attendees understand the art of managing up effectively.", "Attendees learn how to build strong, trust-based relationships with superiors.", "Attendees learn how to communicate ideas and concerns upward with confidence and tact."] },
+          { date: "May 24, 2026", course: "Effective Networking & Building Career Relationships", facilitator: "Wonuola Adetayo, Founder & CEO, SoftSkills Limited; Harvard Kennedy School Alumna", outcomes: ["Attendees learn practical strategies for building meaningful professional relationships.", "Attendees practise networking skills in a safe environment.", "Each attendee identifies at least three new professional contacts within the SODE community."] },
+          { date: "May 31, 2026", course: "Panel & Q&A - Career & Workplace Review", facilitator: "Panel of Facilitators & SODE Team", outcomes: ["Attendees revisit and consolidate lessons on personal branding, workplace navigation, managing up, and networking.", "Attendees share early wins or challenges from applying the month's lessons.", "Attendees refine their career positioning strategies based on panel insights."] }
+        ]
+      },
+      { 
+        id: 3, 
+        title: 'Leadership & Future Readiness', 
+        focus: 'Stepping into leadership and staying ahead - leading effectively at every level, building genuine influence, and future-proofing your career in a rapidly changing, AI-driven world.', 
+        schedule: 'Jun 7-28 (3 courses + panel)',
+        detailedSessions: [
+          { date: "June 7, 2026", course: "Strategic and Effective Leadership: Leading at Every Level", facilitator: "Mr. Michael Thomas, CEO, United Capital Trustees Limited", outcomes: ["Attendees understand that leadership is not tied to position but to influence and responsibility.", "Attendees complete a leadership self-assessment and identify growth areas.", "Attendees learn actionable steps for leading effectively within their current roles."] },
+          { date: "June 14, 2026", course: "Building Influence in Your Organisation", facilitator: "Prof. Konyinsola Ajayi, SAN. Chairman, Olaniwun Ajayi LP", outcomes: ["Attendees understand the difference between popularity and genuine influence.", "Attendees learn practical strategies for building influence in their organisations.", "Attendees identify specific influence-building actions they can take in their current roles."] },
+          { date: "June 21, 2026", course: "Future-Proofing Your Career in the Age of AI", facilitator: "Samuel Ayo, CTO, TaxStreem", outcomes: ["Attendees understand the basics of AI and its real-world career implications.", "Attendees are introduced to practical AI tools for productivity.", "Attendees develop a personal plan for upskilling and adapting to AI-driven changes."] },
+          { date: "June 28, 2026", course: "Panel & Q&A - Leadership & Future Readiness Review", facilitator: "Panel of Facilitators & SODE Team", outcomes: ["Attendees revisit and consolidate lessons on leadership, influence, and AI readiness.", "Attendees ask questions and share reflections on their leadership growth.", "Attendees refine their personal leadership development and upskilling plans."] }
+        ]
+      },
+      { 
+        id: 4, 
+        title: 'Business & Entrepreneurship', 
+        focus: 'Building and growing ventures with wisdom - understanding the practical steps for starting a business in Nigeria, strategies for scaling, and mastering the indispensable skill of selling.', 
+        schedule: 'Jul 5-26 (3 courses + panel)',
+        detailedSessions: [
+          { date: "July 5, 2026", course: "Strategies for Starting a Business in Nigeria", facilitator: "Emmanuel Etuh, Director, Veritas Kapital Assurance Plc.", outcomes: ["Aspiring entrepreneurs understand the practical steps for business registration and setup in Nigeria.", "Attendees learn the legal, regulatory, and structural requirements for launching a business.", "Attendees identify business opportunities within their existing skills and networks."] },
+          { date: "July 12, 2026", course: "Growing and Scaling a Business", facilitator: "Mrs. Edememe Oladiji-Wusu", outcomes: ["Attendees learn key principles for sustainable business growth beyond the startup phase.", "Attendees understand systems, processes, and team-building needed to scale.", "Attendees develop a growth roadmap for their current or planned ventures."] },
+          { date: "July 19, 2026", course: "How to Be the Best Salesperson", facilitator: "Engr. Obinna Nwosu", outcomes: ["Attendees understand that sales is a core life and career skill.", "Attendees learn practical persuasion and communication techniques.", "Attendees practise delivering a compelling pitch.", "Attendees develop foundational public speaking skills."] },
+          { date: "July 26, 2026", course: "Panel & Q&A - Business & Entrepreneurship Review", facilitator: "Panel of Facilitators & SODE Team", outcomes: ["Attendees revisit and consolidate lessons on starting, growing, and selling in business.", "Attendees ask questions tailored to their specific business ideas or challenges.", "Attendees refine their business plans and growth strategies based on panel insights."] }
+        ]
+      },
+      { 
+        id: 5, 
+        title: 'Wealth Building & Capital', 
+        focus: 'Managing and multiplying resources - mastering personal financial management, making wise investment decisions, raising capital for ventures, and securing the mentors and sponsors who accelerate your journey.', 
+        schedule: 'Aug 2-30 (4 courses + panel)',
+        detailedSessions: [
+          { date: "August 2, 2026", course: "Personal Financial Management & Budgeting", facilitator: "Ekemini Isung", outcomes: ["Attendees learn how to create and maintain a personal budget.", "Attendees understand principles of financial stewardship and discipline.", "Attendees develop a practical plan for managing their income and expenses."] },
+          { date: "August 9, 2026", course: "Investment Strategies & Wealth Building", facilitator: "Ekemini Isung", outcomes: ["Attendees learn how to evaluate and make informed investment decisions.", "Attendees understand the landscape of investment options available in Nigeria.", "Attendees develop a personal investment plan aligned with their goals and risk appetite."] },
+          { date: "August 16, 2026", course: "Raising and Managing Capital for Your Business", facilitator: "Iyinoluwa Aboyeji, Founder, Future Africa Fund; Co-founder, Andela & Flutterwave", outcomes: ["Attendees understand the landscape of funding options available in Nigeria.", "Attendees learn how to prepare a business for investor readiness.", "Attendees identify the most suitable funding strategies for their specific businesses."] },
+          { date: "August 23, 2026", course: "Finding Mentors and Sponsors", facilitator: "Mr. Chiefo Ejiofobiri", outcomes: ["Attendees understand the difference between a mentor and a sponsor and the unique benefits each provides.", "Attendees learn to grow their network and appreciate the importance of strategic contacts.", "Each attendee creates a mentorship outreach plan with at least two potential mentors and a sponsor."] },
+          { date: "August 30, 2026", course: "Panel & Q&A - Wealth & Capital Review", facilitator: "Panel of Facilitators & SODE Team", outcomes: ["Attendees revisit and consolidate lessons on financial management, investing, capital-raising, and mentorship.", "Attendees ask questions and receive guidance on their financial and mentorship plans.", "Attendees refine their investment strategies and mentorship outreach plans."] }
+        ]
+      },
+      { 
+        id: 6, 
+        title: 'Personal Effectiveness & Sustained Impact', 
+        focus: 'Sharpening the tools for long-term success - mastering negotiation, optimising productivity and time, and developing the emotional intelligence needed to sustain impact across every area of life.', 
+        schedule: 'Sep 6-27 (3 courses + panel)',
+        detailedSessions: [
+          { date: "September 6, 2026", course: "Negotiation Skills for Career & Business", facilitator: "Pastor Okey Eze", outcomes: ["Attendees understand key negotiation frameworks and principles.", "Attendees learn how to negotiate salaries, contracts, deals, and partnerships with confidence.", "Attendees practise negotiation techniques through role-play exercises."] },
+          { date: "September 13, 2026", course: "Time Management & Productivity for the Kingdom Professional", facilitator: "TBC", outcomes: ["Attendees learn practical time management frameworks (e.g., prioritisation, batching, delegation).", "Attendees identify their biggest time drains and develop strategies to address them.", "Attendees create a personalised weekly productivity plan."] },
+          { date: "September 20, 2026", course: "Emotional Intelligence", facilitator: "TBC", outcomes: ["Attendees understand the components of emotional intelligence: self-awareness, self-regulation, empathy, and social skill.", "Attendees learn how emotional intelligence drives career advancement and leadership effectiveness.", "Attendees assess their own EQ and develop a personal growth plan."] },
+          { date: "September 27, 2026", course: "Panel & Q&A - Personal Effectiveness Review", facilitator: "Panel of Facilitators & SODE Team", outcomes: ["Attendees revisit and consolidate lessons on negotiation, productivity, and emotional intelligence.", "Attendees share reflections and progress from the full programme so far.", "Attendees leave with sharpened personal effectiveness strategies for the months ahead."] }
+        ]
+      }
+    ];
+
+    // ─── FIREBASE DATA LAYER ───
+    async function getModules() {
+      try { const doc = await db.collection('sode_data').doc('modules').get(); return (doc.exists && doc.data().items) ? doc.data().items : DEFAULT_MODULES; } catch(e) { return DEFAULT_MODULES; }
+    }
+    async function getEvents() {
+      try {
+        const doc = await db.collection('sode_data').doc('events').get();
+        if (doc.exists && Array.isArray(doc.data().items)) {
+          return doc.data().items.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+        }
+      } catch(e) { /* ignore */ }
+      // Fallback: auto-generate from module sessions
+      const modules = await getModules();
+      const speakers = await getSpeakers();
+      const events = [];
+      const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const speakerByName = new Map(speakers.map(s => [String(s.name || '').trim().toLowerCase(), s]));
+      for (const mod of modules) {
+        if (!mod.detailedSessions) continue;
+        for (const sess of mod.detailedSessions) {
+          const d = new Date(sess.date);
+          if (isNaN(d.getTime())) continue;
+          d.setHours(8, 0, 0, 0);
+          const topic = sess.course;
+          const facilitator = sess.facilitator && sess.facilitator !== 'TBC' ? sess.facilitator : '';
+          const baseName = facilitator ? facilitator.split(',')[0].trim() : '';
+          const matched = baseName ? speakerByName.get(baseName.toLowerCase()) : null;
+          events.push({ day: String(d.getDate()).padStart(2, '0'), month: monthNames[d.getMonth()], title: topic, speakerId: matched ? matched.id : '', speaker: facilitator, location: 'Nigerian Law School, Victoria Island · 8:00 AM', tag: topic.toLowerCase().includes('panel') ? 'Special Session' : 'Regular Class', tagStyle: topic.toLowerCase().includes('panel') ? 'background:var(--gold-light);color:var(--gold);' : '', date: d.toISOString().slice(0, 19), duration: 50 });
+        }
+      }
+      return events.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+
+    const DEFAULT_BLOGS = [
+      { type: 'article', tag: 'Article', title: 'The Daniel Principle: How to Excel in a Secular Workplace Without Compromising Your Faith', date: 'April 2026', time: '6 min read', image: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600&q=80', desc: "Daniel didn't hide his faith — he outperformed everyone around him while maintaining absolute integrity. Here's what that looks like for you today in your office, boardroom, or marketplace.", video: '', content: '' },
+      { type: 'podcast', tag: 'Podcast · Ep. 1', title: 'Faith at Work — Is God Interested in Your Career?', date: 'March 2026', time: '22 min', image: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=600&q=80', desc: "In our debut episode, we explore the scriptural basis for pursuing career and business excellence, and why God is not just interested in — but invested in — your professional success.", video: '', content: '' },
+      { type: 'article', tag: 'Article', title: "Esther's Positioning Strategy: 7 Lessons for Modern Professionals", date: 'March 2026', time: '5 min read', image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&q=80', desc: "Esther didn't become queen by accident. She was strategic, prepared, and divinely connected. Discover how her methods translate directly to career advancement in today's competitive world.", video: '', content: '' },
+      { type: 'podcast', tag: 'Podcast · Ep. 2', title: 'Building Relationships That Actually Open Doors', date: 'April 2026', time: '34 min', image: 'https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=600&q=80', desc: "Relationships are the currency of the marketplace. This episode dives deep into the Biblical framework for building connections that create real opportunities — without manipulation or compromise.", video: '', content: '' },
+      { type: 'article', tag: 'Article', title: 'The Issachar Anointing: How to Thrive in the Age of Artificial Intelligence', date: 'April 2026', time: '7 min read', image: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600&q=80', desc: "The sons of Issachar had 'understanding of the times.' For today's Christian professional, AI is not a threat — it's a tool, and this article shows you exactly how to wield it.", video: '', content: '' }
+    ];
+
+    async function getBlogs() { try { const doc = await db.collection('sode_data').doc('blogs').get(); return (doc.exists && doc.data().items) ? doc.data().items : DEFAULT_BLOGS; } catch(e) { return DEFAULT_BLOGS; } }
+
+    // --- FLYER DATA ---
+    const DEFAULT_FLYERS = [];
+    async function getFlyers() {
+      try {
+        const doc = await db.collection('sode_data').doc('flyers').get();
+        return doc.exists ? (doc.data().items || []) : DEFAULT_FLYERS;
+      } catch(e) { return DEFAULT_FLYERS; }
+    }
+
+    async function renderFlyers() {
+      const flyers = await getFlyers();
+      const container = document.getElementById('flyerContainer');
+      if (!container) return;
+
+      const placeholderHTML = `
+        <div class="flyer-wrap">
+          <div class="flyer-img-col">
+            <div class="flyer-placeholder">
+              <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <p>This week's flyer will appear here</p>
+            </div>
+          </div>
+          <div class="flyer-info-col">
+            <div class="flyer-week-label">Coming Soon</div>
+            <div class="flyer-session-title">This Week's Session</div>
+            <p style="font-size:14px;color:var(--gray-400);line-height:1.75;max-width:420px;">Each week's session flyer will be displayed here. Register now to secure your spot for every upcoming session.</p>
+            <div class="flyer-meta-row">
+              <div class="flyer-meta-item">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Every Sunday &middot; 8:00 AM
+              </div>
+              <div class="flyer-meta-item">
+                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                Nigerian Law School, VI
+              </div>
+            </div>
+            <div class="flyer-cta-row">
+              <a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="btn-primary" style="padding:12px 26px;font-size:13px;">Register</a>
+              <a href="#events" class="btn-ghost" style="padding:12px 22px;font-size:13px;">View All Events</a>
+            </div>
+          </div>
+        </div>`;
+
+      if (!flyers.length) {
+        container.innerHTML = placeholderHTML;
+        return;
+      }
+
+      const f = flyers[0];
+      container.innerHTML = `
+        <div class="flyer-wrap">
+          <div class="flyer-img-col">
+            ${f.image
+              ? `<img src="${f.image}" alt="${f.title || 'Weekly Flyer'}">`
+              : `<div class="flyer-placeholder"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><p>Flyer image coming soon</p></div>`
+            }
+          </div>
+          <div class="flyer-info-col">
+            <div class="flyer-week-label">${f.week || 'This Week'}</div>
+            <div class="flyer-session-title">${f.title || 'This Week at SODE'}</div>
+            ${f.description ? `<p style="font-size:14px;color:var(--gray-400);line-height:1.75;max-width:420px;">${f.description}</p>` : ''}
+            <div class="flyer-meta-row">
+              <div class="flyer-meta-item">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                ${f.time || 'Every Sunday &middot; 8:00 AM'}
+              </div>
+              <div class="flyer-meta-item">
+                <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                ${f.location || 'Nigerian Law School, VI'}
+              </div>
+            </div>
+            <div class="flyer-cta-row">
+              <a href="#events" class="btn-primary" style="padding:12px 26px;font-size:13px;">View Event Details</a>
+              <a href="https://app.thesode.org/" target="_blank" rel="noopener noreferrer" class="btn-ghost" style="padding:12px 22px;font-size:13px;">Register</a>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ¢...â‚¬¢...â‚¬¢...â‚¬ SPEAKERS DATA ¢...â‚¬¢...â‚¬¢...â‚¬
+    const DEFAULT_SPEAKERS = [
+      {
+        id: 1,
+        name: "Pastor Okey Eze",
+        role: "Lead Facilitator, SODE",
+        bio: "A seasoned leader in kingdom marketplace ministry, guiding professionals to integrate faith with career excellence. His teaching on the Daniel standard has reshaped careers across Nigeria.",
+        module: "Module 1 \u00b7 Kingdom Identity",
+        date: "April 12, 2026",
+        photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80"
+      },
+      {
+        id: 2,
+        name: "Mrs. Kemi Okusanya",
+        role: "CEO, Hydrogen Payments Services Limited",
+        bio: "A leading figure in Nigeria\u2019s payments industry who has built and scaled one of the country\u2019s most respected fintech institutions. She brings practical excellence frameworks drawn from decades of boardroom experience.",
+        module: "Module 1 \u00b7 Personal Excellence",
+        date: "April 19, 2026",
+        photo: "Images/Hydrogen-Payment-Services-Limited-CEO-Kemi-Okusanya-646x375.webp"
+      },
+      {
+        id: 3,
+        name: "Wonuola Adetayo",
+        role: "Founder & CEO, SoftSkills Limited",
+        bio: "Harvard Kennedy School alumna and Africa\u2019s foremost human capital developer. Wonuola has trained thousands of professionals across the continent to build relationships that open extraordinary doors.",
+        module: "Module 2 \u00b7 Career & Networking",
+        date: "May 24, 2026",
+        photo: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=800&q=80"
+      },
+      {
+        id: 4,
+        name: "Mr. Michael Thomas",
+        role: "CEO, United Capital Trustees Limited",
+        bio: "A distinguished executive whose approach to strategic leadership has shaped institutions across Nigeria\u2019s financial sector. He brings a rare combination of corporate rigour and servant-leadership principles.",
+        module: "Module 3 \u00b7 Leadership",
+        date: "June 7, 2026",
+        photo: "Images/Michael-Abiodun-Thomas-1024x1024.jpg"
+      },
+      {
+        id: 5,
+        name: "Prof. Konyinsola Ajayi",
+        role: "SAN \u00b7 Chairman, Olaniwun Ajayi LP",
+        bio: "One of Nigeria\u2019s most distinguished Senior Advocates, Professor Ajayi has built an empire of influence through quiet excellence, deep expertise, and a commitment to raising the next generation of leaders.",
+        module: "Module 3 \u00b7 Building Influence",
+        date: "June 14, 2026",
+        photo: "Images/olayinwu ajayi.png"
+      },
+      {
+        id: 6,
+        name: "Iyinoluwa Aboyeji",
+        role: "Founder, Future Africa Fund",
+        bio: "Co-founder of Andela and Flutterwave, two of Africa\u2019s most transformational tech companies. Iyin now channels his experience into backing Africa\u2019s most promising founders through Future Africa.",
+        module: "Module 5 \u00b7 Raising Capital",
+        date: "August 16, 2026",
+        photo: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&q=80"
+      }
+    ];
+
+    async function getSpeakers() {
+      try {
+        const doc = await db.collection('sode_data').doc('speakers').get();
+        return doc.exists ? doc.data().items : DEFAULT_SPEAKERS;
+      } catch(e) { return DEFAULT_SPEAKERS; }
+    }
+
+    // --- SPEAKER SHOWCASE ENGINE ---
+    (async function initSpeakers() {
+      let speakers = await getSpeakers();
+      let current = 0;
+      let isFlipped = false;
+      let autoTimer = null;
+      const INTERVAL = 6000;
+
+      function buildDots() {
+        const dotsEl = document.getElementById('spkDots');
+        if (!dotsEl) return;
+        dotsEl.innerHTML = speakers.map((_, i) => `<div class="spk-dot${i === 0 ? ' active' : ''}" data-i="${i}"><div class="spk-progress-bar" id="spkProg${i}"></div></div>`).join('');
+        dotsEl.querySelectorAll('.spk-dot').forEach(d => d.addEventListener('click', () => goTo(parseInt(d.dataset.i))));
+      }
+
+      function showSpeaker(idx, animate = true) {
+        const s = speakers[idx];
+        if (!s) return;
+        const panel = document.getElementById('spkInfoPanel');
+        if (animate && panel) { panel.classList.add('transitioning'); setTimeout(() => panel.classList.remove('transitioning'), 500); }
+        if (isFlipped) { isFlipped = false; const card = document.getElementById('spkFlipCard'); if (card) card.classList.remove('flipped'); }
+        setTimeout(() => {
+          const img = document.getElementById('spkPhoto');
+          if (img) { img.style.opacity = '0'; img.src = s.photo; img.onload = () => { img.style.transition = 'opacity 0.6s ease'; img.style.opacity = '1'; }; }
+          setText('spkPhotoName', s.name); setText('spkPhotoRole', s.role);
+          setText('spkBackModule', s.module); setText('spkBackName', s.name); setText('spkBackRole', s.role); setText('spkBackBio', s.bio); setText('spkBackDate', 'Speaking ' + s.date);
+          setText('spkCount', String(idx + 1).padStart(2, '0') + ' / ' + String(speakers.length).padStart(2, '0'));
+          setText('spkName', s.name); setText('spkRole', s.role); setText('spkBio', s.bio); setText('spkModText', s.module);
+        }, animate ? 200 : 0);
+        document.querySelectorAll('.spk-dot').forEach((d, i) => { d.classList.toggle('active', i === idx); const bar = document.getElementById('spkProg' + i); if (bar) { bar.style.transition = 'none'; bar.style.width = '0%'; } });
+        const activeBar = document.getElementById('spkProg' + idx);
+        if (activeBar) { requestAnimationFrame(() => { activeBar.style.transition = `width ${INTERVAL}ms linear`; activeBar.style.width = '100%'; }); }
+        current = idx;
+      }
+
+      function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val || ''; }
+      function goTo(idx) { clearInterval(autoTimer); showSpeaker(idx); startAuto(); }
+      function next() { goTo((current + 1) % speakers.length); }
+      function prev() { goTo((current - 1 + speakers.length) % speakers.length); }
+      function startAuto() { clearInterval(autoTimer); autoTimer = setInterval(() => { current = (current + 1) % speakers.length; showSpeaker(current); }, INTERVAL); }
+
+      buildDots(); showSpeaker(0, false); startAuto();
+      document.getElementById('spkNext')?.addEventListener('click', next);
+      document.getElementById('spkPrev')?.addEventListener('click', prev);
+      document.getElementById('spkFlipToggle')?.addEventListener('click', () => { isFlipped = !isFlipped; document.getElementById('spkFlipCard')?.classList.toggle('flipped', isFlipped); });
+    })();
+
+    const DEFAULT_MEDIA = [
+      { type: 'photo', title: 'SODE Session', image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&q=80' },
+      { type: 'photo', title: 'Workshop', image: 'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&q=80' },
+      { type: 'photo', title: 'Class Session', image: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&q=80' },
+      { type: 'video', title: 'Module 1: Becoming Excellent in All Things', desc: 'Coming soon - subscribe to our YouTube channel', video: 'https://youtube.com', image: '' },
+      { type: 'video', title: 'SODE Podcast - Episode 1', desc: 'Faith, Career & Marketplace Excellence', video: 'https://youtube.com', image: '' }
+    ];
+
+    async function getMedia() { try { const doc = await db.collection('sode_data').doc('media').get(); return doc.exists ? doc.data().items : DEFAULT_MEDIA; } catch(e) { return DEFAULT_MEDIA; } }
+
+    function extractVideoId(url) { const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/; const match = url.match(regExp); return (match && match[2].length === 11) ? match[2] : null; }
+
+    async function openBlogViewer(idx) {
+      const blogs = await getBlogs();
+      const b = blogs[idx];
+      if (!b) return;
+      document.getElementById('viewerTitle').textContent = b.type === 'podcast' ? 'Listen to Podcast' : 'Read Article';
+      document.getElementById('viewerMainTitle').textContent = b.title;
+      document.getElementById('viewerMeta').innerHTML = `<span>${b.date}</span><span>·</span><span>${b.time}</span>`;
+      let mediaHtml = '';
+      if (b.video) {
+        const yid = extractVideoId(b.video);
+        if (yid) mediaHtml = `<div class="viewer-video"><iframe src="https://www.youtube.com/embed/${yid}" allowfullscreen></iframe></div>`;
+        else if (b.video.endsWith('.mp3') || b.video.endsWith('.wav')) mediaHtml = `<audio controls style="width:100%;margin-bottom:24px;"><source src="${b.video}" type="audio/mpeg"></audio>`;
+        else mediaHtml = `<div style="margin-bottom:24px;"><a href="${b.video}" target="_blank" class="btn btn-primary">Open External Media</a></div>`;
+      }
+      if (b.image) mediaHtml = `<img src="${b.image}" class="viewer-image">` + mediaHtml;
+      document.getElementById('viewerMedia').innerHTML = mediaHtml;
+      document.getElementById('viewerContent').innerHTML = b.content ? b.content.replace(/\n/g, '<br>') : `<div class="viewer-empty">Coming soon.</div>`;
+      document.getElementById('blogViewerOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeBlogViewer() { document.getElementById('blogViewerOverlay').classList.remove('open'); document.body.style.overflow = ''; }
+
+    async function renderCurriculum() {
+      const modules = await getModules();
+      const grid = document.getElementById('coursesGrid');
+      const statEl = document.getElementById('stat-modules');
+      if (statEl) statEl.textContent = modules.length;
+      if (!grid) return;
+      grid.innerHTML = modules.map((m, i) => `<div class="course-card reveal" style="transition-delay:${i * 0.05}s;" data-module="${m.id}"><div class="course-num">Module ${String(m.id).padStart(2, '0')}</div><h3>${m.title}</h3><a href="#" class="course-arrow module-open" data-module="${m.id}">Explore</a></div>`).join('');
+      attachModuleListeners();
+    }
+
+    function generateICS(event) {
+      const start = event.date.replace(/[-:]/g, '').replace('T', 'T');
+      const end = (() => { const d = new Date(event.date); d.setMinutes(d.getMinutes() + (event.duration || 50)); return d.toISOString().replace(/[-:]/g, '').slice(0, 15); })();
+      const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nDTSTART:${start}\r\nDTEND:${end}\r\nSUMMARY:${event.title}\r\nEND:VEVENT\r\nEND:VCALENDAR`;
+      const blob = new Blob([ics], { type: 'text/calendar' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'event.ics'; a.click();
+    }
+
+    function generateGoogleCalURL(event) {
+      const fmt = (s) => s.replace(/[-:]/g, '').replace('T', 'T').slice(0, 15) + 'Z';
+      const start = new Date(event.date); const end = new Date(event.date); end.setMinutes(end.getMinutes() + (event.duration || 50));
+      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(event.title)}&dates=${fmt(start.toISOString())}/${fmt(end.toISOString())}`;
+    }
+
+    async function renderEvents() {
+      const events = await getEvents();
+      const speakers = await getSpeakers();
+      const speakerById = new Map(speakers.map(s => [String(s.id), s]));
+
+      // Filter: only today (from midnight) and future events
+      const todayMidnight = new Date();
+      todayMidnight.setHours(0, 0, 0, 0);
+
+      const upcoming = events
+        .filter(ev => {
+          const evDate = new Date(ev.date);
+          return evDate >= todayMidnight;
+        })
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .slice(0, 4);
+
+      if (upcoming.length === 0) {
+        document.getElementById('eventsList').innerHTML = `
+          <div class="event-item" style="opacity:0.6;cursor:default;">
+            <div class="event-info"><h4>No upcoming events at this time.</h4><p>Check back soon for new sessions.</p></div>
+          </div>`;
+        return;
+      }
+
+      document.getElementById('eventsList').innerHTML = upcoming.map((ev, idx) => `
+        <div class="event-item" onclick="openEventDetail(${events.indexOf(ev)})" style="cursor:pointer;">
+          <div class="event-date-box"><div class="ed-day">${ev.day}</div><div class="ed-mon">${ev.month}</div></div>
+          <div class="event-info"><h4>${ev.title}</h4><p>${ev.location}</p></div>
+        </div>`).join('');
+    }
+
+
+    async function renderUpcomingEventSpeakerCard() {
+      const wrap = document.getElementById('ueSpeakerWrap');
+      if (!wrap) return;
+      let pool = [];
+      try { pool = await getSpeakers(); } catch(e) { pool = DEFAULT_SPEAKERS; }
+      if (!pool.length) return;
+
+      // -- Build inner HTML ----------------------------------------------
+      wrap.innerHTML = `
+        <div style="width:100%;max-width:400px;margin:0 auto 20px auto;">
+          <div id="ueFlipScene" style="perspective:1000px;width:100%;aspect-ratio:3/4;cursor:pointer;" title="Click to flip">
+            <div id="ueFlipCard" style="position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform 0.7s cubic-bezier(.4,0,.2,1);">
+              <!-- FRONT: Photo -->
+              <div style="position:absolute;inset:0;backface-visibility:hidden;border-radius:20px;overflow:hidden;background:var(--navy);">
+                <img id="ueImg" src="" alt="Speaker" style="width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.5s;">
+                <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(13,27,75,0.92) 0%,rgba(13,27,75,0.2) 55%,transparent 100%);"></div>
+                <div style="position:absolute;bottom:0;left:0;right:0;padding:24px 20px 20px;">
+                  <div id="ueTopic" style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;"></div>
+                  <div id="ueName" style="font-family:var(--ff-display);font-size:22px;font-weight:600;color:#fff;line-height:1.2;margin-bottom:3px;"></div>
+                  <div id="ueRole" style="font-size:12px;color:rgba(255,255,255,0.55);"></div>
+                  <div style="margin-top:12px;font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:0.1em;">TAP FOR PROFILE →</div>
+                </div>
+              </div>
+              <!-- BACK: Bio -->
+              <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);border-radius:20px;overflow:hidden;background:var(--royal);padding:28px 24px;display:flex;flex-direction:column;justify-content:center;">
+                <div id="ueBackTopic" style="font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:10px;"></div>
+                <div id="ueBackName" style="font-family:var(--ff-display);font-size:26px;font-weight:600;color:#fff;line-height:1.2;margin-bottom:6px;"></div>
+                <div id="ueBackRole" style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:20px;"></div>
+                <div style="width:32px;height:2px;background:var(--gold);margin-bottom:20px;border-radius:2px;"></div>
+                <div id="ueBio" style="font-size:13px;line-height:1.7;color:rgba(255,255,255,0.8);"></div>
+                <div style="margin-top:20px;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;">TAP TO FLIP BACK â†</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Nav row -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:18px;">
+          <button id="uePrev" aria-label="Previous" style="width:38px;height:38px;border-radius:50%;border:1.5px solid var(--gray-200);background:var(--white);color:var(--navy);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;line-height:1;transition:background 0.2s,border-color 0.2s;"> < </button>
+          <div id="ueDots" style="display:flex;gap:7px;"></div>
+          <button id="ueNext" aria-label="Next" style="width:38px;height:38px;border-radius:50%;border:1.5px solid var(--gray-200);background:var(--white);color:var(--navy);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;line-height:1;transition:background 0.2s,border-color 0.2s;"> > </button>
+        </div>`;
+
+      // -- Helpers -------------------------------------------------------
+      const $ = id => document.getElementById(id);
+      const setText = (id, v) => { const el = $(id); if (el) el.textContent = v || ''; };
+      const flipCard  = $('ueFlipCard');
+      const scene     = $('ueFlipScene');
+      let isFlipped   = false;
+      let current     = 0;
+      let autoTimer   = null;
+      let flipTimer   = null;
+      let paused      = false;
+      const PHOTO_DUR = 4000;
+      const FLIP_DUR  = 700;
+      const BIO_DUR   = 4000;
+
+      // Build dots
+      const dotsWrap = $('ueDots');
+      pool.forEach((_, idx) => {
+        const d = document.createElement('div');
+        d.style.cssText = `width:8px;height:8px;border-radius:50%;background:var(--gray-200);cursor:pointer;transition:background 0.25s,transform 0.25s;`;
+        d.addEventListener('click', () => { clearTimers(); goTo(idx); startCycle(); });
+        dotsWrap.appendChild(d);
+      });
+
+      function setDot(idx) {
+        dotsWrap.querySelectorAll('div').forEach((d, i) => {
+          d.style.background = i === idx ? 'var(--royal)' : 'var(--gray-200)';
+          d.style.transform  = i === idx ? 'scale(1.25)' : 'scale(1)';
+        });
+      }
+
+      function populate(s) {
+        // Front
+        const img = $('ueImg');
+        if (img) { img.style.opacity = '0'; img.src = s.photo || ''; img.onload = () => img.style.opacity = '1'; img.onerror = () => img.style.opacity = '0.3'; }
+        setText('ueTopic',    s.module);
+        setText('ueName',     s.name);
+        setText('ueRole',     s.role);
+        // Back
+        setText('ueBackTopic', s.module);
+        setText('ueBackName',  s.name);
+        setText('ueBackRole',  s.role);
+        setText('ueBio',       s.bio);
+      }
+
+      function flip(show) {
+        isFlipped = show;
+        if (flipCard) flipCard.style.transform = show ? 'rotateY(180deg)' : 'rotateY(0deg)';
+      }
+
+      function clearTimers() { clearTimeout(autoTimer); clearTimeout(flipTimer); }
+
+      function goTo(idx) {
+        flip(false);
+        current = ((idx % pool.length) + pool.length) % pool.length;
+        populate(pool[current]);
+        setDot(current);
+      }
+
+      function startCycle() {
+        clearTimers();
+        if (paused) return;
+        // Show photo for PHOTO_DUR, then flip to bio
+        flipTimer = setTimeout(() => {
+          if (!paused) flip(true);
+          // After BIO_DUR on bio side, advance to next
+          autoTimer = setTimeout(() => {
+            if (!paused) { goTo(current + 1); startCycle(); }
+          }, BIO_DUR);
+        }, PHOTO_DUR);
+      }
+
+      // -- Init ----------------------------------------------------------
+      goTo(0);
+      startCycle();
+
+      // Click card → manual flip toggle
+      if (scene) scene.addEventListener('click', () => {
+        flip(!isFlipped);
+        clearTimers();
+        startCycle();
+      });
+
+      // Prev/Next
+      const prev = $('uePrev'), next = $('ueNext');
+      if (prev) prev.addEventListener('click', e => { e.stopPropagation(); clearTimers(); goTo(current - 1); startCycle(); });
+      if (next) next.addEventListener('click', e => { e.stopPropagation(); clearTimers(); goTo(current + 1); startCycle(); });
+
+      // Hover pause
+      if (wrap) {
+        wrap.addEventListener('mouseenter', () => { paused = true;  clearTimers(); });
+        wrap.addEventListener('mouseleave', () => { paused = false; startCycle(); });
+      }
+    }
+
+    async function openEventDetail(idx) {
+      const events = await getEvents();
+      const ev = events[idx];
+      if (!ev) return;
+
+      // Set date label & title
+      document.getElementById('evDetailDate').textContent = ev.day + ' ' + ev.month + (ev.date ? ' · ' + new Date(ev.date).getFullYear() : '');
+      document.getElementById('evDetailTitle').textContent = ev.title;
+
+      // -- Facilitator + Photo --
+      const speakerWrap = document.getElementById('evDetailSpeakerWrap');
+      const speakerEl   = document.getElementById('evDetailSpeaker');
+      const speakerImg  = document.getElementById('evDetailSpeakerImg');
+      speakerEl.textContent = (ev.speaker && ev.speaker.trim()) ? ev.speaker : 'To be confirmed';
+      speakerWrap.style.display = '';
+
+      // Look up speaker photo
+      if (speakerImg) {
+        let photoUrl = '';
+        try {
+          const spkList = await getSpeakers();
+          let matched = null;
+          if (ev.speakerId) matched = spkList.find(s => String(s.id) === String(ev.speakerId));
+          if (!matched && ev.speaker) {
+            matched = spkList.find(s => s.name && ev.speaker.startsWith(s.name.split(',')[0].trim()));
+          }
+          if (matched && matched.photo) photoUrl = matched.photo;
+        } catch(e) { /* ignore */ }
+        if (photoUrl) {
+          speakerImg.src = photoUrl;
+          speakerImg.style.display = 'block';
+        } else {
+          speakerImg.style.display = 'none';
+        }
+      }
+
+      // -- What You Will Learn (outcomes) --
+      const outcomesWrap = document.getElementById('evDetailOutcomesWrap');
+      const outcomesList = document.getElementById('evDetailOutcomes');
+      // Try to find the matching session in modules for outcomes
+      let outcomes = ev.outcomes || [];
+      if (!outcomes.length) {
+        try {
+          const modules = await getModules();
+          for (const mod of modules) {
+            if (!mod.detailedSessions) continue;
+            const sess = mod.detailedSessions.find(s => s.course === ev.title);
+            if (sess && sess.outcomes) { outcomes = sess.outcomes; break; }
+          }
+        } catch(e) { /* ignore */ }
+      }
+      if (outcomes.length) {
+        outcomesList.innerHTML = outcomes.map(o => `<li>${o}</li>`).join('');
+        outcomesWrap.style.display = '';
+      } else {
+        outcomesWrap.style.display = 'none';
+      }
+
+      // -- Calendar Buttons --
+      const calBtns = document.getElementById('evDetailCalBtns');
+      if (calBtns && ev.date) {
+        const gcalUrl = generateGoogleCalURL(ev);
+        calBtns.innerHTML = `
+          <a href="${gcalUrl}" target="_blank" rel="noopener noreferrer" class="cal-btn" id="evGoogleCalBtn">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Add to Google Calendar
+          </a>
+          <button class="cal-btn" id="evICSBtn" onclick="generateICS(window._openEvent)">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download (.ics)
+          </button>`;
+        window._openEvent = ev; // store for ICS download
+      } else if (calBtns) {
+        calBtns.innerHTML = '<span style="font-size:13px;color:var(--gray-400);">Date not yet confirmed.</span>';
+      }
+
+      document.getElementById('eventDetailOverlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    async function renderBlogTeaser() {
+      const blogs = await getBlogs();
+      const container = document.getElementById('blogTeaserGrid');
+      if (!container || !blogs || blogs.length === 0) return;
+      const mainBlog = blogs[0];
+      const sideBlogs = blogs.slice(1, 4);
+      const mainHtml = `
+    <a href="#" class="blog-featured" onclick="event.preventDefault(); openBlogViewer(0)">
+      <div class="blog-featured-img"><img src="${mainBlog.image}" alt="Blog post"></div>
+      <div class="blog-featured-body">
+        <span class="blog-tag ${mainBlog.type === 'podcast' ? 'podcast' : ''}">${mainBlog.tag}</span>
+        <h3>${mainBlog.title}</h3>
+        <p>${mainBlog.desc}</p>
+        <span class="blog-read-more">${mainBlog.type === 'podcast' ? 'Listen Now' : 'Read Article'} <svg viewBox="0 0 24 24" width="12" height="12"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+      </div>
+    </a>`;
+      const sideHtml = `
+    <div class="blog-sidebar">
+      ${sideBlogs.map((b, i) => `
+        <a href="#" class="blog-mini" onclick="event.preventDefault(); openBlogViewer(${i + 1})">
+          <div class="blog-mini-img"><img src="${b.image}" alt="${b.type}"></div>
+          <div>
+            <span class="blog-tag ${b.type === 'podcast' ? 'podcast' : ''}" style="font-size:10px;padding:2px 8px;margin-bottom:6px;display:inline-block;">${b.tag}</span>
+            <h4>${b.title}</h4>
+            <p style="font-size:12px;color:var(--gray-400);">${b.type === 'podcast' ? b.time + ' · SODE Podcast' : b.time + ' read'}</p>
+          </div>
+        </a>`).join('')}
+    </div>`;
+      container.innerHTML = mainHtml + sideHtml;
+    }
+
+    async function renderMedia() {
+      const items = await getMedia();
+      const galleryGrid = document.getElementById('thesodeGalleryGrid');
+      const videosGrid = document.getElementById('thesodeVideosGrid');
+      if (galleryGrid) {
+        const photos = items.filter(m => m.type === 'photo');
+        galleryGrid.innerHTML = photos.length === 0
+          ? `<div class="gallery-placeholder"><span>No photos available</span></div>`
+          : photos.map(p => `<div class="gallery-item" onclick="openLightbox('${p.image}')"><img src="${p.image}" alt="${p.title || 'SODE Image'}"><div class="gallery-overlay"><svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></div></div>`).join('');
+      }
+      if (videosGrid) {
+        const videos = items.filter(m => m.type === 'video');
+        videosGrid.innerHTML = videos.length === 0
+          ? `<div class="gallery-placeholder" style="grid-column:1/-1;"><span>No videos available</span></div>`
+          : videos.map(v => `<div class="video-card" style="cursor:pointer;" onclick="if('${v.video}') window.open('${v.video}','_blank')"><div class="video-thumb" style="background:#0D1B4B;display:flex;align-items:center;justify-content:center;">${v.image ? `<img src="${v.image}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="text-align:center;color:rgba(255,255,255,0.3);"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>`}</div><div class="video-info"><h4>${v.title}</h4><p>${v.desc || ''}</p></div></div>`).join('');
+      }
+    }
+
+    // --- MODULE MODAL ---
+    const moduleOverlay = document.getElementById('moduleOverlay');
+    const moduleKicker  = document.getElementById('moduleKicker');
+    const moduleTitle   = document.getElementById('moduleTitle');
+    const modalFocus    = document.getElementById('modalFocus');
+    const modalSchedule = document.getElementById('modalSchedule');
+    const moduleClose   = document.getElementById('moduleClose');
+    let lastFocused = null;
+
+    async function openModule(id) {
+      const modules = await getModules();
+      const data = modules.find(m => m.id == id);
+      if (!data) return;
+      moduleKicker.textContent = `Module ${String(data.id).padStart(2, '0')}`;
+      moduleTitle.textContent  = data.title;
+      modalFocus.textContent   = data.focus || '';
+      let scheduleHtml = '';
+      if (data.detailedSessions) {
+        scheduleHtml = data.detailedSessions.map((sess, idx) => {
+          const isBlurred = idx > 0;
+          return `
+          <div style="background:var(--off-white); border:1px solid var(--gray-200); border-radius:12px; padding:16px; margin-bottom:16px; position:relative; ${isBlurred ? 'overflow:hidden;' : ''}">
+            <div style="${isBlurred ? 'filter: blur(4px); opacity: 0.5; pointer-events:none; user-select:none;' : ''}">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                <span style="background:var(--royal-soft); color:var(--royal); font-size:12px; font-weight:600; padding:6px 12px; border-radius:8px;">${sess.date}</span>
+                <span style="font-size:12px; color:var(--gray-700); font-weight:500;">Facilitator: ${sess.facilitator && sess.facilitator !== 'TBC' ? `<strong>${sess.facilitator}</strong>` : `<strong>TBC</strong>`}</span>
+              </div>
+              <h5 style="font-family:var(--ff-display); font-size:18px; color:var(--navy); margin-bottom:12px; line-height:1.2;">${sess.course}</h5>
+              <div style="font-size:11px; font-weight:600; letter-spacing:0.1em; color:var(--royal-mid); text-transform:uppercase; margin-bottom:8px;">Expected Outcomes</div>
+              <ul style="padding-left:16px; margin:0;" class="modal-list">${sess.outcomes.map(o => `<li style="font-size:13px; color:var(--gray-700); margin-bottom:6px; line-height: 1.6;">${o}</li>`).join('')}</ul>
+            </div>
+            ${isBlurred && idx === 1 ? `
+            <div style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(to bottom, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.9) 100%); z-index:10; border-radius:12px; padding:20px; text-align:center;">
+              <h4 style="font-family:var(--ff-display); color:var(--navy); font-size:18px; margin-bottom:12px;">Premium Curriculum</h4>
+              <p style="font-size:13px; color:var(--gray-700); margin-bottom:16px; max-width:80%;">Register for SODE to unlock the full detailed schedule and outcomes.</p>
+              <button onclick="closeModule(); document.getElementById('register').scrollIntoView({behavior:'smooth'});" style="background:var(--royal); color:#fff; border:none; padding:10px 24px; border-radius:30px; font-size:13px; font-weight:500; cursor:pointer;">Register to Access</button>
+            </div>
+            ` : ''}
+          </div>`;
+        }).join('');
+      } else {
+        scheduleHtml = `<div class="modal-application">${data.schedule || ''}</div>`;
+      }
+      modalSchedule.innerHTML = scheduleHtml;
+      moduleOverlay.classList.add('open');
+      moduleOverlay.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      moduleClose.focus();
+    }
+
+    function closeModule() {
+      moduleOverlay.classList.remove('open');
+      moduleOverlay.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      if (lastFocused) lastFocused.focus();
+    }
+
+    function attachModuleListeners() {
+      document.querySelectorAll('.module-open').forEach(btn => {
+        btn.addEventListener('click', e => { e.preventDefault(); lastFocused = btn; openModule(btn.dataset.module); });
+      });
+      document.querySelectorAll('.course-card').forEach(card => {
+        card.addEventListener('click', e => { if (e.target.closest('.module-open')) return; lastFocused = card; openModule(card.dataset.module); });
+      });
+    }
+    moduleClose.addEventListener('click', closeModule);
+    moduleOverlay.addEventListener('click', e => { if (e.target === moduleOverlay) closeModule(); });
+    window.addEventListener('keydown', e => { if (e.key === 'Escape' && moduleOverlay.classList.contains('open')) closeModule(); });
+
+    // --- NAV ---
+    const navbar = document.getElementById('navbar');
+    window.addEventListener('scroll', () => { navbar.classList.toggle('scrolled', window.scrollY > 20); });
+    const hamburger = document.getElementById('hamburger');
+    const navLinks  = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => navLinks.classList.toggle('open'));
+    navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => navLinks.classList.remove('open')));
+
+    // --- SCROLL REVEAL ---
+    function reObserve() {
+      const reveals = document.querySelectorAll('.reveal:not(.visible)');
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+      }, { threshold: 0.1 });
+      reveals.forEach(el => observer.observe(el));
+    }
+
+    // --- MEDIA TABS ---
+    function switchTab(name, btn) {
+      document.querySelectorAll('.media-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.media-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + name).classList.add('active');
+    }
+
+    // --- LIGHTBOX ---
+    function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function closeLightbox()   { document.getElementById('lightbox').classList.remove('open'); document.body.style.overflow = ''; }
+
+    // --- EVENT DETAIL MODAL ---
+    function closeEventDetail(e) {
+      if (e.target === document.getElementById('eventDetailOverlay')) {
+        document.getElementById('eventDetailOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    }
+
+    // --- REGISTRATION FORM ---
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRvgbHVX-DlUwskcR9Hu_4AkLXBgoJbyVcUlgeH4pBEcsI_R1Xuqch55XIDmAXb2Pb/exec';
+
+// Local registration form removed - registrations are now directed to app.thesode.org
+
+   // --- CONTACT FORM (UPDATED: sends to Apps Script) ---
+document.getElementById('contactForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const btn = document.getElementById('contactSubmitBtn');
+  const msg = document.getElementById('contactFormMessage');
+
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  msg.innerHTML = '';
+
+  try {
+    const formData = new FormData(e.target);
+    // Add a hidden field to tell the script this is a contact submission
+    formData.append('formType', 'contact');
+
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      body: new URLSearchParams(formData).toString(),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+
+    const result = await response.json();
+
+    if (result.result === 'success') {
+      msg.innerHTML = "<span style='color:#2e7d32;'>✅ Message sent successfully! We'll get back to you soon.</span>";
+      e.target.reset();
+
+      // Optional: change button text temporarily
+      btn.textContent = 'Sent ✓';
+      btn.style.background = '#0D1B4B';
+
+      // Reset button after 3 seconds
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Send Message →';
+        btn.style.background = ''; // revert to original style
+      }, 3000);
+    } else {
+      msg.innerHTML = `<span style='color:#c62828;'>❌ ${result.message}</span>`;
+      btn.disabled = false;
+      btn.textContent = 'Send Message →';
+    }
+
+  } catch (error) {
+    console.error(error);
+    msg.innerHTML = "<span style='color:#c62828;'>⚠️ Network error. Please try again.</span>";
+    btn.disabled = false;
+    btn.textContent = 'Send Message →';
+  }
+});
+
+    // --- INIT ---
+    (async () => {
+      await Promise.all([renderCurriculum(), renderEvents(), renderUpcomingEventSpeakerCard(), renderBlogTeaser(), renderMedia(), renderFlyers()]);
+      reObserve();
+    })();
+  </script>
+</body>
+
+</html>
+
