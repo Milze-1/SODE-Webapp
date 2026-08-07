@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
@@ -15,14 +15,27 @@ const hankenGrotesk = Hanken_Grotesk({
 export const metadata: Metadata = {
   title: "The School of Daniels & Esthers",
   description: "Spiritually deep. Excellent in the marketplace.",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
-      { url: "/sode-logo.png", type: "image/png", sizes: "192x192" },
-      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/icons/icon-32x32.png", type: "image/png", sizes: "32x32" },
+      { url: "/icons/icon-192x192.png", type: "image/png", sizes: "192x192" },
+      { url: "/icons/icon-512x512.png", type: "image/png", sizes: "512x512" },
     ],
-    shortcut: "/sode-logo.png",
-    apple: "/sode-logo.png",
+    shortcut: "/favicon-32.png",
+    apple: "/icons/apple-touch-icon.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SODE",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#111827",
 };
 
 export default function RootLayout({
