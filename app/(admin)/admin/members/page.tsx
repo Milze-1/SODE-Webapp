@@ -174,13 +174,29 @@ export default function MembersPage() {
 
   const firstTimersCount = members.filter(isFirstTimer).length;
 
-  const exportCsv = () => {
-    const rows = [['Name', 'Email', 'Pillar', 'Department', 'Leader', 'Updated'], ...displayed.map(m => [m.name, m.email ?? '', m.pillar ?? '', m.department ?? '', m.is_leader ? 'Yes' : 'No', relTime(m.updated_at)])];
-    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = 'members.csv'; a.click();
-    URL.revokeObjectURL(url);
+  const [exporting, setExporting] = useState(false);
+
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch('/api/admin/members/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: displayed }),
+      });
+      if (!res.ok) { showToast('Export failed — try again'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `members-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast('Export failed — try again');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const MEM_COL = '1.8fr .7fr .8fr .8fr .6fr';
@@ -193,7 +209,7 @@ export default function MembersPage() {
         actions={
           <>
             <AdminSearch value={search} onChange={setSearch} placeholder="Search members…" />
-            <button onClick={exportCsv} className="btn btn-ghost btn-sm"><Icon name="download" size={16} /> Export</button>
+            <button onClick={exportExcel} disabled={exporting} className="btn btn-ghost btn-sm"><Icon name="download" size={16} /> {exporting ? 'Exporting…' : 'Export'}</button>
           </>
         }
       />

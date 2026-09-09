@@ -318,6 +318,19 @@ export const reminders = pgTable("reminders", {
   createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+// ─── Group messages (admin broadcast to members) ──────────────────────────────
+
+export const groupMessages = pgTable("group_messages", {
+  id:             uuid("id").primaryKey().defaultRandom(),
+  senderId:       uuid("sender_id"),
+  body:           text("body").notNull(),
+  audience:       jsonb("audience").notNull(),
+  recipientCount: integer("recipient_count").notNull().default(0),
+  sentCount:      integer("sent_count").notNull().default(0),
+  failedCount:    integer("failed_count").notNull().default(0),
+  createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 // ─── Audit log (immutable — no updates/deletes) ───────────────────────────────
 
 export const auditLog = pgTable("audit_log", {
@@ -504,4 +517,15 @@ export const userPrivacyPrefs = pgTable("user_privacy_prefs", {
   alias:                text("alias"),
   publicProfileEnabled: boolean("public_profile_enabled").notNull().default(false),
   updatedAt:            timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+// ─── Push subscriptions ────────────────────────────────────────────────────────
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id:        uuid("id").primaryKey().defaultRandom(),
+  memberId:  uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  endpoint:  text("endpoint").notNull().unique(),
+  p256dh:    text("p256dh").notNull(),
+  auth:      text("auth").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });

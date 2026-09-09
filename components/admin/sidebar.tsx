@@ -13,6 +13,7 @@ const ADMIN_NAV = [
   { href: '/admin/members', icon: 'users', label: 'Members' },
   { href: '/admin/attendance', icon: 'calendarclock', label: 'Attendance' },
   { href: '/admin/forms', icon: 'list', label: 'Forms' },
+  { href: '/admin/messages', icon: 'mail', label: 'Messages' },
   { href: '/admin/learning', icon: 'sparkles', label: 'Learning' },
   { href: '/admin/devotion', icon: 'heart',    label: 'Devotion'  },
   { href: '/admin/registers', icon: 'bookopen', label: 'Registers' },

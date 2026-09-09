@@ -6,6 +6,7 @@ import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Toggle, Toast } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
+import { isPushSupported, getPushSubscriptionStatus, subscribeToPush, unsubscribeFromPush } from '@/lib/push-client';
 
 interface ToastPayload { msg: string; icon?: string; }
 
@@ -65,6 +66,9 @@ export default function SettingsPage() {
   // Notification prefs
   const [emailOn, setEmailOn]       = useState(true);
   const [whatsappOn, setWhatsappOn] = useState(false);
+  const [pushOn, setPushOn]         = useState(false);
+  const [pushBusy, setPushBusy]     = useState(false);
+  const [pushSupported, setPushSupported] = useState(true);
 
   // Privacy prefs
   const [leaderboard, setLeaderboard] = useState(true);
@@ -105,8 +109,28 @@ export default function SettingsPage() {
       setWhatsappOn(row.consent_contact ?? false);
       setLeaderboard(row.leaderboard_opt_in ?? true);
       setLoading(false);
+
+      if (isPushSupported()) {
+        const status = await getPushSubscriptionStatus();
+        setPushOn(status === 'subscribed');
+        setPushSupported(status !== 'denied');
+      } else {
+        setPushSupported(false);
+      }
     })();
   }, [router]);
+
+  const togglePush = async (v: boolean) => {
+    setPushBusy(true);
+    const ok = v ? await subscribeToPush() : await unsubscribeFromPush();
+    if (ok) {
+      setPushOn(v);
+    } else {
+      showToast({ msg: v ? 'Could not enable notifications — check your browser permissions.' : 'Could not disable notifications.' });
+      if (v) setPushSupported(await getPushSubscriptionStatus() !== 'denied');
+    }
+    setPushBusy(false);
+  };
 
   const saveWhatsApp = async () => {
     if (!member) return;
@@ -321,6 +345,18 @@ export default function SettingsPage() {
                 chevron={false}
                 right={<Toggle on={whatsappOn} onChange={toggleWhatsapp} />}
               />
+              {pushSupported && (
+                <>
+                  <Divider />
+                  <SettingRow
+                    icon="bell"
+                    title="Push notifications"
+                    sub="Get notified when a new session starts"
+                    chevron={false}
+                    right={<Toggle on={pushOn} onChange={v => { if (!pushBusy) togglePush(v); }} />}
+                  />
+                </>
+              )}
             </div>
           </div>
 

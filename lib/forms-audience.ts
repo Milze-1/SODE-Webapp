@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 export type FormAudience =
   | { type: 'everyone' }
   | { type: 'pillar'; pillars: string[] }
@@ -38,6 +40,38 @@ export function summarizeAudience(a: FormAudience | null | undefined, cellName?:
     default:
       return '→ Everyone';
   }
+}
+
+// Server-side resolver: turns a FormAudience into the actual list of members
+// it targets. Filters to members with a WhatsApp number on file since this
+// currently only backs the WhatsApp group-messages feature.
+export async function resolveAudienceMembers(
+  supabase: SupabaseClient,
+  audience: FormAudience,
+): Promise<{ id: string; name: string; whatsapp: string }[]> {
+  let q = supabase.from('members').select('id, name, whatsapp')
+    .eq('onboarding_complete', true)
+    .not('whatsapp', 'is', null);
+
+  if (audience.type === 'pillar') {
+    if (audience.pillars.length === 0) return [];
+    q = q.in('pillar', audience.pillars);
+  } else if (audience.type === 'life_stage') {
+    if (audience.stages.length === 0) return [];
+    q = q.in('life_stage', audience.stages);
+  } else if (audience.type === 'specific') {
+    if (audience.member_ids.length === 0) return [];
+    q = q.in('id', audience.member_ids);
+  } else if (audience.type === 'cell') {
+    if (!audience.cell_id) return [];
+    const { data: cellMembers } = await supabase.from('cell_members').select('member_id').eq('cell_id', audience.cell_id);
+    const ids = (cellMembers ?? []).map((m: { member_id: string }) => m.member_id);
+    if (ids.length === 0) return [];
+    q = q.in('id', ids);
+  }
+
+  const { data } = await q;
+  return (data ?? []) as { id: string; name: string; whatsapp: string }[];
 }
 
 export function matchesAudience(

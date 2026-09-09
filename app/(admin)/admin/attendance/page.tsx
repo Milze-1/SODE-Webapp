@@ -194,6 +194,7 @@ export default function AttendancePage() {
     if (e1) console.error('goLive (unset) error:', JSON.stringify(e1));
     const { error: e2 } = await supabase.from('sessions').update({ is_live: true }).eq('id', session.id);
     if (e2) console.error('goLive (set) error:', JSON.stringify(e2));
+    else notifySession(session.id, 'live');
     await fetchSessions();
     await selectRegister(session.id);
   };
@@ -227,11 +228,22 @@ export default function AttendancePage() {
         setLoadError('Could not create session — check that migration 003_attendance_live.sql has been run in Supabase.');
         return;
       }
-      if (data) setSessions(prev => [data as SessionRow, ...prev]);
+      if (data) { setSessions(prev => [data as SessionRow, ...prev]); notifySession(data.id, 'created'); }
       setShowNew(false);
       setNewTitle(''); setNewType('service'); setNewAt(''); setNewCount(''); setNewPillar('');
       await fetchSessions();
     } finally { setSaving(false); }
+  };
+
+  // Fire-and-forget push notification to all members. Never blocks the
+  // admin flow — a failure here shouldn't stop a session from being
+  // created or going live.
+  const notifySession = (sessionId: string, event: 'created' | 'live') => {
+    fetch('/api/push/notify-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, event }),
+    }).catch(err => console.error('notifySession failed:', err));
   };
 
   // ─── Edit session ───────────────────────────────────────────────────────────
