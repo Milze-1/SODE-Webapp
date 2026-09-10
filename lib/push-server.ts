@@ -1,11 +1,16 @@
 import webpush from 'web-push';
 import { createAdminClient } from '@/lib/supabase-server';
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-);
+let vapidConfigured = false;
+function ensureVapidConfigured() {
+  if (vapidConfigured) return;
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  );
+  vapidConfigured = true;
+}
 
 interface PushPayload {
   title: string;
@@ -24,6 +29,7 @@ interface SubscriptionRow {
 // Dead subscriptions (410 Gone / 404 Not Found — the browser or user revoked
 // permission) are deleted as they're discovered, keeping the table clean.
 export async function sendPushToAllMembers(payload: PushPayload): Promise<{ sent: number; failed: number }> {
+  ensureVapidConfigured();
   const db = createAdminClient();
   const { data: subs } = await db
     .from('push_subscriptions')
