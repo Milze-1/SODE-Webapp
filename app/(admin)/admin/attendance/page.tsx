@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { Icon, PILLARS } from '@/components/sode/icons';
 import { Avatar, StatusPill, ProgressBar, TextInput, EmptyState } from '@/components/sode/ui';
@@ -73,6 +74,18 @@ function Modal({ onClose, width = 380, children }: { onClose: () => void; width?
 }
 
 export default function AttendancePage() {
+  return (
+    <Suspense fallback={null}>
+      <AttendanceContent />
+    </Suspense>
+  );
+}
+
+function AttendanceContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionParam = searchParams.get('session');
+
   const [sessions, setSessions]               = useState<SessionRow[]>([]);
   const [members, setMembers]                 = useState<MemberRow[]>([]);
   const [registerSessionId, setRegisterSessionId] = useState<string | null>(null);
@@ -141,8 +154,7 @@ export default function AttendancePage() {
     const { data, error } = await supabase
       .from('sessions')
       .select('id,title,type,location,latitude,longitude,scheduled_at,expected_count,is_live,pillar')
-      .order('scheduled_at', { ascending: false })
-      .limit(8);
+      .order('scheduled_at', { ascending: false });
     if (error) {
       console.error('fetchSessions error:', JSON.stringify(error));
       setLoadError('Could not load sessions — check that migration 003_attendance_live.sql has been run in Supabase.');
@@ -179,9 +191,10 @@ export default function AttendancePage() {
       setDefaultLocation((settingsRow ?? null) as AttendanceSettingsRow | null);
 
       const now = new Date().toISOString();
+      const fromLink = sessionParam ? allSessions.find(s => s.id === sessionParam) : undefined;
       const live     = allSessions.find(s => s.is_live);
       const fallback = allSessions.find(s => s.scheduled_at < now);
-      const initial  = live ?? fallback ?? allSessions[0] ?? null;
+      const initial  = fromLink ?? live ?? fallback ?? allSessions[0] ?? null;
       if (initial) {
         setRegisterSessionId(initial.id);
         await fetchRecords(initial.id);
@@ -500,6 +513,7 @@ export default function AttendancePage() {
 
   const now             = new Date().toISOString();
   const registerSession = sessions.find(s => s.id === registerSessionId) ?? null;
+  const visibleSessions = sessions.slice(0, 4);
 
   const registerRows: RegisterRow[] = members.map(m => ({
     member_id: m.id,
@@ -553,11 +567,18 @@ export default function AttendancePage() {
         )}
 
         {/* Session cards */}
+        {sessions.length > 4 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+            <button onClick={() => router.push('/admin/attendance/history')} className="btn btn-ghost btn-sm">
+              View all sessions ({sessions.length})
+            </button>
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14, marginBottom: 18 }}>
           {sessions.length === 0 && !loadError && (
             <div style={{ gridColumn: '1/-1', padding: 20, color: 'var(--muted)', fontSize: 14 }}>No sessions found. Create a session to get started.</div>
           )}
-          {sessions.map(s => {
+          {visibleSessions.map(s => {
             const state = s.is_live ? 'LIVE' : s.scheduled_at > now ? 'UPCOMING' : 'PAST';
             const sessionRecords = s.id === registerSessionId ? records : null;
             const present = sessionRecords ? sessionRecords.filter(r => r.status === 'present').length : null;
