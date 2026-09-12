@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { sendWhatsApp } from '@/lib/whatsapp';
+import { notifyMembers } from '@/lib/notify-server';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -81,6 +82,14 @@ export async function GET(request: Request) {
       });
       notified++;
     }
+
+    notifyMembers([member.id], {
+      type: 'milestone_overdue',
+      referenceId: milestone.id,
+      title: 'Milestone overdue ⚠️',
+      message: `"${milestone.title}" is ${daysLate} day${daysLate !== 1 ? 's' : ''} overdue.`,
+      url: '/member/goals',
+    }).catch(e => console.error('[cron/overdue-milestones] notify error (non-fatal):', e));
 
     if (member.whatsapp) {
       await sendWhatsApp(

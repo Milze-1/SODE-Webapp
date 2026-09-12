@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendBulkEmail, emailWrapper, ctaButton } from '@/lib/email';
+import { notifyMembers } from '@/lib/notify-server';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -59,6 +60,14 @@ export async function GET(request: Request) {
         ${ctaButton('Check in at the session', `${appUrl}/member/attendance`)}
       `),
     );
+
+    notifyMembers(recipients.map(r => r.id), {
+      type: 'session_reminder',
+      referenceId: session.id,
+      title: 'Session tomorrow 🔔',
+      message: `${session.title} — ${sessionTime}${session.location ? ` · ${session.location}` : ''}`,
+      url: '/member/attendance',
+    }).catch(e => console.error('[cron/session-reminders] notify error (non-fatal):', e));
 
     totalSent += sent;
     console.log(`[cron/session-reminders] Session "${session.title}": ${sent} reminders sent`);

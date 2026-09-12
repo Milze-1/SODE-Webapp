@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
+import { notifyMembers } from '@/lib/notify-server';
 import { type BibleReadingPlanRow, getDayPassage, getDayNumber } from '@/lib/bible-structure';
 
 export async function GET(request: Request) {
@@ -35,10 +36,20 @@ export async function GET(request: Request) {
       .map((e: { member_id: string }) => e.member_id)
   );
 
+  const duePlans = (plans as (BibleReadingPlanRow & { members: { id: string; name: string; email: string } | null })[])
+    .filter(plan => plan.members && !completedToday.has(plan.members.id));
+
+  notifyMembers(duePlans.map(p => p.members!.id), {
+    type: 'devotion_reminder',
+    title: 'Devotion time 🙏',
+    message: "Keep your streak going — today's reading is ready.",
+    url: '/member/devotion',
+  }).catch(e => console.error('[cron/devotion-reminders] notify error (non-fatal):', e));
+
   let sent = 0;
-  for (const plan of plans as (BibleReadingPlanRow & { members: { id: string; name: string; email: string } | null })[]) {
+  for (const plan of duePlans) {
     const member = plan.members;
-    if (!member?.email || completedToday.has(member.id)) continue;
+    if (!member?.email) continue;
 
     const dayNumber = getDayNumber(plan.start_date);
     const passage = getDayPassage(plan, dayNumber);

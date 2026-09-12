@@ -25,19 +25,10 @@ interface SubscriptionRow {
   auth: string;
 }
 
-// Sends a push notification to every subscribed device across all members.
-// Dead subscriptions (410 Gone / 404 Not Found — the browser or user revoked
-// permission) are deleted as they're discovered, keeping the table clean.
-export async function sendPushToAllMembers(payload: PushPayload): Promise<{ sent: number; failed: number }> {
+async function sendToSubscriptions(rows: SubscriptionRow[], payload: PushPayload): Promise<{ sent: number; failed: number }> {
+  if (rows.length === 0) return { sent: 0, failed: 0 };
   ensureVapidConfigured();
   const db = createAdminClient();
-  const { data: subs } = await db
-    .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth');
-
-  const rows = (subs ?? []) as SubscriptionRow[];
-  if (rows.length === 0) return { sent: 0, failed: 0 };
-
   const body = JSON.stringify(payload);
   const staleIds: string[] = [];
   let sent = 0;
@@ -63,4 +54,26 @@ export async function sendPushToAllMembers(payload: PushPayload): Promise<{ sent
   }
 
   return { sent, failed };
+}
+
+// Sends a push notification to every subscribed device across all members.
+// Dead subscriptions (410 Gone / 404 Not Found — the browser or user revoked
+// permission) are deleted as they're discovered, keeping the table clean.
+export async function sendPushToAllMembers(payload: PushPayload): Promise<{ sent: number; failed: number }> {
+  const db = createAdminClient();
+  const { data: subs } = await db
+    .from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth');
+  return sendToSubscriptions((subs ?? []) as SubscriptionRow[], payload);
+}
+
+// Sends a push notification only to the given members' subscribed devices.
+export async function sendPushToMembers(memberIds: string[], payload: PushPayload): Promise<{ sent: number; failed: number }> {
+  if (memberIds.length === 0) return { sent: 0, failed: 0 };
+  const db = createAdminClient();
+  const { data: subs } = await db
+    .from('push_subscriptions')
+    .select('id, endpoint, p256dh, auth')
+    .in('member_id', memberIds);
+  return sendToSubscriptions((subs ?? []) as SubscriptionRow[], payload);
 }

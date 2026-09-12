@@ -13,6 +13,7 @@ import {
   pgEnum,
   jsonb,
   date,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -160,6 +161,8 @@ export const sessions = pgTable("sessions", {
   title:            text("title").notNull(),
   type:             text("type").notNull(),       // 'service'|'sode_session'|'retreat'|'workshop'
   location:         text("location"),
+  latitude:         doublePrecision("latitude"),   // overrides attendance_settings default for this session
+  longitude:        doublePrecision("longitude"),
   scheduledAt:      timestamp("scheduled_at", { withTimezone: true }).notNull(),
   checkInOpensAt:   timestamp("check_in_opens_at", { withTimezone: true }),
   checkInClosesAt:  timestamp("check_in_closes_at", { withTimezone: true }),
@@ -179,6 +182,20 @@ export const attendanceRecords = pgTable("attendance_records", {
   source:      text("source").notNull().default("self"),     // 'self'|'leader'|'qr'|'sheet'
   checkedInAt: timestamp("checked_in_at", { withTimezone: true }).defaultNow(),
   deviceHint:  text("device_hint"),               // 'mobile'|'desktop'
+  checkInLat:  doublePrecision("check_in_lat"),   // device-reported coords, checked against the geofence by RLS
+  checkInLng:  doublePrecision("check_in_lng"),
+});
+
+// ─── Attendance settings (singleton) ───────────────────────────────────────────
+
+export const attendanceSettings = pgTable("attendance_settings", {
+  id:           uuid("id").primaryKey().defaultRandom(),
+  churchName:   text("church_name"),
+  latitude:     doublePrecision("latitude"),
+  longitude:    doublePrecision("longitude"),
+  radiusMeters: integer("radius_meters").notNull().default(300),
+  updatedBy:    uuid("updated_by"),
+  updatedAt:    timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 // ─── Learning: Courses ────────────────────────────────────────────────────────
@@ -315,6 +332,7 @@ export const reminders = pgTable("reminders", {
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
   sentAt:      timestamp("sent_at", { withTimezone: true }),
   channel:     text("channel").notNull().default("email"),  // 'email'|'whatsapp'|'push'
+  readAt:      timestamp("read_at", { withTimezone: true }),
   createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

@@ -88,13 +88,30 @@ export default function LearningAdminPage() {
         is_published: form.is_published,
         updated_at: new Date().toISOString(),
       };
+      const wasPublished = form.id ? content.find(c => c.id === form.id)?.is_published ?? false : false;
+      const newlyPublished = form.is_published && !wasPublished;
+      let contentId = form.id;
+
       if (form.id) {
         await supabase.from('learning_content').update(payload).eq('id', form.id);
       } else {
         const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from('learning_content').insert({ ...payload, created_by: user?.id });
+        const { data } = await supabase.from('learning_content').insert({ ...payload, created_by: user?.id }).select('id').single();
+        contentId = data?.id ?? null;
       }
-      showToast(form.id ? 'Content updated ✓' : 'Content added ✓', 'check');
+
+      if (newlyPublished && contentId) {
+        fetch('/api/learning/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contentId }),
+        })
+          .then(res => res.json())
+          .then(json => { if (typeof json?.notified === 'number') showToast(`Published — ${json.notified} member${json.notified === 1 ? '' : 's'} notified`, 'check'); })
+          .catch(() => {});
+      } else {
+        showToast(form.id ? 'Content updated ✓' : 'Content added ✓', 'check');
+      }
       setShowModal(false);
       load();
     } finally {

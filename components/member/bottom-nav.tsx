@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Icon } from '@/components/sode/icons';
+import NotificationSheet from '@/components/member/NotificationSheet';
 
 const ITEMS = [
   {
@@ -55,6 +56,7 @@ export default function BottomNav() {
           </button>
         );
       })}
+      <NotificationSheet />
     </div>
   );
 }

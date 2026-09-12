@@ -4,6 +4,7 @@ import { Icon } from '@/components/sode/icons';
 import { Toggle, StatusPill, Avatar, Sheet, Toast, type ToastData } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Panel } from '@/components/admin/chrome';
 import { createClient } from '@/lib/supabase';
+import { getCurrentCoords } from '@/lib/geo';
 
 const ADMIN_ROLES = [
   { value: 'super_admin', label: 'Super Admin' },
@@ -62,6 +63,16 @@ export default function SettingsPage() {
   const [revokeTarget, setRevokeTarget] = useState<AdminUser | null>(null);
   const [revoking, setRevoking] = useState(false);
 
+  // Attendance geofence (default check-in location)
+  const [geoId, setGeoId] = useState<string | null>(null);
+  const [churchName, setChurchName] = useState('');
+  const [latitude, setLatitude] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [radiusMeters, setRadiusMeters] = useState('300');
+  const [geoLoading, setGeoLoading] = useState(true);
+  const [geoSaving, setGeoSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+
   const [toast, setToast] = useState<ToastData | null>(null);
 
   const showToast = (msg: string, kind: 'success' | 'error' = 'success') => {
@@ -100,6 +111,72 @@ export default function SettingsPage() {
     });
     loadAdmins();
   }, [loadAdmins]);
+
+  useEffect(() => {
+    (async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('attendance_settings')
+        .select('id,church_name,latitude,longitude,radius_meters')
+        .maybeSingle();
+      if (data) {
+        setGeoId(data.id);
+        setChurchName(data.church_name ?? '');
+        setLatitude(data.latitude != null ? String(data.latitude) : '');
+        setLongitude(data.longitude != null ? String(data.longitude) : '');
+        setRadiusMeters(String(data.radius_meters ?? 300));
+      }
+      setGeoLoading(false);
+    })();
+  }, []);
+
+  const useCurrentLocationForDefault = async () => {
+    setLocating(true);
+    try {
+      const coords = await getCurrentCoords();
+      setLatitude(String(coords.lat));
+      setLongitude(String(coords.lng));
+    } catch (err) {
+      showToast((err as Error).message, 'error');
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const saveGeofence = async () => {
+    const lat = latitude.trim() ? Number(latitude) : null;
+    const lng = longitude.trim() ? Number(longitude) : null;
+    if ((lat == null) !== (lng == null)) {
+      showToast('Enter both latitude and longitude, or leave both blank.', 'error');
+      return;
+    }
+    setGeoSaving(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const payload = {
+        church_name: churchName.trim() || null,
+        latitude: lat,
+        longitude: lng,
+        radius_meters: radiusMeters.trim() ? Number(radiusMeters) : 300,
+        updated_by: user?.id ?? null,
+        updated_at: new Date().toISOString(),
+      };
+      if (geoId) {
+        const { error } = await supabase.from('attendance_settings').update(payload).eq('id', geoId);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from('attendance_settings').insert(payload).select('id').single();
+        if (error) throw error;
+        setGeoId(data.id);
+      }
+      showToast('Default check-in location saved.');
+    } catch (err) {
+      showToast((err as Error).message, 'error');
+    } finally {
+      setGeoSaving(false);
+    }
+  };
 
   // Member search for grant sheet
   useEffect(() => {
@@ -208,6 +285,67 @@ export default function SettingsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
             {/* Left column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Panel title="Attendance check-in location">
+                {geoLoading ? (
+                  <div style={{ height: 120, borderRadius: 'var(--r-sm)', background: 'var(--surface-2)' }} />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <p style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.55, margin: 0 }}>
+                      Members can only self check-in (or via QR) within this radius, unless a session sets its own location.
+                    </p>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Church / venue name</label>
+                      <input
+                        type="text"
+                        value={churchName}
+                        onChange={e => setChurchName(e.target.value)}
+                        placeholder="e.g. SODE Main Auditorium"
+                        style={{ width: '100%', height: 38, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', padding: '0 11px', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Latitude</label>
+                        <input
+                          type="number" step="any"
+                          value={latitude}
+                          onChange={e => setLatitude(e.target.value)}
+                          placeholder="6.5244"
+                          style={{ width: '100%', height: 38, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', padding: '0 11px', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Longitude</label>
+                        <input
+                          type="number" step="any"
+                          value={longitude}
+                          onChange={e => setLongitude(e.target.value)}
+                          placeholder="3.3792"
+                          style={{ width: '100%', height: 38, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', padding: '0 11px', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Radius (meters)</label>
+                      <input
+                        type="number" min={10}
+                        value={radiusMeters}
+                        onChange={e => setRadiusMeters(e.target.value)}
+                        style={{ width: '100%', height: 38, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', padding: '0 11px', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" onClick={useCurrentLocationForDefault} disabled={locating} className="btn btn-ghost btn-sm" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        <Icon name="mappin" size={14} /> {locating ? 'Locating…' : 'Use my location'}
+                      </button>
+                      <button type="button" onClick={saveGeofence} disabled={geoSaving} className="btn btn-primary btn-sm" style={{ flex: 1 }}>
+                        {geoSaving ? 'Saving…' : 'Save default'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </Panel>
+
               <Panel title="Cycle & baseline" pad={false}>
                 <SettingRow icon="calendarclock" title="Active cycle" sub="2026 Growth Cycle · Month 4 of 12">
                   <button className="btn btn-ghost btn-sm">Edit</button>

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Avatar } from '@/components/sode/ui';
+import NotificationBell from '@/components/member/NotificationBell';
 
 const NAV = [
   { href: '/member/home',        icon: 'home',          label: 'Dashboard'    },
@@ -52,8 +53,9 @@ export default function MemberSidebar() {
 
   return (
     <aside className="member-sidebar" style={{ padding: '18px 12px' }}>
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-4 py-3 border-b border-gray-100" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <Image src="/images/sode-primary-logo.png" alt="SODE" width={120} height={48} className="object-contain" />
+        <NotificationBell />
       </div>
 
       <nav className="slim-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', flex: 1, minHeight: 0 }}>

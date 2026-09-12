@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
+import { notifyMembers } from '@/lib/notify-server';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -42,6 +43,7 @@ export async function GET(request: Request) {
   }
 
   let sent = 0;
+  const dueMemberIds: string[] = [];
   for (const member of members as { id: string; name: string; email: string }[]) {
     // Skip if they already logged an update today
     const { count } = await db
@@ -51,6 +53,7 @@ export async function GET(request: Request) {
       .gte('created_at', `${today}T00:00:00`);
 
     if ((count ?? 0) > 0) continue;
+    dueMemberIds.push(member.id);
 
     const goalTitles = (goalsByMember[member.id] ?? []).slice(0, 2);
     const goalList = goalTitles.map(t => `<li style="margin-bottom:4px;">${t}</li>`).join('');
@@ -79,6 +82,13 @@ export async function GET(request: Request) {
     if (result.ok) sent++;
     await new Promise(r => setTimeout(r, 100));
   }
+
+  notifyMembers(dueMemberIds, {
+    type: 'goal_reminder',
+    title: 'Goals need attention 🎯',
+    message: "Some of your goals are falling behind — log an update to stay on track.",
+    url: '/member/goals',
+  }).catch(e => console.error('[cron/goal-reminders] notify error (non-fatal):', e));
 
   console.log(`[cron/goal-reminders] date:${today} sent:${sent}/${members.length}`);
   return Response.json({ sent, total: members.length });

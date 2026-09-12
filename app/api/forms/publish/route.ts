@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase-server';
 import { type FormAudience } from '@/lib/forms-audience';
 import { sendBulkEmail, emailWrapper, ctaButton } from '@/lib/email';
+import { notifyMembers } from '@/lib/notify-server';
 
 export async function POST(req: Request) {
   const { formId } = await req.json().catch(() => ({ formId: null }));
@@ -40,15 +41,13 @@ export async function POST(req: Request) {
   const rows = (members ?? []) as { id: string; name: string; email: string }[];
 
   if (rows.length > 0) {
-    const now = new Date().toISOString();
-    const reminderRows = rows.map(m => ({
-      member_id: m.id,
+    notifyMembers(rows.map(m => m.id), {
       type: 'form_published',
-      reference_id: formId,
+      referenceId: formId,
+      title: 'New form',
       message: `A new form is waiting for you: ${form.title}`,
-      scheduled_at: now,
-    }));
-    await supabase.from('reminders').insert(reminderRows);
+      url: '/member/forms',
+    }).catch(e => console.error('[forms/publish] notify error (non-fatal):', e));
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://thesode.org';
     // Fire-and-forget emails

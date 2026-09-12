@@ -6,11 +6,15 @@ import { Avatar, StatusPill, ProgressBar, TextInput, EmptyState } from '@/compon
 import { AdminTopbar, AdminBody, Panel, THead, TRow } from '@/components/admin/chrome';
 import { createClient } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
+import { getCurrentCoords } from '@/lib/geo';
 
 interface SessionRow {
   id: string; title: string; type: string; location: string | null;
+  latitude: number | null; longitude: number | null;
   scheduled_at: string; expected_count: number | null; is_live: boolean; pillar: string | null;
 }
+
+interface AttendanceSettingsRow { church_name: string | null; latitude: number | null; longitude: number | null; radius_meters: number; }
 
 interface AttendRecord {
   id: string; member_id: string; status: string; source: string; checked_in_at: string | null;
@@ -83,15 +87,24 @@ export default function AttendancePage() {
   const [newAt, setNewAt]       = useState('');
   const [newCount, setNewCount] = useState('');
   const [newPillar, setNewPillar] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newLat, setNewLat]     = useState('');
+  const [newLng, setNewLng]     = useState('');
+  const [locatingNew, setLocatingNew] = useState(false);
   const [saving, setSaving]     = useState(false);
 
   // Edit session modal
   const [editingSession, setEditingSession] = useState<SessionRow | null>(null);
   const [editForm, setEditForm] = useState({
     title: '', type: 'service', date: '', time: '09:00', expected_count: 0, pillar: '',
+    location: '', latitude: '', longitude: '',
   });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError]   = useState<string | null>(null);
+  const [locatingEdit, setLocatingEdit] = useState(false);
+
+  // Org default check-in location, used for the "Use default" shortcut below
+  const [defaultLocation, setDefaultLocation] = useState<AttendanceSettingsRow | null>(null);
 
   // Delete session modal
   const [deletingSession, setDeletingSession] = useState<SessionRow | null>(null);
@@ -127,7 +140,7 @@ export default function AttendancePage() {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('sessions')
-      .select('id,title,type,location,scheduled_at,expected_count,is_live,pillar')
+      .select('id,title,type,location,latitude,longitude,scheduled_at,expected_count,is_live,pillar')
       .order('scheduled_at', { ascending: false })
       .limit(8);
     if (error) {
@@ -158,6 +171,12 @@ export default function AttendancePage() {
       const { data: memberRows } = await supabase
         .from('members').select('id,name').eq('onboarding_complete', true).order('name');
       setMembers((memberRows ?? []) as MemberRow[]);
+
+      const { data: settingsRow } = await supabase
+        .from('attendance_settings')
+        .select('church_name,latitude,longitude,radius_meters')
+        .maybeSingle();
+      setDefaultLocation((settingsRow ?? null) as AttendanceSettingsRow | null);
 
       const now = new Date().toISOString();
       const live     = allSessions.find(s => s.is_live);
@@ -219,9 +238,12 @@ export default function AttendancePage() {
           scheduled_at: new Date(newAt).toISOString(),
           expected_count: newCount ? parseInt(newCount, 10) : null,
           pillar: newPillar || null,
+          location: newLocation.trim() || null,
+          latitude: newLat.trim() ? Number(newLat) : null,
+          longitude: newLng.trim() ? Number(newLng) : null,
           is_live: false,
         })
-        .select('id,title,type,location,scheduled_at,expected_count,is_live,pillar')
+        .select('id,title,type,location,latitude,longitude,scheduled_at,expected_count,is_live,pillar')
         .single();
       if (error) {
         console.error('createSession error:', JSON.stringify(error));
@@ -231,8 +253,29 @@ export default function AttendancePage() {
       if (data) { setSessions(prev => [data as SessionRow, ...prev]); notifySession(data.id, 'created'); }
       setShowNew(false);
       setNewTitle(''); setNewType('service'); setNewAt(''); setNewCount(''); setNewPillar('');
+      setNewLocation(''); setNewLat(''); setNewLng('');
       await fetchSessions();
     } finally { setSaving(false); }
+  };
+
+  const useCurrentLocationForNew = async () => {
+    setLocatingNew(true);
+    try {
+      const coords = await getCurrentCoords();
+      setNewLat(String(coords.lat));
+      setNewLng(String(coords.lng));
+    } catch (err) {
+      showToast((err as Error).message);
+    } finally {
+      setLocatingNew(false);
+    }
+  };
+
+  const useDefaultLocationForNew = () => {
+    if (!defaultLocation?.latitude || !defaultLocation?.longitude) return;
+    setNewLat(String(defaultLocation.latitude));
+    setNewLng(String(defaultLocation.longitude));
+    if (!newLocation.trim() && defaultLocation.church_name) setNewLocation(defaultLocation.church_name);
   };
 
   // Fire-and-forget push notification to all members. Never blocks the
@@ -258,7 +301,32 @@ export default function AttendancePage() {
       time:           session.scheduled_at.split('T')[1]?.slice(0, 5) || '09:00',
       expected_count: session.expected_count ?? 0,
       pillar:         session.pillar || '',
+      location:       session.location || '',
+      latitude:       session.latitude != null ? String(session.latitude) : '',
+      longitude:      session.longitude != null ? String(session.longitude) : '',
     });
+  };
+
+  const useCurrentLocationForEdit = async () => {
+    setLocatingEdit(true);
+    try {
+      const coords = await getCurrentCoords();
+      setEditForm(f => ({ ...f, latitude: String(coords.lat), longitude: String(coords.lng) }));
+    } catch (err) {
+      showToast((err as Error).message);
+    } finally {
+      setLocatingEdit(false);
+    }
+  };
+
+  const useDefaultLocationForEdit = () => {
+    if (!defaultLocation?.latitude || !defaultLocation?.longitude) return;
+    setEditForm(f => ({
+      ...f,
+      latitude: String(defaultLocation.latitude),
+      longitude: String(defaultLocation.longitude),
+      location: f.location.trim() || defaultLocation.church_name || f.location,
+    }));
   };
 
   const saveEdit = async () => {
@@ -268,6 +336,9 @@ export default function AttendancePage() {
     try {
       const supabase = createClient();
       const combinedDateTime = new Date(`${editForm.date}T${editForm.time}`).toISOString();
+      const location  = editForm.location.trim() || null;
+      const latitude   = editForm.latitude.trim() ? Number(editForm.latitude) : null;
+      const longitude  = editForm.longitude.trim() ? Number(editForm.longitude) : null;
       const { error } = await supabase
         .from('sessions')
         .update({
@@ -276,6 +347,9 @@ export default function AttendancePage() {
           scheduled_at:   combinedDateTime,
           expected_count: editForm.expected_count || null,
           pillar:         editForm.pillar || null,
+          location,
+          latitude,
+          longitude,
         })
         .eq('id', editingSession.id);
 
@@ -288,6 +362,9 @@ export default function AttendancePage() {
         scheduled_at:   combinedDateTime,
         expected_count: editForm.expected_count || null,
         pillar:         editForm.pillar || null,
+        location,
+        latitude,
+        longitude,
       } : s));
 
       setEditingSession(null);
@@ -406,7 +483,7 @@ export default function AttendancePage() {
     const sessionIds = recs.map((r: AttendRecord & { session_id: string }) => r.session_id);
     const { data: sessionRows } = await supabase
       .from('sessions')
-      .select('id,title,type,location,scheduled_at,expected_count,is_live,pillar')
+      .select('id,title,type,location,latitude,longitude,scheduled_at,expected_count,is_live,pillar')
       .in('id', sessionIds);
 
     const sessionMap = Object.fromEntries(((sessionRows ?? []) as SessionRow[]).map(s => [s.id, s]));
@@ -746,6 +823,30 @@ export default function AttendancePage() {
               <option value="">No pillar (general)</option>
               {PILLARS.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
             </select>
+
+            <div>
+              <label style={labelStyle}>Location (for check-in radius)</label>
+              <TextInput value={newLocation} onChange={setNewLocation} placeholder="Venue name / address" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                <input type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} placeholder="Latitude"
+                  style={{ ...selectStyle, height: 40, fontSize: 13.5 }} />
+                <input type="number" step="any" value={newLng} onChange={e => setNewLng(e.target.value)} placeholder="Longitude"
+                  style={{ ...selectStyle, height: 40, fontSize: 13.5 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button type="button" onClick={useCurrentLocationForNew} disabled={locatingNew} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
+                  <Icon name="mappin" size={13} /> {locatingNew ? 'Locating…' : 'Use my location'}
+                </button>
+                {defaultLocation?.latitude != null && (
+                  <button type="button" onClick={useDefaultLocationForNew} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
+                    Use default
+                  </button>
+                )}
+              </div>
+              <p style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 6 }}>
+                Leave blank to use the default church location set in Settings.
+              </p>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
             <button onClick={() => setShowNew(false)} className="btn btn-ghost" style={{ flex: 1 }}>Cancel</button>
@@ -818,6 +919,36 @@ export default function AttendancePage() {
                 <option value="">None</option>
                 {PILLARS.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
               </select>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Location (for check-in radius)</label>
+              <input
+                type="text"
+                value={editForm.location}
+                onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+                placeholder="Venue name / address"
+                style={selectStyle}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+                <input type="number" step="any" value={editForm.latitude} onChange={e => setEditForm(f => ({ ...f, latitude: e.target.value }))} placeholder="Latitude"
+                  style={{ ...selectStyle, height: 40, fontSize: 13.5 }} />
+                <input type="number" step="any" value={editForm.longitude} onChange={e => setEditForm(f => ({ ...f, longitude: e.target.value }))} placeholder="Longitude"
+                  style={{ ...selectStyle, height: 40, fontSize: 13.5 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button type="button" onClick={useCurrentLocationForEdit} disabled={locatingEdit} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
+                  <Icon name="mappin" size={13} /> {locatingEdit ? 'Locating…' : 'Use my location'}
+                </button>
+                {defaultLocation?.latitude != null && (
+                  <button type="button" onClick={useDefaultLocationForEdit} className="btn btn-ghost btn-sm" style={{ flex: 1 }}>
+                    Use default
+                  </button>
+                )}
+              </div>
+              <p style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 6 }}>
+                Leave blank to use the default church location set in Settings.
+              </p>
             </div>
           </div>
 

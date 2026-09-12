@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase-server';
-import { sendPushToAllMembers } from '@/lib/push-server';
+import { notifyAllMembers } from '@/lib/notify-server';
 
 const ADMIN_ROLES = new Set([
   'super_admin', 'director', 'spiritual_lead', 'career_lead', 'business_lead',
@@ -43,10 +43,12 @@ export async function POST(request: Request) {
         body: `${sessionTime}${session.location ? ` · ${session.location}` : ''}`,
       };
 
-  const result = await sendPushToAllMembers({
+  const result = await notifyAllMembers({
+    type: event === 'live' ? 'session_live' : 'session_created',
     title,
-    body,
+    message: body,
     url: `/member/attendance?session=${session.id}`,
+    referenceId: session.id,
   });
 
   return Response.json({ ok: true, ...result });

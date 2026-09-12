@@ -4,14 +4,18 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, getAuthUser } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
+import { haversineMeters, getCurrentCoords } from '@/lib/geo';
 import Image from 'next/image';
 import { Icon } from '@/components/sode/icons';
 import { SectionHead, Toast, EmptyState, StatusPill } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
 
 interface ToastPayload { msg: string; icon?: string; points?: number; }
-interface SessionRow { id: string; title: string; location: string | null; scheduled_at: string; is_live: boolean; }
+interface SessionRow { id: string; title: string; location: string | null; scheduled_at: string; is_live: boolean; latitude: number | null; longitude: number | null; }
+interface AttendanceSettingsRow { church_name: string | null; latitude: number | null; longitude: number | null; radius_meters: number; }
 interface RecordRow { id: string; session_id: string; status: string; checked_in_at: string | null; sessions: { title: string; scheduled_at: string; location: string | null } | null; }
+
+const HISTORY_PREVIEW_COUNT = 4;
 
 const statusMeta: Record<string, { label: string; s: 'done' | 'atrisk' | 'behind' }> = {
   present: { label: 'Present', s: 'done' },
@@ -58,6 +62,8 @@ function AttendanceContent() {
   const [checkedInAt, setCheckedInAt] = useState<string | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
   const [history, setHistory] = useState<RecordRow[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [geofence, setGeofence] = useState<AttendanceSettingsRow | null>(null);
   const [toast, setToast] = useState<ToastPayload | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -76,7 +82,13 @@ function AttendanceContent() {
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }
       setMemberId(memberRow.id);
 
-      let sessionQuery = supabase.from('sessions').select('id,title,location,scheduled_at,is_live');
+      const { data: settingsRow } = await supabase
+        .from('attendance_settings')
+        .select('church_name,latitude,longitude,radius_meters')
+        .maybeSingle();
+      setGeofence((settingsRow ?? null) as AttendanceSettingsRow | null);
+
+      let sessionQuery = supabase.from('sessions').select('id,title,location,scheduled_at,is_live,latitude,longitude');
       sessionQuery = sessionParam ? sessionQuery.eq('id', sessionParam) : sessionQuery.eq('is_live', true);
       const { data: sessionRow } = await sessionQuery.maybeSingle();
 
@@ -97,13 +109,14 @@ function AttendanceContent() {
         setCheckedInAt(rec?.checked_in_at ?? null);
       }
 
-      const { data: historyRes } = await supabase
+      const { data: historyRes, count: historyCount } = await supabase
         .from('attendance_records')
-        .select('id,session_id,status,checked_in_at,sessions(title,scheduled_at,location)')
+        .select('id,session_id,status,checked_in_at,sessions(title,scheduled_at,location)', { count: 'exact' })
         .eq('member_id', memberRow.id)
         .order('checked_in_at', { ascending: false })
-        .limit(20);
+        .limit(HISTORY_PREVIEW_COUNT);
       setHistory((historyRes ?? []) as unknown as RecordRow[]);
+      setHistoryTotal(historyCount ?? historyRes?.length ?? 0);
 
       setLoading(false);
     })();
@@ -113,6 +126,25 @@ function AttendanceContent() {
     if (!memberId || !liveSession || checkingIn) return;
     setCheckingIn(true);
     try {
+      const effLat = liveSession.latitude ?? geofence?.latitude ?? null;
+      const effLng = liveSession.longitude ?? geofence?.longitude ?? null;
+      const radius = geofence?.radius_meters ?? 300;
+
+      let coords: { lat: number; lng: number } | null = null;
+      if (effLat != null && effLng != null) {
+        try {
+          coords = await getCurrentCoords();
+        } catch (geoErr) {
+          showToast({ msg: (geoErr as Error).message });
+          return;
+        }
+        const distance = haversineMeters(coords.lat, coords.lng, effLat, effLng);
+        if (distance > radius) {
+          showToast({ msg: `You're ${Math.round(distance)}m away — get within ${radius}m of ${geofence?.church_name || 'the venue'} to check in.` });
+          return;
+        }
+      }
+
       const supabase = createClient();
       const { data: inserted, error } = await supabase.from('attendance_records').insert({
         session_id: liveSession.id,
@@ -120,6 +152,8 @@ function AttendanceContent() {
         status: 'present',
         source: sessionParam ? 'qr' : 'self',
         device_hint: deviceHint(),
+        check_in_lat: coords?.lat ?? null,
+        check_in_lng: coords?.lng ?? null,
       }).select('checked_in_at,id').single();
       if (!error && inserted) {
         setCheckedInAt(inserted.checked_in_at);
@@ -132,7 +166,10 @@ function AttendanceContent() {
           body: JSON.stringify({ memberId }),
         }).catch(() => {});
       } else {
-        showToast({ msg: 'Could not check in — try again.' });
+        const msg = error?.message?.includes('row-level security')
+          ? `You need to be within ${radius}m of the venue to check in.`
+          : 'Could not check in — try again.';
+        showToast({ msg });
       }
     } finally {
       setCheckingIn(false);
@@ -173,7 +210,11 @@ function AttendanceContent() {
                   <button onClick={doCheckIn} disabled={checkingIn} className="btn btn-primary btn-lg btn-block" style={{ marginTop: 18 }}>
                     <Icon name="check" size={20} stroke={2.4} color="#fff" /> {checkingIn ? 'Checking in…' : 'Check in now'}
                   </button>
-                  <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 10 }}>One tap — we confirm by time.</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 10 }}>
+                    {(liveSession.latitude ?? geofence?.latitude) != null
+                      ? `You must be within ${geofence?.radius_meters ?? 300}m of the venue to check in.`
+                      : 'One tap — we confirm by time.'}
+                  </div>
                 </>
               ) : (
                 <>
@@ -199,7 +240,11 @@ function AttendanceContent() {
 
           {/* history */}
           <div>
-            <SectionHead title="History" />
+            <SectionHead
+              title="History"
+              action={historyTotal > HISTORY_PREVIEW_COUNT ? `View all (${historyTotal})` : undefined}
+              onAction={() => router.push('/member/attendance/history')}
+            />
             {history.length === 0 ? (
               <EmptyState icon="calendarclock" title="No sessions yet" body="Your attendance history will appear here." />
             ) : (
