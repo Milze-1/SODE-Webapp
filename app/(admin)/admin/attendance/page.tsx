@@ -8,6 +8,7 @@ import { AdminTopbar, AdminBody, Panel, THead, TRow } from '@/components/admin/c
 import { createClient } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
 import { getCurrentCoords } from '@/lib/geo';
+import LocationAutocomplete, { type GeocodeResult } from '@/components/admin/LocationAutocomplete';
 
 interface SessionRow {
   id: string; title: string; type: string; location: string | null;
@@ -847,7 +848,13 @@ function AttendanceContent() {
 
             <div>
               <label style={labelStyle}>Location (for check-in radius)</label>
-              <TextInput value={newLocation} onChange={setNewLocation} placeholder="Venue name / address" />
+              <LocationAutocomplete
+                value={newLocation}
+                onChange={setNewLocation}
+                onSelect={(r: GeocodeResult) => { setNewLocation(r.label); setNewLat(String(r.lat)); setNewLng(String(r.lng)); }}
+                placeholder="Venue name / address"
+                style={selectStyle}
+              />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                 <input type="number" step="any" value={newLat} onChange={e => setNewLat(e.target.value)} placeholder="Latitude"
                   style={{ ...selectStyle, height: 40, fontSize: 13.5 }} />
@@ -944,10 +951,10 @@ function AttendanceContent() {
 
             <div>
               <label style={labelStyle}>Location (for check-in radius)</label>
-              <input
-                type="text"
+              <LocationAutocomplete
                 value={editForm.location}
-                onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+                onChange={v => setEditForm(f => ({ ...f, location: v }))}
+                onSelect={(r: GeocodeResult) => setEditForm(f => ({ ...f, location: r.label, latitude: String(r.lat), longitude: String(r.lng) }))}
                 placeholder="Venue name / address"
                 style={selectStyle}
               />

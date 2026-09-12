@@ -5,6 +5,7 @@ import { Toggle, StatusPill, Avatar, Sheet, Toast, type ToastData } from '@/comp
 import { AdminTopbar, AdminBody, Panel } from '@/components/admin/chrome';
 import { createClient } from '@/lib/supabase';
 import { getCurrentCoords } from '@/lib/geo';
+import LocationAutocomplete from '@/components/admin/LocationAutocomplete';
 
 const ADMIN_ROLES = [
   { value: 'super_admin', label: 'Super Admin' },
@@ -295,10 +296,10 @@ export default function SettingsPage() {
                     </p>
                     <div>
                       <label style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6 }}>Church / venue name</label>
-                      <input
-                        type="text"
+                      <LocationAutocomplete
                         value={churchName}
-                        onChange={e => setChurchName(e.target.value)}
+                        onChange={setChurchName}
+                        onSelect={r => { setChurchName(r.label); setLatitude(String(r.lat)); setLongitude(String(r.lng)); }}
                         placeholder="e.g. SODE Main Auditorium"
                         style={{ width: '100%', height: 38, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', padding: '0 11px', fontSize: 13.5, outline: 'none', boxSizing: 'border-box' }}
                       />
