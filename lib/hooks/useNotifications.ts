@@ -80,7 +80,21 @@ export function useNotifications() {
     await createClient().from('reminders').update({ read_at: now }).in('id', unreadIds);
   };
 
-  return { memberId, items, unread, loading, markAllRead };
+  // Optimistic: remove locally, restore if the server delete fails
+  const clear = async (ids?: string[]) => {
+    const prev = items;
+    setItems(cur => (ids ? cur.filter(i => !ids.includes(i.id)) : []));
+    const res = await fetch('/api/notifications/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ids ? { ids } : {}),
+    }).catch(() => null);
+    if (!res?.ok) setItems(prev);
+  };
+  const clearAll = () => clear();
+  const dismiss = (id: string) => clear([id]);
+
+  return { memberId, items, unread, loading, markAllRead, clearAll, dismiss };
 }
 
 export function timeAgo(iso: string) {

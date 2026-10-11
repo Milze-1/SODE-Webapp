@@ -3,9 +3,8 @@ import { notifyMembers } from '@/lib/notify-server';
 
 // "Complete your profile" task notifications. The first one goes out right
 // after onboarding (see /api/notify/profile-task); follow-ups are sent by the
-// daily cron until the task is done. Each reminder is a `reminders` row of
-// type 'profile_incomplete', so the count/last-sent of those rows drives the
-// schedule — no extra columns needed.
+// daily cron until the task is done. The count/last-sent of previous sends
+// drives the schedule (see sendHistory below).
 
 const TASK_URL = '/member/profile/complete';
 
@@ -22,16 +21,50 @@ const MESSAGES = [
   { title: 'Last reminder', message: 'Complete your profile to unlock mentor matching. Tap to finish it now.' },
 ];
 
-export async function sendFirstProfileTaskNotification(memberId: string): Promise<boolean> {
+// Sends are recorded in job_runs as ('profile_task', '<member>:<n>') so the
+// schedule survives members clearing their Alerts. Older sends only exist as
+// `reminders` rows, so history takes whichever source shows more.
+async function sendHistory(memberIds: string[]): Promise<Record<string, { count: number; last: number }>> {
   const db = createAdminClient();
-  const { count } = await db
-    .from('reminders')
-    .select('id', { count: 'exact', head: true })
-    .eq('member_id', memberId)
-    .eq('type', 'profile_incomplete');
-  if ((count ?? 0) > 0) return false;
+  const history: Record<string, { count: number; last: number }> = {};
+  const bump = (memberId: string, at: string, src: 'r' | 'j', counts: Record<string, { r: number; j: number }>) => {
+    const h = history[memberId] ?? { count: 0, last: 0 };
+    h.last = Math.max(h.last, new Date(at).getTime());
+    history[memberId] = h;
+    const c = (counts[memberId] ??= { r: 0, j: 0 });
+    c[src]++;
+  };
+  const counts: Record<string, { r: number; j: number }> = {};
+  const wanted = new Set(memberIds);
+
+  for (let i = 0; i < memberIds.length; i += 200) {
+    const { data } = await db.from('reminders').select('member_id, created_at')
+      .eq('type', 'profile_incomplete').in('member_id', memberIds.slice(i, i + 200));
+    for (const r of (data ?? []) as { member_id: string; created_at: string }[]) bump(r.member_id, r.created_at, 'r', counts);
+  }
+  const { data: runs } = await db.from('job_runs').select('run_key, created_at').eq('job', 'profile_task');
+  for (const r of (runs ?? []) as { run_key: string; created_at: string }[]) {
+    const memberId = r.run_key.split(':')[0];
+    if (wanted.has(memberId)) bump(memberId, r.created_at, 'j', counts);
+  }
+  for (const [id, c] of Object.entries(counts)) history[id].count = Math.max(c.r, c.j);
+  return history;
+}
+
+async function recordSends(memberIds: string[], index: number) {
+  if (memberIds.length === 0) return;
+  await createAdminClient().from('job_runs').upsert(
+    memberIds.map(id => ({ job: 'profile_task', run_key: `${id}:${index}` })),
+    { onConflict: 'job,run_key', ignoreDuplicates: true },
+  );
+}
+
+export async function sendFirstProfileTaskNotification(memberId: string): Promise<boolean> {
+  const history = await sendHistory([memberId]);
+  if ((history[memberId]?.count ?? 0) > 0) return false;
 
   await notifyMembers([memberId], { type: 'profile_incomplete', url: TASK_URL, ...MESSAGES[0] });
+  await recordSends([memberId], 0);
   return true;
 }
 
@@ -45,19 +78,7 @@ export async function sendProfileTaskReminders(): Promise<{ sent: number }> {
   const ids = ((members ?? []) as { id: string }[]).map(m => m.id);
   if (ids.length === 0) return { sent: 0 };
 
-  const { data: rows } = await db
-    .from('reminders')
-    .select('member_id, created_at')
-    .eq('type', 'profile_incomplete')
-    .in('member_id', ids);
-
-  const history: Record<string, { count: number; last: number }> = {};
-  for (const r of (rows ?? []) as { member_id: string; created_at: string }[]) {
-    const h = history[r.member_id] ?? { count: 0, last: 0 };
-    h.count++;
-    h.last = Math.max(h.last, new Date(r.created_at).getTime());
-    history[r.member_id] = h;
-  }
+  const history = await sendHistory(ids);
 
   // Group due members by which reminder number they're on, so each batch
   // gets the right wording.
@@ -77,6 +98,7 @@ export async function sendProfileTaskReminders(): Promise<{ sent: number }> {
   let sent = 0;
   for (const [idx, memberIds] of Object.entries(dueByIndex)) {
     const { notified } = await notifyMembers(memberIds, { type: 'profile_incomplete', url: TASK_URL, ...MESSAGES[Number(idx)] });
+    await recordSends(memberIds, Number(idx));
     sent += notified;
   }
   return { sent };

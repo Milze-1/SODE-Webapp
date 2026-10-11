@@ -9,8 +9,15 @@ import { useNotifications, NOTIFICATION_LINKS, timeAgo } from '@/lib/hooks/useNo
 // overlaps a page's own top-right content. See NotificationSheet for the
 // mobile equivalent (bottom-nav icon → full-screen sheet).
 export default function NotificationBell() {
-  const { memberId, items, unread, markAllRead } = useNotifications();
+  const { memberId, items, unread, markAllRead, clearAll, dismiss } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  useEffect(() => {
+    if (!confirmClear) return;
+    const t = setTimeout(() => setConfirmClear(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmClear]);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -61,8 +68,17 @@ export default function NotificationBell() {
           background: 'var(--bg)', borderRadius: 14, border: '1px solid var(--line)',
           boxShadow: '0 12px 32px rgba(0,0,0,.16)', zIndex: 100,
         }}>
-          <div style={{ padding: '13px 15px', borderBottom: '1px solid var(--line)', fontSize: 14, fontWeight: 800, position: 'sticky', top: 0, background: 'var(--bg)' }}>
-            Notifications
+          <div style={{ padding: '10px 10px 10px 15px', borderBottom: '1px solid var(--line)', position: 'sticky', top: 0, background: 'var(--bg)', display: 'flex', alignItems: 'center', zIndex: 1 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, flex: 1 }}>Notifications</span>
+            {items.length > 0 && (
+              <button
+                onClick={() => { if (confirmClear) { clearAll(); setConfirmClear(false); } else setConfirmClear(true); }}
+                style={{ height: 26, padding: '0 10px', borderRadius: 99, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
+                  background: confirmClear ? '#dc2626' : 'var(--surface)', color: confirmClear ? '#fff' : 'var(--ink-2)' }}
+              >
+                {confirmClear ? 'Click to confirm' : 'Clear all'}
+              </button>
+            )}
           </div>
           {items.length === 0 ? (
             <div style={{ padding: '26px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
@@ -70,19 +86,20 @@ export default function NotificationBell() {
             </div>
           ) : (
             items.map(n => (
-              <a
-                key={n.id}
-                href={NOTIFICATION_LINKS[n.type] ?? '/member/home'}
-                onClick={() => setOpen(false)}
-                style={{
-                  display: 'block', padding: '11px 15px', borderBottom: '1px solid var(--line)',
-                  textDecoration: 'none', color: 'var(--ink)',
-                  background: n.read_at ? 'transparent' : 'var(--navy-tint)',
-                }}
-              >
-                <div style={{ fontSize: 13, fontWeight: n.read_at ? 600 : 700, lineHeight: 1.4 }}>{n.message}</div>
-                <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 3 }}>{timeAgo(n.created_at)}</div>
-              </a>
+              <div key={n.id} style={{ display: 'flex', alignItems: 'flex-start', borderBottom: '1px solid var(--line)', background: n.read_at ? 'transparent' : 'var(--navy-tint)' }}>
+                <a
+                  href={NOTIFICATION_LINKS[n.type] ?? '/member/home'}
+                  onClick={() => setOpen(false)}
+                  style={{ flex: 1, minWidth: 0, display: 'block', padding: '11px 4px 11px 15px', textDecoration: 'none', color: 'var(--ink)' }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: n.read_at ? 600 : 700, lineHeight: 1.4 }}>{n.message}</div>
+                  <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 3 }}>{timeAgo(n.created_at)}</div>
+                </a>
+                <button onClick={() => dismiss(n.id)} aria-label="Remove notification" title="Remove"
+                  style={{ flex: 'none', width: 34, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--faint)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <Icon name="x" size={13} />
+                </button>
+              </div>
             ))
           )}
         </div>

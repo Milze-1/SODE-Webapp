@@ -15,8 +15,16 @@ import { useNotifications, NOTIFICATION_LINKS, timeAgo } from '@/lib/hooks/useNo
 // which makes it the containing block for position:fixed descendants, so
 // rendering the sheet inline squashed it into the nav bar on mobile.
 export default function NotificationSheet() {
-  const { memberId, items, unread, markAllRead } = useNotifications();
+  const { memberId, items, unread, markAllRead, clearAll, dismiss } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  // "Clear all" asks for a second tap; the prompt reverts after a few seconds
+  useEffect(() => {
+    if (!confirmClear) return;
+    const t = setTimeout(() => setConfirmClear(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirmClear]);
 
   // Lock background scroll while the sheet is open
   useEffect(() => {
@@ -37,7 +45,16 @@ export default function NotificationSheet() {
         backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderBottom: '1px solid var(--line)',
         padding: 'calc(13px + env(safe-area-inset-top)) 16px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.01em' }}>Notifications</div>
+        <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.01em', flex: 1 }}>Notifications</div>
+        {items.length > 0 && (
+          <button
+            onClick={() => { if (confirmClear) { clearAll(); setConfirmClear(false); } else setConfirmClear(true); }}
+            style={{ height: 32, padding: '0 12px', marginRight: 8, borderRadius: 99, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+              background: confirmClear ? '#dc2626' : 'var(--surface)', color: confirmClear ? '#fff' : 'var(--ink-2)' }}
+          >
+            {confirmClear ? 'Tap to confirm' : 'Clear all'}
+          </button>
+        )}
         <button onClick={() => setOpen(false)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--surface)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <Icon name="x" size={16} />
         </button>
@@ -49,16 +66,20 @@ export default function NotificationSheet() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
             {items.map(n => (
-              <a
-                key={n.id}
-                href={NOTIFICATION_LINKS[n.type] ?? '/member/home'}
-                onClick={() => setOpen(false)}
-                className="card"
-                style={{ display: 'block', padding: '12px 14px', textDecoration: 'none', color: 'var(--ink)', background: n.read_at ? undefined : 'var(--navy-tint)' }}
-              >
-                <div style={{ fontSize: 14, fontWeight: n.read_at ? 600 : 700, lineHeight: 1.4 }}>{n.message}</div>
-                <div style={{ fontSize: 12, color: 'var(--faint)', marginTop: 4 }}>{timeAgo(n.created_at)}</div>
-              </a>
+              <div key={n.id} className="card" style={{ display: 'flex', alignItems: 'flex-start', background: n.read_at ? undefined : 'var(--navy-tint)' }}>
+                <a
+                  href={NOTIFICATION_LINKS[n.type] ?? '/member/home'}
+                  onClick={() => setOpen(false)}
+                  style={{ flex: 1, minWidth: 0, display: 'block', padding: '12px 4px 12px 14px', textDecoration: 'none', color: 'var(--ink)' }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: n.read_at ? 600 : 700, lineHeight: 1.4 }}>{n.message}</div>
+                  <div style={{ fontSize: 12, color: 'var(--faint)', marginTop: 4 }}>{timeAgo(n.created_at)}</div>
+                </a>
+                <button onClick={() => dismiss(n.id)} aria-label="Remove notification"
+                  style={{ flex: 'none', width: 40, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--faint)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <Icon name="x" size={15} />
+                </button>
+              </div>
             ))}
           </div>
         )}
