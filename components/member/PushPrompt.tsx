@@ -20,7 +20,8 @@ export default function PushPrompt() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (pathname?.startsWith('/member/onboarding')) return;
+    // Home only: as a fixed overlay it would cover sheets and buttons elsewhere
+    if (pathname !== '/member/home') { setMode(null); return; }
     let snoozed = false;
     try {
       const at = Number(localStorage.getItem(DISMISS_KEY) ?? 0);

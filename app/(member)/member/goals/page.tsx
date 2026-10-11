@@ -410,27 +410,33 @@ function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
   const [step, setStep]   = useState(0);
   const [pillar, setPillar] = useState<PillarKey | null>(null);
   const [tpl, setTpl]     = useState<{ t: string; target: number; unit: string } | null>(null);
+  // "Write my own": member types the title/target/unit instead of a template
+  const [custom, setCustom] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
   const [target, setTarget] = useState(10);
   const [unit, setUnit]   = useState('days');
   const [due, setDue]     = useState('Aug 31');
   const [reminder, setReminder] = useState<GoalReminder>(DEFAULT_REMINDER);
   const [busy, setBusy]   = useState(false);
 
-  const pickTpl = (t: { t: string; target: number; unit: string }) => { setTpl(t); setTarget(t.target); setUnit(t.unit); };
+  const pickTpl = (t: { t: string; target: number; unit: string }) => { setCustom(false); setTpl(t); setTarget(t.target); setUnit(t.unit); };
+  const pickCustom = () => { setCustom(true); setTpl(null); setTarget(10); setUnit('steps'); };
+  const title = custom ? customTitle.trim() : (tpl?.t ?? '');
+  const goalReady = custom ? !!(customTitle.trim() && target > 0 && unit.trim()) : !!tpl;
 
   const submit = async () => {
-    if (!pillar || !tpl) return;
+    if (!pillar || !goalReady) return;
     setBusy(true);
     try {
       const supabase = createClient();
       const rawDue = parseDue(due);
       const { data, error } = await supabase.from('goals').insert({
-        member_id: memberId, pillar, title: tpl.t, current: 0, target, unit, due_date: rawDue, status: 'ontrack',
+        member_id: memberId, pillar, title, current: 0, target, unit: unit.trim(), due_date: rawDue, status: 'ontrack',
         ...reminderColumns(reminder),
       }).select('id').single();
       if (error) throw error;
-      onAdded({ id: data.id, pillar, title: tpl.t, current: 0, target, unit, due, rawDue, status: 'ontrack', notes: null, msCompleted: 0, msTotal: 0, reminder });
-      if (pillar === 'spiritual' && tpl.t === 'Daily devotion streak') {
+      onAdded({ id: data.id, pillar, title, current: 0, target, unit: unit.trim(), due, rawDue, status: 'ontrack', notes: null, msCompleted: 0, msTotal: 0, reminder });
+      if (pillar === 'spiritual' && title === 'Daily devotion streak') {
         const { data: existingPlan } = await supabase.from('bible_reading_plans').select('id').eq('member_id', memberId).limit(1).maybeSingle();
         if (!existingPlan) {
           // start_book / end_book columns were removed — a plan now spans the
@@ -489,9 +495,36 @@ function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
                 </button>
               );
             })}
-            <button onClick={() => pickTpl({ t: 'Custom goal', target: 10, unit: 'steps' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 14px', borderRadius: 'var(--r-sm)', background: 'var(--surface)', border: '1.5px dashed var(--line-2)', color: 'var(--navy)', fontWeight: 700, fontSize: 14 }}>
-              <Icon name="pencil" size={17} /> Write my own
+            <button type="button" onClick={pickCustom} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 14px', borderRadius: 'var(--r-sm)', background: custom ? 'var(--navy-tint)' : 'var(--surface)', border: custom ? '1.5px solid var(--navy)' : '1.5px dashed var(--line-2)', color: 'var(--navy)', fontWeight: 700, fontSize: 14, textAlign: 'left' }}>
+              <Icon name="pencil" size={17} /> <span style={{ flex: 1 }}>Write my own</span>
+              {custom && <Icon name="check" size={20} stroke={2.6} color="var(--navy)" />}
             </button>
+            {custom && (
+              <div style={{ padding: '4px 2px 0' }}>
+                <Field label="Your goal">
+                  <input
+                    type="text" autoFocus value={customTitle} onChange={e => setCustomTitle(e.target.value)}
+                    placeholder="e.g. Read 12 leadership books" maxLength={120}
+                    style={{ width: '100%', height: 44, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 16, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </Field>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <Field label="Target">
+                    <input
+                      type="number" inputMode="numeric" min={1} value={target}
+                      onChange={e => setTarget(Math.max(0, Number(e.target.value)))}
+                      style={{ width: '100%', height: 44, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 16, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </Field>
+                  <Field label="Unit">
+                    <input
+                      type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="books, days…"
+                      style={{ width: '100%', height: 44, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 16, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </Field>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -512,7 +545,7 @@ function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
         {step > 0 && <button onClick={() => setStep(s => s - 1)} className="btn btn-ghost" style={{ paddingLeft: 16, paddingRight: 16 }}><Icon name="arrowleft" size={18} /></button>}
         {step < 2
-          ? <button onClick={() => setStep(s => s + 1)} disabled={step === 0 ? !pillar : !tpl} className="btn btn-primary btn-block">Continue</button>
+          ? <button onClick={() => setStep(s => s + 1)} disabled={step === 0 ? !pillar : !goalReady} className="btn btn-primary btn-block">Continue</button>
           : <button onClick={submit} disabled={busy} className="btn btn-primary btn-block"><Icon name="flag" size={17} color="#fff" /> Set this goal</button>}
       </div>
     </div>
