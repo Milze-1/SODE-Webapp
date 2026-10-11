@@ -7,9 +7,11 @@ import { awardPoints } from '@/lib/points';
 import { Icon, PILLARS, pillarOf } from '@/components/sode/icons';
 import {
   PillarChip, ProgressBar, ProgressRing, StatusPill,
-  Sheet, Toast, Celebrate, Field, OptionChips, EmptyState,
+  Sheet, Toast, Celebrate, Field, EmptyState,
 } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
+import NewGoalFlow from '@/components/member/NewGoalFlow';
+import { GoalReminderPicker, DEFAULT_REMINDER, reminderColumns, reminderFromRow, type GoalReminder } from '@/components/member/goal-reminder';
 
 type PillarKey = 'spiritual' | 'career' | 'business' | 'character';
 type GoalStatus = 'ontrack' | 'atrisk' | 'behind' | 'done' | 'archived';
@@ -37,62 +39,7 @@ interface Goal {
   reminder?: GoalReminder;
 }
 
-// Per-goal push reminder, sent by /api/cron/tick at this Lagos time
-interface GoalReminder { frequency: 'off' | 'daily' | 'weekly'; time: string; weekday: number; }
-const DEFAULT_REMINDER: GoalReminder = { frequency: 'off', time: '19:00', weekday: 1 };
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const reminderColumns = (r: GoalReminder) => ({
-  reminder_frequency: r.frequency,
-  reminder_time: r.frequency === 'off' ? null : r.time,
-  reminder_weekday: r.frequency === 'weekly' ? r.weekday : null,
-});
-
-const fmtTime12 = (hm: string) => {
-  const [h, m] = hm.split(':').map(Number);
-  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
-};
-
-const describeReminder = (r?: GoalReminder) =>
-  !r || r.frequency === 'off' ? 'Off'
-  : r.frequency === 'daily' ? `daily at ${fmtTime12(r.time)}`
-  : `every ${WEEKDAYS[r.weekday]} at ${fmtTime12(r.time)}`;
-
-function GoalReminderPicker({ value, onChange }: { value: GoalReminder; onChange: (r: GoalReminder) => void }) {
-  const chip = (sel: boolean): React.CSSProperties => ({
-    padding: '8px 12px', borderRadius: 99, fontSize: 13, fontWeight: 700,
-    background: sel ? 'var(--navy)' : 'var(--surface)', color: sel ? '#fff' : 'var(--ink)',
-    border: sel ? '1.5px solid var(--navy)' : '1px solid var(--line-2)',
-  });
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-        {(['off', 'daily', 'weekly'] as const).map(f => (
-          <button key={f} type="button" onClick={() => onChange({ ...value, frequency: f })} style={chip(value.frequency === f)}>
-            {f === 'off' ? 'Off' : f === 'daily' ? 'Daily' : 'Weekly'}
-          </button>
-        ))}
-      </div>
-      {value.frequency === 'weekly' && (
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10 }}>
-          {WEEKDAYS.map((d, i) => (
-            <button key={d} type="button" onClick={() => onChange({ ...value, weekday: i })} style={{ ...chip(value.weekday === i), padding: '7px 10px', fontSize: 12.5 }}>{d}</button>
-          ))}
-        </div>
-      )}
-      {value.frequency !== 'off' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
-          <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>at</span>
-          <input type="time" value={value.time} onChange={e => e.target.value && onChange({ ...value, time: e.target.value })}
-            style={{ height: 40, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 14.5, padding: '0 10px', outline: 'none' }} />
-        </div>
-      )}
-      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, lineHeight: 1.45 }}>
-        {value.frequency === 'off' ? 'No reminders for this goal.' : `We'll notify you ${describeReminder(value)} (Lagos time) to log your progress.`}
-      </p>
-    </div>
-  );
-}
 
 interface Milestone {
   id: string;
@@ -145,19 +92,6 @@ const effectiveStatus = (ms: Milestone): MilestoneStatus => {
   if (ms.milestone_status === 'completed') return 'completed';
   if (ms.deadline && ms.deadline < TODAY) return 'overdue';
   return ms.milestone_status;
-};
-
-const parseDue = (s: string): string => {
-  const m: Record<string, string> = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
-  const [mon, day] = s.split(' ');
-  return `2026-${m[mon] ?? '12'}-${(day ?? '31').padStart(2, '0')}`;
-};
-
-const GOAL_TEMPLATES: Record<PillarKey, { t: string; target: number; unit: string }[]> = {
-  spiritual: [{ t: 'Daily devotion streak', target: 30, unit: 'days' }, { t: 'Read 2 Christian books', target: 2, unit: 'books' }, { t: 'Join a prayer cell', target: 8, unit: 'sessions' }],
-  career:    [{ t: 'Earn a professional certification', target: 5, unit: 'modules' }, { t: 'Refresh CV & LinkedIn', target: 3, unit: 'steps' }, { t: 'Apply to target roles', target: 10, unit: 'roles' }],
-  business:  [{ t: 'Register the business', target: 4, unit: 'steps' }, { t: 'Land first paying customers', target: 3, unit: 'customers' }, { t: 'Reach revenue milestone', target: 12, unit: 'weeks' }],
-  character: [{ t: 'Mentor a younger member', target: 6, unit: 'sessions' }, { t: 'Serve in a department', target: 12, unit: 'weeks' }, { t: '30-day integrity challenge', target: 30, unit: 'days' }],
 };
 
 // ── Milestone Status Icon ──────────────────────────────────────────────────────
@@ -402,156 +336,6 @@ function GoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
   );
 }
 
-// ── New Goal Flow ─────────────────────────────────────────────────────────────
-
-function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
-  memberId: string; onClose: () => void; onAdded: (g: Goal) => void; onToast: (t: ToastPayload) => void;
-}) {
-  const [step, setStep]   = useState(0);
-  const [pillar, setPillar] = useState<PillarKey | null>(null);
-  const [tpl, setTpl]     = useState<{ t: string; target: number; unit: string } | null>(null);
-  // "Write my own": member types the title/target/unit instead of a template
-  const [custom, setCustom] = useState(false);
-  const [customTitle, setCustomTitle] = useState('');
-  const [target, setTarget] = useState(10);
-  const [unit, setUnit]   = useState('days');
-  const [due, setDue]     = useState('Aug 31');
-  const [reminder, setReminder] = useState<GoalReminder>(DEFAULT_REMINDER);
-  const [busy, setBusy]   = useState(false);
-
-  const pickTpl = (t: { t: string; target: number; unit: string }) => { setCustom(false); setTpl(t); setTarget(t.target); setUnit(t.unit); };
-  const pickCustom = () => { setCustom(true); setTpl(null); setTarget(10); setUnit('steps'); };
-  const title = custom ? customTitle.trim() : (tpl?.t ?? '');
-  const goalReady = custom ? !!(customTitle.trim() && target > 0 && unit.trim()) : !!tpl;
-
-  const submit = async () => {
-    if (!pillar || !goalReady) return;
-    setBusy(true);
-    try {
-      const supabase = createClient();
-      const rawDue = parseDue(due);
-      const { data, error } = await supabase.from('goals').insert({
-        member_id: memberId, pillar, title, current: 0, target, unit: unit.trim(), due_date: rawDue, status: 'ontrack',
-        ...reminderColumns(reminder),
-      }).select('id').single();
-      if (error) throw error;
-      onAdded({ id: data.id, pillar, title, current: 0, target, unit: unit.trim(), due, rawDue, status: 'ontrack', notes: null, msCompleted: 0, msTotal: 0, reminder });
-      if (pillar === 'spiritual' && title === 'Daily devotion streak') {
-        const { data: existingPlan } = await supabase.from('bible_reading_plans').select('id').eq('member_id', memberId).limit(1).maybeSingle();
-        if (!existingPlan) {
-          // start_book / end_book columns were removed — a plan now spans the
-          // full testament (New Testament: Matthew → Revelation).
-          await supabase.from('bible_reading_plans').insert({
-            member_id: memberId, testament: 'new', chapters_per_day: 1,
-            start_date: new Date().toISOString().slice(0, 10),
-          });
-        }
-      }
-      onClose();
-      onToast({ msg: "Goal set. Let's start the climb.", icon: 'flag' });
-    } catch {
-      onToast({ msg: 'Could not save — try again.' });
-    } finally { setBusy(false); }
-  };
-
-  return (
-    <div>
-      <h2 style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.01em', marginBottom: 4 }}>New goal</h2>
-      <div style={{ display: 'flex', gap: 6, margin: '12px 0 18px' }}>
-        {[0,1,2].map(i => <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i <= step ? 'var(--navy)' : 'var(--surface-2)' }} />)}
-      </div>
-
-      {step === 0 && (
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Choose a pillar</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {PILLARS.map(p => {
-              const sel = pillar === p.key;
-              return (
-                <button key={p.key} onClick={() => setPillar(p.key as PillarKey)} style={{ padding: '16px 12px', borderRadius: 'var(--r-sm)', background: sel ? 'var(--navy-tint)' : 'var(--surface)', border: sel ? '1.5px solid var(--navy)' : '1px solid var(--line-2)', textAlign: 'center' }}>
-                  <div style={{ width: 44, height: 44, margin: '0 auto', borderRadius: 13, background: '#fff', color: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--sh-sm)' }}><Icon name={p.icon} size={22} stroke={2.1} /></div>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 9 }}>{p.short}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {step === 1 && pillar && (
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Pick a template</div>
-          <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12 }}>Laddered from your team&apos;s pillar goals.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {GOAL_TEMPLATES[pillar].map((t, i) => {
-              const sel = tpl?.t === t.t;
-              return (
-                <button key={i} onClick={() => pickTpl(t)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', borderRadius: 'var(--r-sm)', background: sel ? 'var(--navy-tint)' : 'var(--surface)', border: sel ? '1.5px solid var(--navy)' : '1px solid var(--line-2)', textAlign: 'left' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>{t.t}</div>
-                    <div className="tnum" style={{ fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>{t.target} {t.unit}</div>
-                  </div>
-                  {sel && <Icon name="check" size={20} stroke={2.6} color="var(--navy)" />}
-                </button>
-              );
-            })}
-            <button type="button" onClick={pickCustom} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 14px', borderRadius: 'var(--r-sm)', background: custom ? 'var(--navy-tint)' : 'var(--surface)', border: custom ? '1.5px solid var(--navy)' : '1.5px dashed var(--line-2)', color: 'var(--navy)', fontWeight: 700, fontSize: 14, textAlign: 'left' }}>
-              <Icon name="pencil" size={17} /> <span style={{ flex: 1 }}>Write my own</span>
-              {custom && <Icon name="check" size={20} stroke={2.6} color="var(--navy)" />}
-            </button>
-            {custom && (
-              <div style={{ padding: '4px 2px 0' }}>
-                <Field label="Your goal">
-                  <input
-                    type="text" autoFocus value={customTitle} onChange={e => setCustomTitle(e.target.value)}
-                    placeholder="e.g. Read 12 leadership books" maxLength={120}
-                    style={{ width: '100%', height: 44, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 16, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
-                  />
-                </Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label="Target">
-                    <input
-                      type="number" inputMode="numeric" min={1} value={target}
-                      onChange={e => setTarget(Math.max(0, Number(e.target.value)))}
-                      style={{ width: '100%', height: 44, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 16, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                  </Field>
-                  <Field label="Unit">
-                    <input
-                      type="text" value={unit} onChange={e => setUnit(e.target.value)} placeholder="books, days…"
-                      style={{ width: '100%', height: 44, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 16, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                  </Field>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {step === 2 && (
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Due date &amp; reminders</div>
-          <Field label="Due date">
-            <OptionChips options={['Jun 30', 'Aug 31', 'Sep 30', 'Dec 31']} value={due} onChange={v => setDue(v as string)} />
-          </Field>
-          <Field label="Remind me to log progress">
-            <GoalReminderPicker value={reminder} onChange={setReminder} />
-          </Field>
-          <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 10, lineHeight: 1.5 }}>Add milestones after creating the goal to track your progress step by step.</p>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-        {step > 0 && <button onClick={() => setStep(s => s - 1)} className="btn btn-ghost" style={{ paddingLeft: 16, paddingRight: 16 }}><Icon name="arrowleft" size={18} /></button>}
-        {step < 2
-          ? <button onClick={() => setStep(s => s + 1)} disabled={step === 0 ? !pillar : !goalReady} className="btn btn-primary btn-block">Continue</button>
-          : <button onClick={submit} disabled={busy} className="btn btn-primary btn-block"><Icon name="flag" size={17} color="#fff" /> Set this goal</button>}
-      </div>
-    </div>
-  );
-}
-
 // ── Goal Detail Sheet ─────────────────────────────────────────────────────────
 
 function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, onToast, onCelebrate, onDelete, onArchive }: {
@@ -697,7 +481,7 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
   const addFromSuggestion = async (sg: { title: string }) => {
     const supabase = createClient();
     const { data, error } = await supabase.from('goal_steps').insert({
-      goal_id: live.id, title: sg.title, deadline: live.rawDue ?? '',
+      goal_id: live.id, title: sg.title, deadline: live.rawDue ?? null,
       milestone_status: 'not_started', order_index: milestones.length, member_id: null,
     }).select().single();
     if (!error && data) {
@@ -1286,11 +1070,7 @@ export default function GoalsPage() {
           notes: g.notes ?? null,
           msCompleted: msCounts[g.id]?.completed ?? 0,
           msTotal: msCounts[g.id]?.total ?? 0,
-          reminder: {
-            frequency: (g.reminder_frequency ?? 'off') as GoalReminder['frequency'],
-            time: g.reminder_time?.slice(0, 5) ?? DEFAULT_REMINDER.time,
-            weekday: g.reminder_weekday ?? DEFAULT_REMINDER.weekday,
-          },
+          reminder: reminderFromRow(g),
         }));
         setGoals(goals);
       }
@@ -1451,7 +1231,11 @@ export default function GoalsPage() {
       <BottomNav />
 
       <Sheet open={sheet?.type === 'new'} onClose={() => setSheet(null)}>
-        {member && <NewGoalFlow memberId={member.id} onClose={() => setSheet(null)} onAdded={g => setGoals(gs => [...gs, g])} onToast={showToast} />}
+        {member && <NewGoalFlow memberId={member.id} onClose={() => setSheet(null)} onAdded={g => setGoals(gs => [...gs, {
+          id: g.id, pillar: g.pillar, title: g.title, current: 0, target: g.target, unit: g.unit,
+          due: fmtShort(g.dueDate), rawDue: g.dueDate, status: 'ontrack', notes: null,
+          msCompleted: 0, msTotal: 0, reminder: g.reminder,
+        }])} onToast={showToast} />}
       </Sheet>
       <Sheet open={sheet?.type === 'detail'} onClose={() => setSheet(null)} title="Goal">
         {sheet?.type === 'detail' && sheet.goal && member && (

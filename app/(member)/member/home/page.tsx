@@ -7,10 +7,11 @@ import { Icon, PILLARS, pillarOf } from '@/components/sode/icons';
 import {
   Avatar, PillarChip, ProgressRing, ProgressBar, StatusPill,
   PointsBadge, SectionHead, Sheet, Toast, Celebrate,
-  Field, TextInput, OptionChips, EmptyState,
+  TextInput, OptionChips, EmptyState,
 } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
 import ProfileTaskCard from '@/components/member/ProfileTaskCard';
+import NewGoalFlow from '@/components/member/NewGoalFlow';
 import { awardPoints } from '@/lib/points';
 import { usePoints } from '@/lib/hooks/useRealtimeData';
 import { getCached, setCached, invalidateCache } from '@/lib/home-cache';
@@ -89,15 +90,6 @@ const cycleMonth = (): number => {
   return Math.max(1, Math.min(12, m));
 };
 
-const parseDue = (s: string): string => {
-  const months: Record<string, string> = {
-    Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
-    Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12',
-  };
-  const [mon, day] = s.split(' ');
-  return `2026-${months[mon] ?? '12'}-${(day ?? '31').padStart(2, '0')}`;
-};
-
 // ─── Win types / Goal templates ───────────────────────────────────────────────
 
 const WIN_TYPES = [
@@ -108,29 +100,6 @@ const WIN_TYPES = [
   { value: 'prayer', label: 'Answered prayer', icon: 'sprout' },
   { value: 'other', label: 'Something else', icon: 'star' },
 ];
-
-const GOAL_TEMPLATES: Record<PillarKey, { t: string; target: number; unit: string }[]> = {
-  spiritual: [
-    { t: 'Daily devotion streak', target: 30, unit: 'days' },
-    { t: 'Read 2 Christian books', target: 2, unit: 'books' },
-    { t: 'Join a prayer cell', target: 8, unit: 'sessions' },
-  ],
-  career: [
-    { t: 'Earn a professional certification', target: 5, unit: 'modules' },
-    { t: 'Refresh CV & LinkedIn', target: 3, unit: 'steps' },
-    { t: 'Apply to target roles', target: 10, unit: 'roles' },
-  ],
-  business: [
-    { t: 'Register the business', target: 4, unit: 'steps' },
-    { t: 'Land first paying customers', target: 3, unit: 'customers' },
-    { t: 'Reach revenue milestone', target: 12, unit: 'weeks' },
-  ],
-  character: [
-    { t: 'Mentor a younger member', target: 6, unit: 'sessions' },
-    { t: 'Serve in a department', target: 12, unit: 'weeks' },
-    { t: '30-day integrity challenge', target: 30, unit: 'days' },
-  ],
-};
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
 
@@ -278,125 +247,6 @@ function WinFlow({ memberId, onClose, onPoints, onToast, onCelebrate, onAdded }:
           ? <button onClick={() => setStep(s => s + 1)} disabled={!canNext} className="btn btn-primary btn-block">Continue</button>
           : <button onClick={submit} disabled={!canNext || busy} className="btn btn-primary btn-block">
               <Icon name="sparkles" size={18} stroke={2.2} color="#fff" /> Share win · +5
-            </button>
-        }
-      </div>
-    </div>
-  );
-}
-
-// ─── NewGoalFlow ──────────────────────────────────────────────────────────────
-
-interface NewGoalFlowProps {
-  memberId: string;
-  onClose: () => void;
-  onAdded: (g: Goal) => void;
-  onToast: (t: ToastPayload) => void;
-}
-
-function NewGoalFlow({ memberId, onClose, onAdded, onToast }: NewGoalFlowProps) {
-  const [step, setStep] = useState(0);
-  const [pillar, setPillar] = useState<PillarKey | null>(null);
-  const [tpl, setTpl] = useState<{ t: string; target: number; unit: string } | null>(null);
-  const [target, setTarget] = useState(10);
-  const [unit, setUnit] = useState('days');
-  const [due, setDue] = useState('Aug 31');
-  const [busy, setBusy] = useState(false);
-
-  const pickTpl = (t: { t: string; target: number; unit: string }) => { setTpl(t); setTarget(t.target); setUnit(t.unit); };
-
-  const submit = async () => {
-    if (!pillar || !tpl) return;
-    setBusy(true);
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.from('goals').insert({
-        member_id: memberId, pillar, title: tpl.t,
-        current: 0, target, unit, due_date: parseDue(due), status: 'ontrack',
-      }).select('id').single();
-      if (error) throw error;
-      onAdded({ id: data.id, pillar, title: tpl.t, current: 0, target, unit, due, status: 'ontrack', milestones: [] });
-      onClose();
-      onToast({ msg: "Goal set. Let's start the climb.", icon: 'flag' });
-    } catch {
-      onToast({ msg: 'Could not save goal — try again.' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div>
-      <h2 style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-.01em', marginBottom: 4 }}>New goal</h2>
-      <div style={{ display: 'flex', gap: 6, margin: '12px 0 18px' }}>
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i <= step ? 'var(--navy)' : 'var(--surface-2)' }} />
-        ))}
-      </div>
-
-      {step === 0 && (
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>Choose a pillar</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {PILLARS.map(p => {
-              const sel = pillar === p.key;
-              return (
-                <button key={p.key} onClick={() => setPillar(p.key as PillarKey)} style={{ padding: '16px 12px', borderRadius: 'var(--r-sm)', background: sel ? 'var(--navy-tint)' : 'var(--surface)', border: sel ? '1.5px solid var(--navy)' : '1px solid var(--line-2)', textAlign: 'center' }}>
-                  <div style={{ width: 44, height: 44, margin: '0 auto', borderRadius: 13, background: '#fff', color: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--sh-sm)' }}>
-                    <Icon name={p.icon} size={22} stroke={2.1} />
-                  </div>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 9 }}>{p.short}</div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {step === 1 && pillar && (
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Pick a template</div>
-          <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12 }}>Laddered from your team&apos;s pillar goals.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {GOAL_TEMPLATES[pillar].map((t, i) => {
-              const sel = tpl?.t === t.t;
-              return (
-                <button key={i} onClick={() => pickTpl(t)} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '13px 14px', borderRadius: 'var(--r-sm)', background: sel ? 'var(--navy-tint)' : 'var(--surface)', border: sel ? '1.5px solid var(--navy)' : '1px solid var(--line-2)', textAlign: 'left' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 700 }}>{t.t}</div>
-                    <div className="tnum" style={{ fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>{t.target} {t.unit}</div>
-                  </div>
-                  {sel && <Icon name="check" size={20} stroke={2.6} color="var(--navy)" />}
-                </button>
-              );
-            })}
-            <button onClick={() => pickTpl({ t: 'Custom goal', target: 10, unit: 'steps' })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '13px 14px', borderRadius: 'var(--r-sm)', background: 'var(--surface)', border: '1.5px dashed var(--line-2)', color: 'var(--navy)', fontWeight: 700, fontSize: 14 }}>
-              <Icon name="pencil" size={17} /> Write my own
-            </button>
-          </div>
-        </div>
-      )}
-      {step === 2 && (
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Set the target</div>
-          <div className="card card-pad" style={{ marginBottom: 16 }}>
-            <Stepper value={target} max={Math.max(50, target)} unit={unit} onChange={setTarget} />
-          </div>
-          <Field label="Due date">
-            <OptionChips options={['Jun 30', 'Aug 31', 'Sep 30', 'Dec 31']} value={due} onChange={v => setDue(v as string)} />
-          </Field>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-        {step > 0 && (
-          <button onClick={() => setStep(s => s - 1)} className="btn btn-ghost" style={{ paddingLeft: 16, paddingRight: 16 }}>
-            <Icon name="arrowleft" size={18} />
-          </button>
-        )}
-        {step < 2
-          ? <button onClick={() => setStep(s => s + 1)} disabled={step === 0 ? !pillar : !tpl} className="btn btn-primary btn-block">Continue</button>
-          : <button onClick={submit} disabled={busy} className="btn btn-primary btn-block">
-              <Icon name="flag" size={17} color="#fff" /> Set this goal
             </button>
         }
       </div>
@@ -1169,7 +1019,11 @@ export default function HomePage() {
           <NewGoalFlow
             memberId={member.id}
             onClose={() => setSheet(null)}
-            onAdded={g => setGoals(gs => [...gs, g])}
+            onAdded={g => setGoals(gs => [...gs, {
+              id: g.id, pillar: g.pillar, title: g.title, current: 0, target: g.target, unit: g.unit,
+              due: new Date(g.dueDate + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
+              status: 'ontrack', milestones: [],
+            }])}
             onToast={showToast}
           />
         )}

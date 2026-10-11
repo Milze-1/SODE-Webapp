@@ -32,6 +32,11 @@ export async function runSessionStart(now = new Date()): Promise<string[]> {
   for (const s of (sessions ?? []) as { id: string; title: string; location: string | null; is_live: boolean }[]) {
     if (!(await claimRun('session_start', s.id))) continue;
     if (s.is_live) continue;
+    // Already taken live by an admin earlier (and possibly ended) — don't reopen it
+    const { count: wentLive } = await db.from('reminders')
+      .select('id', { count: 'exact', head: true })
+      .eq('type', 'session_live').eq('reference_id', s.id);
+    if ((wentLive ?? 0) > 0) continue;
 
     // Same as the admin "Go live" button: one live session at a time
     await db.from('sessions').update({ is_live: false }).eq('is_live', true);
