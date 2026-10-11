@@ -34,6 +34,64 @@ interface Goal {
   unit: string; due: string; rawDue: string | null; status: GoalStatus;
   notes: string | null;
   msCompleted: number; msTotal: number;
+  reminder?: GoalReminder;
+}
+
+// Per-goal push reminder, sent by /api/cron/tick at this Lagos time
+interface GoalReminder { frequency: 'off' | 'daily' | 'weekly'; time: string; weekday: number; }
+const DEFAULT_REMINDER: GoalReminder = { frequency: 'off', time: '19:00', weekday: 1 };
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const reminderColumns = (r: GoalReminder) => ({
+  reminder_frequency: r.frequency,
+  reminder_time: r.frequency === 'off' ? null : r.time,
+  reminder_weekday: r.frequency === 'weekly' ? r.weekday : null,
+});
+
+const fmtTime12 = (hm: string) => {
+  const [h, m] = hm.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+};
+
+const describeReminder = (r?: GoalReminder) =>
+  !r || r.frequency === 'off' ? 'Off'
+  : r.frequency === 'daily' ? `daily at ${fmtTime12(r.time)}`
+  : `every ${WEEKDAYS[r.weekday]} at ${fmtTime12(r.time)}`;
+
+function GoalReminderPicker({ value, onChange }: { value: GoalReminder; onChange: (r: GoalReminder) => void }) {
+  const chip = (sel: boolean): React.CSSProperties => ({
+    padding: '8px 12px', borderRadius: 99, fontSize: 13, fontWeight: 700,
+    background: sel ? 'var(--navy)' : 'var(--surface)', color: sel ? '#fff' : 'var(--ink)',
+    border: sel ? '1.5px solid var(--navy)' : '1px solid var(--line-2)',
+  });
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+        {(['off', 'daily', 'weekly'] as const).map(f => (
+          <button key={f} type="button" onClick={() => onChange({ ...value, frequency: f })} style={chip(value.frequency === f)}>
+            {f === 'off' ? 'Off' : f === 'daily' ? 'Daily' : 'Weekly'}
+          </button>
+        ))}
+      </div>
+      {value.frequency === 'weekly' && (
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 10 }}>
+          {WEEKDAYS.map((d, i) => (
+            <button key={d} type="button" onClick={() => onChange({ ...value, weekday: i })} style={{ ...chip(value.weekday === i), padding: '7px 10px', fontSize: 12.5 }}>{d}</button>
+          ))}
+        </div>
+      )}
+      {value.frequency !== 'off' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+          <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>at</span>
+          <input type="time" value={value.time} onChange={e => e.target.value && onChange({ ...value, time: e.target.value })}
+            style={{ height: 40, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 14.5, padding: '0 10px', outline: 'none' }} />
+        </div>
+      )}
+      <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8, lineHeight: 1.45 }}>
+        {value.frequency === 'off' ? 'No reminders for this goal.' : `We'll notify you ${describeReminder(value)} (Lagos time) to log your progress.`}
+      </p>
+    </div>
+  );
 }
 
 interface Milestone {
@@ -61,6 +119,7 @@ interface GoalRow {
   id: string; pillar: string; title: string; current: number | null;
   target: number | null; unit: string | null; due_date: string | null;
   status: string | null; notes: string | null;
+  reminder_frequency?: string | null; reminder_time?: string | null; reminder_weekday?: number | null;
 }
 
 const TODAY = new Date().toISOString().split('T')[0];
@@ -354,6 +413,7 @@ function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
   const [target, setTarget] = useState(10);
   const [unit, setUnit]   = useState('days');
   const [due, setDue]     = useState('Aug 31');
+  const [reminder, setReminder] = useState<GoalReminder>(DEFAULT_REMINDER);
   const [busy, setBusy]   = useState(false);
 
   const pickTpl = (t: { t: string; target: number; unit: string }) => { setTpl(t); setTarget(t.target); setUnit(t.unit); };
@@ -366,9 +426,10 @@ function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
       const rawDue = parseDue(due);
       const { data, error } = await supabase.from('goals').insert({
         member_id: memberId, pillar, title: tpl.t, current: 0, target, unit, due_date: rawDue, status: 'ontrack',
+        ...reminderColumns(reminder),
       }).select('id').single();
       if (error) throw error;
-      onAdded({ id: data.id, pillar, title: tpl.t, current: 0, target, unit, due, rawDue, status: 'ontrack', notes: null, msCompleted: 0, msTotal: 0 });
+      onAdded({ id: data.id, pillar, title: tpl.t, current: 0, target, unit, due, rawDue, status: 'ontrack', notes: null, msCompleted: 0, msTotal: 0, reminder });
       if (pillar === 'spiritual' && tpl.t === 'Daily devotion streak') {
         const { data: existingPlan } = await supabase.from('bible_reading_plans').select('id').eq('member_id', memberId).limit(1).maybeSingle();
         if (!existingPlan) {
@@ -437,9 +498,12 @@ function NewGoalFlow({ memberId, onClose, onAdded, onToast }: {
 
       {step === 2 && (
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Set the due date</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Due date &amp; reminders</div>
           <Field label="Due date">
             <OptionChips options={['Jun 30', 'Aug 31', 'Sep 30', 'Dec 31']} value={due} onChange={v => setDue(v as string)} />
+          </Field>
+          <Field label="Remind me to log progress">
+            <GoalReminderPicker value={reminder} onChange={setReminder} />
           </Field>
           <p style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 10, lineHeight: 1.5 }}>Add milestones after creating the goal to track your progress step by step.</p>
         </div>
@@ -485,6 +549,7 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
   const [editTarget, setEditTarget]         = useState(live.target);
   const [editUnit, setEditUnit]             = useState(live.unit);
   const [editDue, setEditDue]               = useState(live.rawDue ?? '');
+  const [editReminder, setEditReminder]     = useState<GoalReminder>(live.reminder ?? DEFAULT_REMINDER);
   const [savingEdit, setSavingEdit]         = useState(false);
 
   const loadMilestones = useCallback(async () => {
@@ -633,12 +698,14 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
     const { error } = await supabase.from('goals').update({
       title: editTitle.trim(), pillar: editPillar, target: editTarget,
       unit: editUnit.trim(), due_date: editDue || null,
+      ...reminderColumns(editReminder),
       updated_at: new Date().toISOString(),
     }).eq('id', live.id);
     if (!error) {
       onGoalsChange(goals.map(g => g.id === live.id ? {
         ...g, title: editTitle.trim(), pillar: editPillar, target: editTarget,
         unit: editUnit.trim(), rawDue: editDue || null, due: editDue ? fmtShort(editDue) : '',
+        reminder: editReminder,
       } : g));
       setEditingGoal(false);
       onToast({ msg: 'Goal updated', icon: 'check' });
@@ -728,6 +795,9 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
             style={{ width: '100%', height: 42, borderRadius: 9, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 14.5, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }} />
         </Field>
       </div>
+      <Field label="Remind me to log progress">
+        <GoalReminderPicker value={editReminder} onChange={setEditReminder} />
+      </Field>
       <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
         <button type="button" onClick={() => setEditingGoal(false)} className="btn btn-ghost btn-block">Cancel</button>
         <button type="button" onClick={saveGoalEdits} disabled={savingEdit || !editTitle.trim()} className="btn btn-primary btn-block">Save</button>
@@ -760,7 +830,7 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
             <>
               <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 1 }} />
               <div style={{ position: 'absolute', top: 38, right: 0, width: 180, background: '#fff', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,.15)', border: '1px solid var(--line)', zIndex: 2, overflow: 'hidden' }}>
-                <button type="button" onClick={() => { setMenuOpen(false); setEditTitle(live.title); setEditPillar(live.pillar); setEditTarget(live.target); setEditUnit(live.unit); setEditDue(live.rawDue ?? ''); setEditingGoal(true); }}
+                <button type="button" onClick={() => { setMenuOpen(false); setEditTitle(live.title); setEditPillar(live.pillar); setEditTarget(live.target); setEditUnit(live.unit); setEditDue(live.rawDue ?? ''); setEditReminder(live.reminder ?? DEFAULT_REMINDER); setEditingGoal(true); }}
                   style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '11px 14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', textAlign: 'left' }}>
                   <Icon name="pencil" size={15} color="var(--muted)" /> Edit goal
                 </button>
@@ -1151,9 +1221,15 @@ export default function GoalsPage() {
       if (!memberRow?.onboarding_complete) { router.replace('/member/onboarding'); return; }
       setMember({ id: memberRow.id, points: memberRow.points ?? 0 });
 
-      const { data: goalsData } = await supabase
-        .from('goals').select('id,pillar,title,current,target,unit,due_date,status,notes')
+      const GOAL_COLS = 'id,pillar,title,current,target,unit,due_date,status,notes';
+      const withReminders = await supabase
+        .from('goals').select(`${GOAL_COLS},reminder_frequency,reminder_time,reminder_weekday`)
         .eq('member_id', memberRow.id).order('created_at', { ascending: true });
+      // Reminder columns come from migration 016 — still show goals without them
+      const goalsData: GoalRow[] | null = !withReminders.error
+        ? withReminders.data as GoalRow[] | null
+        : (await supabase.from('goals').select(GOAL_COLS)
+            .eq('member_id', memberRow.id).order('created_at', { ascending: true })).data as GoalRow[] | null;
 
       let goals: Goal[] = [];
       if (goalsData && goalsData.length > 0) {
@@ -1177,6 +1253,11 @@ export default function GoalsPage() {
           notes: g.notes ?? null,
           msCompleted: msCounts[g.id]?.completed ?? 0,
           msTotal: msCounts[g.id]?.total ?? 0,
+          reminder: {
+            frequency: (g.reminder_frequency ?? 'off') as GoalReminder['frequency'],
+            time: g.reminder_time?.slice(0, 5) ?? DEFAULT_REMINDER.time,
+            weekday: g.reminder_weekday ?? DEFAULT_REMINDER.weekday,
+          },
         }));
         setGoals(goals);
       }

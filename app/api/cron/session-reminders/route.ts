@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendBulkEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { notifyMembers } from '@/lib/notify-server';
+import { fmtLagos } from '@/lib/lagos-time';
 import { emailRecipientSet } from '@/lib/notification-prefs-server';
 
 export async function GET(request: Request) {
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
   let totalSent = 0;
 
   for (const session of sessions as { id: string; title: string; location: string | null; scheduled_at: string }[]) {
-    const sessionTime = new Date(session.scheduled_at).toLocaleString('en-GB', {
+    const sessionTime = fmtLagos(session.scheduled_at, {
       weekday: 'long', day: 'numeric', month: 'long',
       hour: '2-digit', minute: '2-digit', hour12: false,
     });

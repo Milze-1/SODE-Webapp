@@ -5,11 +5,11 @@ import { filterPushRecipients } from '@/lib/notification-prefs-server';
 // Notification types shown in the member notification bell (components/member/NotificationBell.tsx)
 // and used to route a tap to the right screen (see LINKS in that file).
 export type NotificationType =
-  | 'session_created' | 'session_live' | 'session_reminder'
+  | 'session_created' | 'session_live' | 'session_reminder' | 'session_starting'
   | 'form_published'
   | 'learning_published'
-  | 'devotion_reminder'
-  | 'goal_reminder' | 'milestone_overdue'
+  | 'devotion_reminder' | 'devotion_followup'
+  | 'goal_reminder' | 'goal_checkin' | 'milestone_overdue'
   | 'profile_incomplete';
 
 interface NotifyOptions {

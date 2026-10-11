@@ -14,11 +14,11 @@ export interface NotificationPrefs {
 }
 
 export const NOTIFICATION_CATEGORIES = [
-  { key: 'sessions', label: 'Sessions',            sub: 'New sessions, live check-in, day-before reminders', types: ['session_created', 'session_live', 'session_reminder'] },
+  { key: 'sessions', label: 'Sessions',            sub: 'New sessions, day-before reminders, check-in at start time', types: ['session_created', 'session_live', 'session_reminder', 'session_starting'] },
   { key: 'forms',    label: 'Forms',               sub: 'When a new form is published for you',             types: ['form_published'] },
   { key: 'learning', label: 'Learning content',    sub: 'New readings and resources',                       types: ['learning_published'] },
-  { key: 'devotion', label: 'Devotion reminders',  sub: 'Daily nudge for your reading plan',                types: ['devotion_reminder'] },
-  { key: 'goals',    label: 'Goals & milestones',  sub: 'Goals falling behind, overdue milestones',         types: ['goal_reminder', 'milestone_overdue'] },
+  { key: 'devotion', label: 'Devotion reminders',  sub: "6am devotion, 7am reminder if you haven't done it", types: ['devotion_reminder', 'devotion_followup'] },
+  { key: 'goals',    label: 'Goals & milestones',  sub: 'Your goal reminder times, overdue milestones',     types: ['goal_reminder', 'goal_checkin', 'milestone_overdue'] },
   { key: 'tasks',    label: 'Profile & tasks',     sub: 'Things to finish, like completing your profile',  types: ['profile_incomplete'] },
 ] as const;
 

@@ -1,5 +1,6 @@
 import { createClient, createAdminClient } from '@/lib/supabase-server';
 import { notifyAllMembers } from '@/lib/notify-server';
+import { fmtLagos } from '@/lib/lagos-time';
 
 const ADMIN_ROLES = new Set([
   'super_admin', 'director', 'spiritual_lead', 'career_lead', 'business_lead',
@@ -29,9 +30,7 @@ export async function POST(request: Request) {
 
   if (!session) return Response.json({ error: 'Session not found' }, { status: 404 });
 
-  const sessionTime = new Date(session.scheduled_at).toLocaleString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
-  });
+  const sessionTime = fmtLagos(session.scheduled_at);
 
   const { title, body } = event === 'live'
     ? {
@@ -40,7 +39,7 @@ export async function POST(request: Request) {
       }
     : {
         title: `New session: ${session.title}`,
-        body: `${sessionTime}${session.location ? ` · ${session.location}` : ''}`,
+        body: `${sessionTime}${session.location ? ` · ${session.location}` : ''}. We'll remind you when it starts so you can mark your attendance.`,
       };
 
   const result = await notifyAllMembers({

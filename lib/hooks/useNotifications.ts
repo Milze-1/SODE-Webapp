@@ -13,10 +13,13 @@ export const NOTIFICATION_LINKS: Record<string, string> = {
   session_created:    '/member/attendance',
   session_live:       '/member/attendance',
   session_reminder:   '/member/attendance',
+  session_starting:   '/member/attendance',
   form_published:     '/member/forms',
   learning_published: '/member/learning',
   devotion_reminder:  '/member/devotion',
+  devotion_followup:  '/member/devotion',
   goal_reminder:      '/member/goals',
+  goal_checkin:       '/member/goals',
   milestone_overdue:  '/member/goals',
   profile_incomplete: '/member/profile/complete',
 };
