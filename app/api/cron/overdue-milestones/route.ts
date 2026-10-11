@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { sendWhatsApp } from '@/lib/whatsapp';
 import { notifyMembers } from '@/lib/notify-server';
+import { emailRecipientSet } from '@/lib/notification-prefs-server';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -59,7 +60,8 @@ export async function GET(request: Request) {
     const daysLate = Math.floor((Date.now() - new Date(milestone.deadline + 'T00:00:00').getTime()) / 86400000);
     const dueFmt = new Date(milestone.deadline + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    if (member.email) {
+    const emailOk = member.email ? await emailRecipientSet([member.id], 'milestone_overdue') : new Set<string>();
+    if (member.email && emailOk.has(member.id)) {
       await sendEmail({
         to: member.email,
         subject: `Milestone overdue: ${milestone.title} ⚠️`,

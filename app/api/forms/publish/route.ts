@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-server';
 import { type FormAudience } from '@/lib/forms-audience';
 import { sendBulkEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { notifyMembers } from '@/lib/notify-server';
+import { emailRecipientSet } from '@/lib/notification-prefs-server';
 
 export async function POST(req: Request) {
   const { formId } = await req.json().catch(() => ({ formId: null }));
@@ -50,9 +51,11 @@ export async function POST(req: Request) {
     }).catch(e => console.error('[forms/publish] notify error (non-fatal):', e));
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://thesode.org';
-    // Fire-and-forget emails
-    sendBulkEmail(
-      rows,
+    // Awaited: on Vercel the function can be frozen as soon as it responds,
+    // which would drop un-awaited sends.
+    const emailOk = await emailRecipientSet(rows.map(r => r.id), 'form_published');
+    await sendBulkEmail(
+      rows.filter(r => emailOk.has(r.id)),
       `New form: ${form.title}`,
       r => emailWrapper(`
         <p style="font-size:14px;color:#374151;margin:0 0 6px;">Hi ${r.name},</p>

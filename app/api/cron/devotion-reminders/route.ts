@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { notifyMembers } from '@/lib/notify-server';
+import { emailRecipientSet } from '@/lib/notification-prefs-server';
 import { type BibleReadingPlanRow, getDayPassage, getDayNumber } from '@/lib/bible-structure';
 
 export async function GET(request: Request) {
@@ -46,10 +47,12 @@ export async function GET(request: Request) {
     url: '/member/devotion',
   }).catch(e => console.error('[cron/devotion-reminders] notify error (non-fatal):', e));
 
+  const emailOk = await emailRecipientSet(duePlans.map(p => p.members!.id), 'devotion_reminder');
+
   let sent = 0;
   for (const plan of duePlans) {
     const member = plan.members;
-    if (!member?.email) continue;
+    if (!member?.email || !emailOk.has(member.id)) continue;
 
     const dayNumber = getDayNumber(plan.start_date);
     const passage = getDayPassage(plan, dayNumber);

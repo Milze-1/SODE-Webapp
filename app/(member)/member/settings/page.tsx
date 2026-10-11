@@ -6,6 +6,7 @@ import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Toggle, Toast } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
+import { NOTIFICATION_CATEGORIES, isCategoryOn, type NotificationPrefs } from '@/lib/notification-prefs';
 import { isPushSupported, isIOS, isStandalone, getPushSubscriptionStatus, subscribeToPush, unsubscribeFromPush } from '@/lib/push-client';
 
 interface ToastPayload { msg: string; icon?: string; }
@@ -50,6 +51,11 @@ function SettingRow({ icon, title, sub, right, onClick, chevron = true }: {
   );
 }
 
+const CATEGORY_ICONS: Record<string, string> = {
+  sessions: 'calendarclock', forms: 'list', learning: 'bookopen',
+  devotion: 'heart', goals: 'target', tasks: 'check',
+};
+
 function Divider() {
   return <div style={{ height: 1, background: 'var(--line)', margin: '0 16px' }} />;
 }
@@ -64,7 +70,8 @@ export default function SettingsPage() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Notification prefs
-  const [emailOn, setEmailOn]       = useState(true);
+  const [prefs, setPrefs]           = useState<NotificationPrefs>({});
+  const [prefsReady, setPrefsReady] = useState(false);
   const [whatsappOn, setWhatsappOn] = useState(false);
   const [pushOn, setPushOn]         = useState(false);
   const [pushBusy, setPushBusy]     = useState(false);
@@ -110,6 +117,14 @@ export default function SettingsPage() {
       setLeaderboard(row.leaderboard_opt_in ?? true);
       setLoading(false);
 
+      // Loaded separately so the page still works if the prefs column is missing
+      const { data: prefRow, error: prefErr } = await supabase
+        .from('members').select('notification_prefs').eq('id', row.id).maybeSingle();
+      if (!prefErr) {
+        setPrefs((prefRow?.notification_prefs ?? {}) as NotificationPrefs);
+        setPrefsReady(true);
+      }
+
       if (isPushSupported()) {
         const status = await getPushSubscriptionStatus();
         setPushOn(status === 'subscribed');
@@ -141,6 +156,25 @@ export default function SettingsPage() {
     setShowWaEdit(false);
     showToast({ msg: 'WhatsApp number saved', icon: 'check' });
     setSavingWa(false);
+  };
+
+  const savePrefs = async (next: NotificationPrefs) => {
+    if (!member) return;
+    const prev = prefs;
+    setPrefs(next);
+    const { error } = await createClient().from('members').update({ notification_prefs: next }).eq('id', member.id);
+    if (error) {
+      setPrefs(prev);
+      showToast({ msg: 'Could not save — please try again.' });
+    }
+  };
+
+  const toggleEmail = (v: boolean) => savePrefs({ ...prefs, email: v });
+
+  const toggleCategory = (key: string, on: boolean) => {
+    const off = new Set(prefs.off ?? []);
+    if (on) off.delete(key); else off.add(key);
+    savePrefs({ ...prefs, off: Array.from(off) });
   };
 
   const toggleWhatsapp = async (v: boolean) => {
@@ -330,14 +364,18 @@ export default function SettingsPage() {
           <div>
             <SectionLabel label="Notifications" />
             <div className="card" style={{ overflow: 'hidden' }}>
-              <SettingRow
-                icon="mail"
-                title="Email reminders"
-                sub="Goal and devotion reminders"
-                chevron={false}
-                right={<Toggle on={emailOn} onChange={setEmailOn} />}
-              />
-              <Divider />
+              {prefsReady && (
+                <>
+                  <SettingRow
+                    icon="mail"
+                    title="Email reminders"
+                    sub="Session, form, goal and devotion emails"
+                    chevron={false}
+                    right={<Toggle on={prefs.email !== false} onChange={toggleEmail} />}
+                  />
+                  <Divider />
+                </>
+              )}
               <SettingRow
                 icon="message"
                 title="WhatsApp alerts"
@@ -366,6 +404,30 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
+
+          {/* ── WHAT TO NOTIFY ME ABOUT ── */}
+          {prefsReady && (
+            <div>
+              <SectionLabel label="What to notify me about" />
+              <div style={{ fontSize: 12.5, color: 'var(--muted)', lineHeight: 1.45, padding: '0 4px', marginBottom: 8 }}>
+                Turning one off stops its phone notifications and emails. It still shows in your Alerts.
+              </div>
+              <div className="card" style={{ overflow: 'hidden' }}>
+                {NOTIFICATION_CATEGORIES.map((c, i) => (
+                  <div key={c.key}>
+                    {i > 0 && <Divider />}
+                    <SettingRow
+                      icon={CATEGORY_ICONS[c.key] ?? 'bell'}
+                      title={c.label}
+                      sub={c.sub}
+                      chevron={false}
+                      right={<Toggle on={isCategoryOn(prefs, c.key)} onChange={v => toggleCategory(c.key, v)} />}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── PRIVACY ── */}
           <div>

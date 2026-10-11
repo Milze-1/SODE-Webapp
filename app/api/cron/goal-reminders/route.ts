@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { notifyMembers } from '@/lib/notify-server';
+import { emailRecipientSet } from '@/lib/notification-prefs-server';
 import { sendProfileTaskReminders } from '@/lib/profile-task-server';
 
 export async function GET(request: Request) {
@@ -49,6 +50,8 @@ export async function GET(request: Request) {
     return Response.json({ sent: 0, message: 'No eligible members' });
   }
 
+  const emailOk = await emailRecipientSet((members as { id: string }[]).map(m => m.id), 'goal_reminder');
+
   let sent = 0;
   const dueMemberIds: string[] = [];
   for (const member of members as { id: string; name: string; email: string }[]) {
@@ -61,6 +64,7 @@ export async function GET(request: Request) {
 
     if ((count ?? 0) > 0) continue;
     dueMemberIds.push(member.id);
+    if (!member.email || !emailOk.has(member.id)) continue;
 
     const goalTitles = (goalsByMember[member.id] ?? []).slice(0, 2);
     const goalList = goalTitles.map(t => `<li style="margin-bottom:4px;">${t}</li>`).join('');

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server';
-import { sendPushToAllMembers, sendPushToMembers } from '@/lib/push-server';
+import { sendPushToMembers } from '@/lib/push-server';
+import { filterPushRecipients } from '@/lib/notification-prefs-server';
 
 // Notification types shown in the member notification bell (components/member/NotificationBell.tsx)
 // and used to route a tap to the right screen (see LINKS in that file).
@@ -20,6 +21,8 @@ interface NotifyOptions {
 }
 
 // Writes one in-app reminder row per member + sends a push to their devices.
+// Every member gets the in-app row; the push only goes to members who haven't
+// switched that category off in Settings (see lib/notification-prefs.ts).
 // Server-only (uses the service-role client to bypass RLS on insert).
 export async function notifyMembers(memberIds: string[], opts: NotifyOptions): Promise<{ notified: number }> {
   const ids = Array.from(new Set(memberIds));
@@ -37,7 +40,8 @@ export async function notifyMembers(memberIds: string[], opts: NotifyOptions): P
     channel: 'push',
   })));
 
-  await sendPushToMembers(ids, { title: opts.title ?? 'SODE', body: opts.message, url: opts.url });
+  const pushIds = await filterPushRecipients(ids, opts.type);
+  await sendPushToMembers(pushIds, { title: opts.title ?? 'SODE', body: opts.message, url: opts.url });
   return { notified: ids.length };
 }
 
@@ -61,6 +65,7 @@ export async function notifyAllMembers(opts: NotifyOptions): Promise<{ notified:
     channel: 'push',
   })));
 
-  await sendPushToAllMembers({ title: opts.title ?? 'SODE', body: opts.message, url: opts.url });
+  const pushIds = await filterPushRecipients(ids, opts.type);
+  await sendPushToMembers(pushIds, { title: opts.title ?? 'SODE', body: opts.message, url: opts.url });
   return { notified: ids.length };
 }

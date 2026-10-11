@@ -71,9 +71,14 @@ export async function sendPushToAllMembers(payload: PushPayload): Promise<{ sent
 export async function sendPushToMembers(memberIds: string[], payload: PushPayload): Promise<{ sent: number; failed: number }> {
   if (memberIds.length === 0) return { sent: 0, failed: 0 };
   const db = createAdminClient();
-  const { data: subs } = await db
-    .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
-    .in('member_id', memberIds);
-  return sendToSubscriptions((subs ?? []) as SubscriptionRow[], payload);
+  const subs: SubscriptionRow[] = [];
+  // chunked so a large audience doesn't blow up the `.in(...)` URL length
+  for (let i = 0; i < memberIds.length; i += 200) {
+    const { data } = await db
+      .from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth')
+      .in('member_id', memberIds.slice(i, i + 200));
+    subs.push(...((data ?? []) as SubscriptionRow[]));
+  }
+  return sendToSubscriptions(subs, payload);
 }

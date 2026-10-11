@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendBulkEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { notifyMembers } from '@/lib/notify-server';
+import { emailRecipientSet } from '@/lib/notification-prefs-server';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -44,8 +45,9 @@ export async function GET(request: Request) {
     const recipients = (members ?? []) as { id: string; name: string; email: string }[];
     if (!recipients.length) continue;
 
+    const emailOk = await emailRecipientSet(recipients.map(r => r.id), 'session_reminder');
     const { sent } = await sendBulkEmail(
-      recipients,
+      recipients.filter(r => emailOk.has(r.id)),
       `Reminder: ${session.title} is tomorrow`,
       r => emailWrapper(`
         <p style="font-size:14px;color:#374151;margin:0 0 6px;">Hi ${r.name},</p>
