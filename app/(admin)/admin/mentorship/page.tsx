@@ -6,7 +6,7 @@ import { AdminTopbar, AdminBody, Panel, THead, TRow, AdminSearch } from '@/compo
 import { createClient } from '@/lib/supabase';
 import { PILLAR_OPTIONS } from '@/lib/forms-audience';
 
-interface MemberRow { id: string; name: string; email: string | null; pillar: string | null; is_mentor: boolean; mentor_capacity: number | null; }
+interface MemberRow { id: string; name: string; email: string | null; pillar: string | null; is_mentor: boolean; mentor_capacity: number | null; profile_complete?: boolean; }
 interface MentorInviteRow { id: string; name: string; email: string; pillar: string | null; mentor_capacity: number | null; status: string; created_at: string | null; }
 interface PairingRow {
   id: string; status: string; pillar: string | null; matched_at: string | null;
@@ -76,7 +76,7 @@ export default function MentorshipPage() {
 
   useEffect(() => {
     if (!menteeQuery.trim()) { setMenteeResults([]); return; }
-    createClient().from('members').select('id,name,email,pillar,is_mentor,mentor_capacity').eq('onboarding_complete', true).ilike('name', `%${menteeQuery.trim()}%`).limit(6)
+    createClient().from('members').select('id,name,email,pillar,is_mentor,mentor_capacity,profile_complete').eq('onboarding_complete', true).ilike('name', `%${menteeQuery.trim()}%`).limit(6)
       .then(({ data }) => setMenteeResults((data ?? []) as MemberRow[]));
   }, [menteeQuery]);
 
@@ -88,6 +88,8 @@ export default function MentorshipPage() {
 
   const assignMentor = async (mentor: MemberRow) => {
     if (!selectedMentee) return;
+    if (selectedMentee.profile_complete === false
+      && !window.confirm(`${selectedMentee.name} hasn't completed their profile yet. Pair them with ${mentor.name} anyway?`)) return;
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const { error } = await supabase.from('mentor_pairings').insert({
@@ -299,12 +301,19 @@ export default function MentorshipPage() {
                       <button onClick={() => setSelectedMentee(null)} className="btn btn-ghost btn-sm" style={{ height: 30, padding: '0 8px' }}><Icon name="x" size={15} /></button>
                     </div>
                   )}
+                  {selectedMentee?.profile_complete === false && (
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'flex-start', padding: '9px 11px', borderRadius: 10, background: '#fef3c7', color: '#92400e', fontSize: 12.5, lineHeight: 1.45 }}>
+                      <Icon name="info" size={15} color="#92400e" />
+                      <span>{selectedMentee.name.split(' ')[0]} hasn&apos;t completed their profile yet (industry, strengths, goals…). You can still pair them, but matching works best once it&apos;s done — they get daily reminders to finish it.</span>
+                    </div>
+                  )}
                   {!selectedMentee && menteeResults.length > 0 && (
                     <div style={{ marginTop: 8, border: '1px solid var(--line-2)', borderRadius: 10, overflow: 'hidden' }}>
                       {menteeResults.map(m => (
                         <div key={m.id} onClick={() => { setSelectedMentee(m); setMenteeResults([]); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', cursor: 'pointer', borderBottom: '1px solid var(--line)' }}>
                           <Avatar name={m.name} size={26} tone="grey" />
-                          <span style={{ fontSize: 13, fontWeight: 600 }}>{m.name}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{m.name}</span>
+                          {m.profile_complete === false && <IncompleteBadge />}
                         </div>
                       ))}
                     </div>
@@ -563,5 +572,13 @@ export default function MentorshipPage() {
 
       <Toast toast={toast} />
     </>
+  );
+}
+
+function IncompleteBadge() {
+  return (
+    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: '#fef3c7', color: '#92400e', whiteSpace: 'nowrap' }}>
+      Profile incomplete
+    </span>
   );
 }

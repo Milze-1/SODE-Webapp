@@ -10,6 +10,7 @@ import {
   Field, TextInput, OptionChips, EmptyState,
 } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
+import ProfileTaskCard from '@/components/member/ProfileTaskCard';
 import { awardPoints } from '@/lib/points';
 import { usePoints } from '@/lib/hooks/useRealtimeData';
 import { getCached, setCached, invalidateCache } from '@/lib/home-cache';
@@ -799,6 +800,8 @@ export default function HomePage() {
 
         <div style={{ padding: '16px 16px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
+          <ProfileTaskCard />
+
           {/* cycle + rank card */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ background: 'var(--navy)', color: '#fff', padding: '15px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1050,6 +1053,10 @@ export default function HomePage() {
                 <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,.72)' }}>Something good happened?</div>
               </div>
             </button>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <ProfileTaskCard />
           </div>
 
           {/* two-col grid: goals left, panels right */}

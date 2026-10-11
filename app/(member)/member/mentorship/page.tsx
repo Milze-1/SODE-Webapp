@@ -6,6 +6,7 @@ import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Avatar, PillarChip, SectionHead, Toast, EmptyState, StatusPill } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
+import ProfileTaskCard from '@/components/member/ProfileTaskCard';
 
 interface ToastPayload { msg: string; icon?: string; }
 interface CheckInRow {
@@ -125,7 +126,10 @@ export default function MentorshipPage() {
               </div>
             </div>
           ) : (
-            <EmptyState icon="users" title="Your mentor will be assigned soon" body="Once your leadership team matches you with a mentor, their details will appear here." />
+            <>
+              <ProfileTaskCard variant="mentorship" />
+              <EmptyState icon="users" title="Your mentor will be assigned soon" body="Once your leadership team matches you with a mentor, their details will appear here." />
+            </>
           )}
 
           {/* check-in notes */}

@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
 import { notifyMembers } from '@/lib/notify-server';
+import { sendProfileTaskReminders } from '@/lib/profile-task-server';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -11,6 +12,12 @@ export async function GET(request: Request) {
   const db = createAdminClient();
   const today = new Date().toISOString().split('T')[0];
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://thesode.org';
+
+  // Piggy-backs on this daily cron: nudge members who haven't finished the
+  // "Complete your profile" task (day 1, 3, 7 after onboarding).
+  const profileTask = await sendProfileTaskReminders()
+    .catch(e => { console.error('[cron/goal-reminders] profile task reminders failed (non-fatal):', e); return { sent: 0 }; });
+  console.log(`[cron/goal-reminders] profile task reminders sent:${profileTask.sent}`);
 
   // Members with at-risk or behind goals (personal goals only)
   const { data: goals } = await db
@@ -83,7 +90,7 @@ export async function GET(request: Request) {
     await new Promise(r => setTimeout(r, 100));
   }
 
-  notifyMembers(dueMemberIds, {
+  await notifyMembers(dueMemberIds, {
     type: 'goal_reminder',
     title: 'Goals need attention 🎯',
     message: "Some of your goals are falling behind — log an update to stay on track.",

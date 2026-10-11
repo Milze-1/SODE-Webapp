@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const rows = (members ?? []) as { id: string; name: string; email: string }[];
 
   if (rows.length > 0) {
-    notifyMembers(rows.map(m => m.id), {
+    await notifyMembers(rows.map(m => m.id), {
       type: 'form_published',
       referenceId: formId,
       title: 'New form',

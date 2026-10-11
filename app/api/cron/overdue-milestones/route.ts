@@ -83,7 +83,7 @@ export async function GET(request: Request) {
       notified++;
     }
 
-    notifyMembers([member.id], {
+    await notifyMembers([member.id], {
       type: 'milestone_overdue',
       referenceId: milestone.id,
       title: 'Milestone overdue ⚠️',

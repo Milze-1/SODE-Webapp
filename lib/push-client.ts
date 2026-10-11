@@ -7,6 +7,19 @@ export function isPushSupported(): boolean {
     && 'Notification' in window;
 }
 
+// iOS/iPadOS only exposes Web Push to PWAs launched from the Home Screen.
+export function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+export function isStandalone(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(display-mode: standalone)').matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+}
+
 export async function getPushSubscriptionStatus(): Promise<'subscribed' | 'unsubscribed' | 'denied'> {
   if (!isPushSupported()) return 'unsubscribed';
   if (Notification.permission === 'denied') return 'denied';

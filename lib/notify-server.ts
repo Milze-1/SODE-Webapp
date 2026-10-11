@@ -8,7 +8,8 @@ export type NotificationType =
   | 'form_published'
   | 'learning_published'
   | 'devotion_reminder'
-  | 'goal_reminder' | 'milestone_overdue';
+  | 'goal_reminder' | 'milestone_overdue'
+  | 'profile_incomplete';
 
 interface NotifyOptions {
   type: NotificationType;

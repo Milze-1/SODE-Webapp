@@ -6,7 +6,7 @@ import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Toggle, Toast } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
-import { isPushSupported, getPushSubscriptionStatus, subscribeToPush, unsubscribeFromPush } from '@/lib/push-client';
+import { isPushSupported, isIOS, isStandalone, getPushSubscriptionStatus, subscribeToPush, unsubscribeFromPush } from '@/lib/push-client';
 
 interface ToastPayload { msg: string; icon?: string; }
 
@@ -345,17 +345,24 @@ export default function SettingsPage() {
                 chevron={false}
                 right={<Toggle on={whatsappOn} onChange={toggleWhatsapp} />}
               />
-              {pushSupported && (
-                <>
-                  <Divider />
-                  <SettingRow
-                    icon="bell"
-                    title="Push notifications"
-                    sub="Get notified when a new session starts"
-                    chevron={false}
-                    right={<Toggle on={pushOn} onChange={v => { if (!pushBusy) togglePush(v); }} />}
-                  />
-                </>
+              <Divider />
+              {pushSupported ? (
+                <SettingRow
+                  icon="bell"
+                  title="Push notifications"
+                  sub="Sessions, reminders and tasks — even when SODE is closed"
+                  chevron={false}
+                  right={<Toggle on={pushOn} onChange={v => { if (!pushBusy) togglePush(v); }} />}
+                />
+              ) : (
+                <SettingRow
+                  icon="bell"
+                  title="Push notifications"
+                  sub={isIOS() && !isStandalone()
+                    ? 'On iPhone, tap Share → Add to Home Screen, then open SODE from your Home Screen to turn these on.'
+                    : 'Blocked or not supported — allow notifications for this site in your browser settings.'}
+                  chevron={false}
+                />
               )}
             </div>
           </div>

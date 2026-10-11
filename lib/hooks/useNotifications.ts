@@ -18,6 +18,7 @@ export const NOTIFICATION_LINKS: Record<string, string> = {
   devotion_reminder:  '/member/devotion',
   goal_reminder:      '/member/goals',
   milestone_overdue:  '/member/goals',
+  profile_incomplete: '/member/profile/complete',
 };
 
 // Shared in-app notification state (backed by the `reminders` table) for the

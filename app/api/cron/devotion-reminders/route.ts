@@ -39,7 +39,7 @@ export async function GET(request: Request) {
   const duePlans = (plans as (BibleReadingPlanRow & { members: { id: string; name: string; email: string } | null })[])
     .filter(plan => plan.members && !completedToday.has(plan.members.id));
 
-  notifyMembers(duePlans.map(p => p.members!.id), {
+  await notifyMembers(duePlans.map(p => p.members!.id), {
     type: 'devotion_reminder',
     title: 'Devotion time 🙏',
     message: "Keep your streak going — today's reading is ready.",

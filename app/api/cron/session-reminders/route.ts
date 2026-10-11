@@ -61,7 +61,7 @@ export async function GET(request: Request) {
       `),
     );
 
-    notifyMembers(recipients.map(r => r.id), {
+    await notifyMembers(recipients.map(r => r.id), {
       type: 'session_reminder',
       referenceId: session.id,
       title: 'Session tomorrow 🔔',

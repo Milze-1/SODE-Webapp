@@ -92,6 +92,8 @@ export const members = pgTable("members", {
   leaderboardOptIn:   boolean("leaderboard_opt_in").default(true),
   leaderboardName:    text("leaderboard_name"),
   onboardingComplete: boolean("onboarding_complete").notNull().default(false),
+  profileComplete:    boolean("profile_complete").notNull().default(false),
+  profileCompletedAt: timestamp("profile_completed_at", { withTimezone: true }),
   isMentor:           boolean("is_mentor").notNull().default(false),
   mentorCapacity:     integer("mentor_capacity").default(3),
   createdAt:          timestamp("created_at", { withTimezone: true }).defaultNow(),
