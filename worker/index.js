@@ -18,7 +18,9 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title || "SODE", {
       body: body || "",
       icon: "/icons/icon-192x192.png",
-      badge: "/icons/icon-96x96.png",
+      // Android tints the badge white and uses only its alpha — must be a
+      // transparent silhouette, or it renders as a solid white square.
+      badge: "/icons/badge-96x96.png",
       tag: tag || undefined,
       renotify: !!tag,
       data: { url: url || "/member/home" },
