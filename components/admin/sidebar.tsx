@@ -11,6 +11,7 @@ const ADMIN_NAV = [
   { href: '/admin/dashboard', icon: 'grid', label: 'Scorecard' },
   { href: '/admin/goals', icon: 'target', label: 'Pillar Goals' },
   { href: '/admin/members', icon: 'users', label: 'Members' },
+  { href: '/admin/cells', icon: 'grid', label: 'Cells' },
   { href: '/admin/attendance', icon: 'calendarclock', label: 'Attendance' },
   { href: '/admin/forms', icon: 'list', label: 'Forms' },
   { href: '/admin/messages', icon: 'mail', label: 'Messages' },
