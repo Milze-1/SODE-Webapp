@@ -32,6 +32,8 @@ interface FormField {
   hint?: string;
   required: boolean;
   options?: string[];
+  /** Choice fields: show an "Other" chip with a text box (default on) */
+  allow_other?: boolean;
   low_label?: string;
   high_label?: string;
   accepted_types?: string[];
@@ -97,6 +99,7 @@ function rawOptionsToField(r: RawFormFieldRow): FormField {
     required: r.required,
     hint: typeof o.hint === 'string' ? o.hint : undefined,
     options: Array.isArray(o.choices) ? (o.choices as string[]) : undefined,
+    allow_other: o.allow_other !== false,
     low_label: typeof o.low_label === 'string' ? o.low_label : undefined,
     high_label: typeof o.high_label === 'string' ? o.high_label : undefined,
     accepted_types: Array.isArray(o.accepted_types) ? (o.accepted_types as string[]) : undefined,
@@ -120,6 +123,7 @@ function fieldToRow(f: FormField, formId: string, sortOrder: number) {
     options: {
       hint: f.hint,
       choices: f.options,
+      allow_other: f.allow_other !== false,
       low_label: f.low_label,
       high_label: f.high_label,
       accepted_types: f.accepted_types,
@@ -141,9 +145,9 @@ function renderPreviewControl(f: FormField) {
     case 'number':
       return <input className="input" type="number" disabled style={{ width: '100%' }} />;
     case 'single_select':
-      return <OptionChips options={(f.options ?? []).filter(Boolean)} value="" onChange={() => {}} />;
+      return <OptionChips options={(f.options ?? []).filter(Boolean)} value="" onChange={() => {}} allowOther={f.allow_other !== false} />;
     case 'multi_select':
-      return <OptionChips options={(f.options ?? []).filter(Boolean)} value={[]} onChange={() => {}} multi />;
+      return <OptionChips options={(f.options ?? []).filter(Boolean)} value={[]} onChange={() => {}} multi allowOther={f.allow_other !== false} />;
     case 'nps':
       return (
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -267,6 +271,10 @@ function FieldRow({
           >
             <Icon name="plus" size={14} /> Add option
           </button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={field.allow_other !== false} onChange={e => onUpdate({ allow_other: e.target.checked })} />
+            Include an &ldquo;Other&rdquo; option with a text box
+          </label>
         </div>
       )}
 

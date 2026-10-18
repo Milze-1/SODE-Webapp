@@ -3,7 +3,7 @@
 // page, completeness checks and the reminder cron agree on what "complete"
 // means.
 
-export const LIFE_STAGES = ['Student', 'Professional', 'Entrepreneur', 'Between roles'];
+export const LIFE_STAGES = ['Student', 'Professional', 'Entrepreneur', 'Between roles', 'Other'];
 export const DEPTS = ['Ushering', 'Media', 'Choir', 'Welfare', 'Tech', 'Not yet'];
 
 // Maps display labels → DB enum values (pgEnum life_stage)
@@ -12,6 +12,7 @@ export const LIFE_STAGE_MAP: Record<string, string> = {
   'Professional': 'professional',
   'Entrepreneur': 'entrepreneur',
   'Between roles': 'between_roles',
+  'Other': 'other', // life_stage is a DB enum, so no free text here
 };
 export const LIFE_STAGE_LABEL: Record<string, string> = Object.fromEntries(
   Object.entries(LIFE_STAGE_MAP).map(([label, value]) => [value, label]),

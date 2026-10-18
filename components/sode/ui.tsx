@@ -511,46 +511,86 @@ interface OptionChipsProps {
   onChange: (v: string | string[]) => void;
   multi?: boolean;
   columns?: number;
+  /** Adds an "Other" chip with a text box; what's typed becomes the value. */
+  allowOther?: boolean;
+  otherPlaceholder?: string;
 }
 
-export function OptionChips({ options, value, onChange, multi = false, columns }: OptionChipsProps) {
-  const isSel = (v: string) => multi ? (value as string[]).includes(v) : value === v;
+export function OptionChips({ options, value, onChange, multi = false, columns, allowOther = false, otherPlaceholder = "Please specify…" }: OptionChipsProps) {
+  // With allowOther, a literal "Other" option is replaced by the built-in one
+  const opts = allowOther ? options.filter((o) => (typeof o === "string" ? o : o.value).toLowerCase() !== "other") : options;
+  const known = new Set(opts.map((o) => (typeof o === "string" ? o : o.value)));
+  const values = multi ? ((value as string[]) || []) : [];
+  const customValue = allowOther
+    ? (multi ? values.filter((v) => !known.has(v)).join(", ") : (value && !known.has(value as string) ? (value as string) : ""))
+    : "";
+  const [otherOpen, setOtherOpen] = useState(!!customValue);
+  const [otherText, setOtherText] = useState(customValue);
+  const otherSel = allowOther && (otherOpen || !!customValue);
+
+  const isSel = (v: string) => multi ? values.includes(v) : value === v;
   const toggle = (v: string) => {
     if (multi) {
-      const cur = (value as string[]) || [];
-      onChange(cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
+      onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
     } else {
+      setOtherOpen(false);
       onChange(v);
     }
   };
-  return (
-    <div style={{
-      display: columns ? "grid" : "flex",
-      gridTemplateColumns: columns ? `repeat(${columns}, 1fr)` : undefined,
-      flexWrap: columns ? undefined : "wrap",
-      gap: 8,
+  const toggleOther = () => {
+    if (multi) {
+      if (otherSel) { setOtherOpen(false); onChange(values.filter((x) => known.has(x))); }
+      else { setOtherOpen(true); if (otherText.trim()) onChange([...values.filter((x) => known.has(x)), otherText.trim()]); }
+    } else {
+      setOtherOpen(true);
+      onChange(otherText.trim());
+    }
+  };
+  const typeOther = (t: string) => {
+    setOtherText(t);
+    if (multi) onChange([...values.filter((x) => known.has(x)), ...(t.trim() ? [t.trim()] : [])]);
+    else onChange(t.trim());
+  };
+
+  const chip = (key: string, sel: boolean, onClick: () => void, label: ReactNode, ic?: string) => (
+    <button key={key} type="button" onClick={onClick} style={{
+      display: "inline-flex", alignItems: "center",
+      justifyContent: columns ? "flex-start" : "center",
+      gap: 7, padding: "0 14px", height: 44, borderRadius: 999,
+      fontSize: 14, fontWeight: 600,
+      background: sel ? "var(--navy)" : "var(--surface)",
+      color: sel ? "#fff" : "var(--ink)",
+      border: sel ? "1px solid var(--navy)" : "1px solid var(--line-2)",
+      transition: "all .14s ease",
     }}>
-      {options.map((o) => {
-        const v = typeof o === "string" ? o : o.value;
-        const label = typeof o === "string" ? o : o.label;
-        const ic = typeof o === "object" ? o.icon : undefined;
-        const sel = isSel(v);
-        return (
-          <button key={v} onClick={() => toggle(v)} style={{
-            display: "inline-flex", alignItems: "center",
-            justifyContent: columns ? "flex-start" : "center",
-            gap: 7, padding: "0 14px", height: 44, borderRadius: 999,
-            fontSize: 14, fontWeight: 600,
-            background: sel ? "var(--navy)" : "var(--surface)",
-            color: sel ? "#fff" : "var(--ink)",
-            border: sel ? "1px solid var(--navy)" : "1px solid var(--line-2)",
-            transition: "all .14s ease",
-          }}>
-            {ic && <Icon name={ic} size={17} stroke={2.2} color={sel ? "#fff" : "var(--muted)"} />}
-            {label}
-          </button>
-        );
-      })}
+      {ic && <Icon name={ic} size={17} stroke={2.2} color={sel ? "#fff" : "var(--muted)"} />}
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <div style={{
+        display: columns ? "grid" : "flex",
+        gridTemplateColumns: columns ? `repeat(${columns}, 1fr)` : undefined,
+        flexWrap: columns ? undefined : "wrap",
+        gap: 8,
+      }}>
+        {opts.map((o) => {
+          const v = typeof o === "string" ? o : o.value;
+          const label = typeof o === "string" ? o : o.label;
+          const ic = typeof o === "object" ? o.icon : undefined;
+          return chip(v, !otherSel || multi ? isSel(v) : false, () => toggle(v), label, ic);
+        })}
+        {allowOther && chip("__other", otherSel, toggleOther, "Other")}
+      </div>
+      {otherSel && (
+        <input
+          type="text" value={otherText} onChange={(e) => typeOther(e.target.value)}
+          placeholder={otherPlaceholder} autoFocus={!customValue} maxLength={200}
+          style={{ marginTop: 10, width: "100%", height: 44, borderRadius: 10, border: "1.5px solid var(--line-2)", background: "var(--surface)", fontSize: 16, padding: "0 12px", outline: "none", boxSizing: "border-box" }}
+        />
+      )}
     </div>
   );
 }

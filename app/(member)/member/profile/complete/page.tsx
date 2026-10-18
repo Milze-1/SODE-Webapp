@@ -39,13 +39,12 @@ export default function CompleteProfilePage() {
   const [dept, setDept] = useState<string | null>(null);
   const [mountains, setMountains] = useState<string[]>([]);
   const [mountainError, setMountainError] = useState(false);
+  const [mountainOtherOpen, setMountainOtherOpen] = useState(false);
 
   // step 1 — work & strengths
   const [industry, setIndustry] = useState<string | null>(null);
-  const [industryOtherText, setIndustryOtherText] = useState('');
   const [careerStage, setCareerStage] = useState<string | null>(null);
   const [strengthArea, setStrengthArea] = useState<string[]>([]);
-  const [strengthAreaOtherText, setStrengthAreaOtherText] = useState('');
   const [leadershipRole, setLeadershipRole] = useState<string[]>([]);
 
   // step 2 — goal & business
@@ -59,7 +58,7 @@ export default function CompleteProfilePage() {
   const total = 3;
   const canNext =
     step === 0 ? !!(stage && dept && mountains.length > 0) :
-    step === 1 ? !!(industry && (industry !== 'Other' || industryOtherText.trim()) && careerStage && strengthArea.length > 0 && (!strengthArea.includes('Other') || strengthAreaOtherText.trim()) && leadershipRole.length > 0) :
+    step === 1 ? !!(industry && careerStage && strengthArea.length > 0 && leadershipRole.length > 0) :
     !!(businessStatus && threeYearGoal.trim() && supportNeeded);
 
   useEffect(() => {
@@ -80,17 +79,17 @@ export default function CompleteProfilePage() {
       // Prefill anything already answered
       if (m.life_stage) setStage(LIFE_STAGE_LABEL[m.life_stage] ?? null);
       if (m.department) setDept(m.department);
-      if (Array.isArray(m.mountains)) setMountains(m.mountains);
+      if (Array.isArray(m.mountains)) {
+        const ms = (m.mountains as (string | null)[]).filter((x): x is string => !!x);
+        setMountains(ms);
+        setMountainOtherOpen(ms.some(x => !MOUNTAINS.some(k => k.key === x)));
+      }
       if (m.industry) {
-        if (INDUSTRIES.includes(m.industry)) setIndustry(m.industry);
-        else { setIndustry('Other'); setIndustryOtherText(m.industry); }
+        setIndustry(m.industry);
       }
       if (m.career_stage) setCareerStage(m.career_stage);
       if (Array.isArray(m.strength_area)) {
-        const known = (m.strength_area as string[]).filter(s => STRENGTH_AREAS.includes(s));
-        const custom = (m.strength_area as string[]).filter(s => !STRENGTH_AREAS.includes(s));
-        setStrengthArea(custom.length ? [...known, 'Other'] : known);
-        if (custom.length) setStrengthAreaOtherText(custom.join(', '));
+        setStrengthArea((m.strength_area as (string | null)[]).filter((x): x is string => !!x));
       }
       if (Array.isArray(m.leadership_role)) setLeadershipRole(m.leadership_role);
       if (m.business_status) setBusinessStatus(m.business_status);
@@ -111,13 +110,9 @@ export default function CompleteProfilePage() {
       mountains: mountains.length > 0 ? mountains : null,
     };
     if (s === 1) return {
-      industry: industry === 'Other' ? (industryOtherText.trim() || null) : (industry || null),
+      industry: industry || null,
       career_stage: careerStage || null,
-      strength_area: strengthArea.length > 0
-        ? (strengthArea.includes('Other')
-            ? [...strengthArea.filter(x => x !== 'Other'), strengthAreaOtherText.trim()].filter(Boolean)
-            : strengthArea)
-        : null,
+      strength_area: strengthArea.length > 0 ? strengthArea : null,
       leadership_role: leadershipRole.length > 0 ? leadershipRole : null,
       is_leader: leadershipRole.some(r => r.toLowerCase().startsWith('yes')),
     };
@@ -248,7 +243,7 @@ export default function CompleteProfilePage() {
 
             <div style={sectionGap}>
               <QuestionLabel title="Department / serving" />
-              <OptionChips options={DEPTS} value={dept ?? ''} onChange={v => setDept(v as string)} />
+              <OptionChips options={DEPTS} value={dept ?? ''} onChange={v => setDept(v as string)} allowOther otherPlaceholder="Where do you serve?" />
             </div>
 
             <div style={sectionGap}>
@@ -281,7 +276,41 @@ export default function CompleteProfilePage() {
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMountainError(false);
+                    if (mountainOtherOpen) {
+                      setMountainOtherOpen(false);
+                      setMountains(prev => prev.filter(x => MOUNTAINS.some(k => k.key === x)));
+                    } else if (mountains.length >= 2) {
+                      setMountainError(true);
+                    } else {
+                      setMountainOtherOpen(true);
+                    }
+                  }}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3,
+                    padding: '12px 12px', borderRadius: 'var(--r-sm)', textAlign: 'left', cursor: 'pointer',
+                    background: mountainOtherOpen ? 'var(--navy-tint)' : 'var(--surface)',
+                    border: mountainOtherOpen ? '1.5px solid var(--navy)' : '1px solid var(--line-2)',
+                  }}
+                >
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: mountainOtherOpen ? 'var(--navy)' : 'var(--ink)' }}>Other</span>
+                  <span style={{ fontSize: 11, color: mountainOtherOpen ? 'var(--navy)' : 'var(--muted)' }}>Somewhere else</span>
+                </button>
               </div>
+              {mountainOtherOpen && (
+                <input
+                  type="text" autoFocus maxLength={80} placeholder="Which area of influence?"
+                  value={mountains.find(x => !MOUNTAINS.some(k => k.key === x)) ?? ''}
+                  onChange={e => {
+                    const t = e.target.value;
+                    setMountains(prev => [...prev.filter(x => MOUNTAINS.some(k => k.key === x)), ...(t.trim() ? [t] : [])]);
+                  }}
+                  style={{ marginTop: 10, width: '100%', height: 44, borderRadius: 10, border: '1.5px solid var(--line-2)', background: 'var(--surface)', fontSize: 16, padding: '0 12px', outline: 'none', boxSizing: 'border-box' }}
+                />
+              )}
             </div>
           </div>
         )}
@@ -294,32 +323,22 @@ export default function CompleteProfilePage() {
 
             <div style={sectionGap}>
               <QuestionLabel title="What field or industry do you work in?" />
-              <OptionChips options={INDUSTRIES} value={industry ?? ''} onChange={v => { setIndustry(v as string); if (v !== 'Other') setIndustryOtherText(''); }} />
-              {industry === 'Other' && (
-                <div style={{ marginTop: 10 }}>
-                  <TextInput value={industryOtherText} onChange={setIndustryOtherText} placeholder="Please specify..." />
-                </div>
-              )}
+              <OptionChips options={INDUSTRIES} value={industry ?? ''} onChange={v => setIndustry(v as string)} allowOther otherPlaceholder="Your field or industry" />
             </div>
 
             <div style={sectionGap}>
               <QuestionLabel title="Where are you in your career or life stage?" />
-              <OptionChips options={CAREER_STAGES} value={careerStage ?? ''} onChange={v => setCareerStage(v as string)} />
+              <OptionChips options={CAREER_STAGES} value={careerStage ?? ''} onChange={v => setCareerStage(v as string)} allowOther otherPlaceholder="Describe your stage" />
             </div>
 
             <div style={sectionGap}>
               <QuestionLabel title="What is your primary area of strength?" hint="The thing people come to you for" />
-              <OptionChips options={STRENGTH_AREAS} value={strengthArea} multi onChange={v => { const arr = v as string[]; setStrengthArea(arr); if (!arr.includes('Other')) setStrengthAreaOtherText(''); }} />
-              {strengthArea.includes('Other') && (
-                <div style={{ marginTop: 10 }}>
-                  <TextInput value={strengthAreaOtherText} onChange={setStrengthAreaOtherText} placeholder="Please specify..." />
-                </div>
-              )}
+              <OptionChips options={STRENGTH_AREAS} value={strengthArea} multi onChange={v => setStrengthArea(v as string[])} allowOther otherPlaceholder="Your area of strength" />
             </div>
 
             <div style={sectionGap}>
               <QuestionLabel title="Do you currently hold any leadership role?" hint="In any sphere — workplace, church, community, or family" />
-              <OptionChips options={LEADERSHIP_OPTIONS} value={leadershipRole} multi onChange={v => setLeadershipRole(v as string[])} />
+              <OptionChips options={LEADERSHIP_OPTIONS} value={leadershipRole} multi onChange={v => setLeadershipRole(v as string[])} allowOther otherPlaceholder="Describe your leadership role" />
             </div>
           </div>
         )}
@@ -335,13 +354,13 @@ export default function CompleteProfilePage() {
 
             <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 14 }}>Business &amp; Entrepreneurship</div>
             <Field label="What is your business or entrepreneurship status?">
-              <OptionChips options={BUSINESS_STATUSES} value={businessStatus ?? ''} onChange={v => setBusinessStatus(v as string)} />
+              <OptionChips options={BUSINESS_STATUSES} value={businessStatus ?? ''} onChange={v => setBusinessStatus(v as string)} allowOther otherPlaceholder="Describe your situation" />
             </Field>
 
             {BUSINESS_DETAIL_STATUSES.includes(businessStatus ?? '') && (
               <div>
                 <Field label="What industry is your business in?">
-                  <OptionChips options={BUSINESS_INDUSTRIES} value={businessIndustry ?? ''} onChange={v => setBusinessIndustry(v as string)} />
+                  <OptionChips options={BUSINESS_INDUSTRIES} value={businessIndustry ?? ''} onChange={v => setBusinessIndustry(v as string)} allowOther otherPlaceholder="Your business's industry" />
                 </Field>
                 <Field label="Briefly — what does your business do?">
                   <TextInput
@@ -364,7 +383,7 @@ export default function CompleteProfilePage() {
               />
             </Field>
             <Field label="What kind of support would help you most right now?">
-              <OptionChips options={SUPPORT_OPTIONS} value={supportNeeded ?? ''} onChange={v => setSupportNeeded(v as string)} />
+              <OptionChips options={SUPPORT_OPTIONS} value={supportNeeded ?? ''} onChange={v => setSupportNeeded(v as string)} allowOther otherPlaceholder="What would help you most?" />
             </Field>
           </div>
         )}

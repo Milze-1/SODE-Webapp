@@ -20,6 +20,7 @@ interface FormField {
   hint?: string;
   required: boolean;
   options?: string[];
+  allowOther?: boolean;
   low_label?: string;
   high_label?: string;
   pillars?: string[];
@@ -41,6 +42,7 @@ function rawOptionsToField(r: RawFormFieldRow): FormField {
     required: r.required,
     hint: typeof o.hint === 'string' ? o.hint : undefined,
     options: Array.isArray(o.choices) ? (o.choices as string[]) : undefined,
+    allowOther: o.allow_other !== false,
     low_label: typeof o.low_label === 'string' ? o.low_label : undefined,
     high_label: typeof o.high_label === 'string' ? o.high_label : undefined,
     pillars: Array.isArray(o.pillars) ? (o.pillars as string[]) : undefined,
@@ -287,11 +289,11 @@ export default function FormFillPage() {
           )}
 
           {field.type === 'single_select' && (
-            <OptionChips options={(field.options ?? []).filter(Boolean)} value={(value as string) ?? ''} onChange={setAnswer} />
+            <OptionChips allowOther={field.allowOther} options={(field.options ?? []).filter(Boolean)} value={(value as string) ?? ''} onChange={setAnswer} />
           )}
 
           {field.type === 'multi_select' && (
-            <OptionChips options={(field.options ?? []).filter(Boolean)} value={(value as string[]) ?? []} onChange={setAnswer} multi />
+            <OptionChips allowOther={field.allowOther} options={(field.options ?? []).filter(Boolean)} value={(value as string[]) ?? []} onChange={setAnswer} multi />
           )}
 
           {field.type === 'nps' && (
