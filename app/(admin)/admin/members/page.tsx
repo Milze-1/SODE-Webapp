@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Avatar, PillarChip, StatusPill } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, FilterChip, AdminSearch, Panel, THead, TRow, Skeleton } from '@/components/admin/chrome';
+import MergeAccountsModal from '@/components/admin/MergeAccountsModal';
 
 interface MemberRow {
   id: string; name: string; email: string | null; whatsapp: string | null; pillar: string | null;
@@ -42,6 +43,7 @@ export default function MembersPage() {
 
   // Admin context
   const [canDelete, setCanDelete]       = useState(false);
+  const [mergeBase, setMergeBase]       = useState<MemberRow | null>(null);
 
   // Toast
   const [toast, setToast]               = useState<string | null>(null);
@@ -380,12 +382,28 @@ export default function MembersPage() {
               </div>
             )}
 
+            {/* Merge duplicate */}
+            {canDelete && (
+              <div style={{ padding: '14px 16px 0', borderTop: '1px solid var(--line)' }}>
+                <button
+                  onClick={() => setMergeBase(selMember)}
+                  style={{
+                    width: '100%', padding: '9px 16px', borderRadius: 9, cursor: 'pointer',
+                    border: '1.5px solid var(--line-2)', background: 'var(--surface)', color: 'var(--ink)',
+                    fontSize: 13.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  }}
+                >
+                  <Icon name="users" size={15} /> Merge with another account…
+                </button>
+              </div>
+            )}
+
             {/* Delete account */}
-            <div style={{ padding: '14px 16px', borderTop: '1px solid var(--line)' }}>
+            <div style={{ padding: '14px 16px', borderTop: canDelete ? 'none' : '1px solid var(--line)' }}>
               <button
                 onClick={() => canDelete ? setDelModal({ open: true, member: selMember, nameInput: '', deleting: false }) : undefined}
                 disabled={!canDelete}
-                title={canDelete ? undefined : 'Only Directors and Data Ops can delete accounts'}
+                title={canDelete ? undefined : 'Only Super Admins, Directors and Data Ops can delete accounts'}
                 style={{
                   width: '100%', padding: '9px 16px', borderRadius: 9, cursor: canDelete ? 'pointer' : 'not-allowed',
                   border: '1.5px solid #fca5a5', background: '#fff5f5', color: canDelete ? '#dc2626' : '#fca5a5',
@@ -401,6 +419,20 @@ export default function MembersPage() {
       )}
 
       {/* Delete member confirmation modal */}
+      {mergeBase && (
+        <MergeAccountsModal
+          base={{ id: mergeBase.id, name: mergeBase.name, email: mergeBase.email }}
+          members={members.map(m => ({ id: m.id, name: m.name, email: m.email }))}
+          onClose={() => setMergeBase(null)}
+          onMerged={(_kept, droppedId) => {
+            setMembers(ms => ms.filter(m => m.id !== droppedId));
+            setMergeBase(null);
+            setSelMember(null);
+            showToast('Accounts merged');
+          }}
+        />
+      )}
+
       {delModal.open && delModal.member && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(17,20,28,.55)' }} />

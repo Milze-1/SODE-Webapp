@@ -146,10 +146,10 @@ export async function DELETE(request: Request) {
   try {
     await adminClient.from('audit_log').insert({
       action: 'member_deleted',
-      entity_type: 'member',
-      entity_id: memberId,
-      performed_by: user.id,
-      details: { deleted_member_id: memberId, deleted_auth_id: authId ?? null },
+      target_table: 'members',
+      target_id: memberId,
+      actor_id: user.id,
+      payload: { deleted_member_id: memberId, deleted_auth_id: authId ?? null },
     });
   } catch { /* table shape may differ */ }
 
