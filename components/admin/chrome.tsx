@@ -1,5 +1,6 @@
 'use client';
 import React, { Children } from 'react';
+import { useGrowthCycle, cycleLabelMonth } from '@/lib/cycle';
 import { Icon } from '@/components/sode/icons';
 import { ProgressBar, StatusPill, Avatar } from '@/components/sode/ui';
 
@@ -52,7 +53,9 @@ export function FilterChip({ active, label, icon, onClick }: {
   );
 }
 
-export function CyclePill({ label = 'Month 4 of 12' }: { label?: string }) {
+export function CyclePill({ label }: { label?: string }) {
+  const cycle = useGrowthCycle();
+  label = label ?? cycleLabelMonth(cycle);
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 36, padding: '0 13px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--line-2)', fontSize: 13, fontWeight: 600, cursor: 'default', whiteSpace: 'nowrap', flex: 'none', color: 'var(--ink)' }}>
       <Icon name="calendarclock" size={16} color="var(--muted)" /> {label} <Icon name="chevrondown" size={15} color="var(--muted)" />

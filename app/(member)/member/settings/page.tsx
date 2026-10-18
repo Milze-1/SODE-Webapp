@@ -18,6 +18,7 @@ interface MemberData {
   whatsapp: string | null;
   consent_contact: boolean;
   leaderboard_opt_in: boolean;
+  leaderboard_name: string | null;
 }
 
 function SectionLabel({ label }: { label: string }) {
@@ -54,6 +55,11 @@ function SettingRow({ icon, title, sub, right, onClick, chevron = true }: {
 const CATEGORY_ICONS: Record<string, string> = {
   sessions: 'calendarclock', forms: 'list', learning: 'bookopen',
   devotion: 'heart', goals: 'target', tasks: 'check',
+};
+
+const firstInitial = (name: string) => {
+  const [f, ...r] = name.trim().split(/\s+/);
+  return r.length ? `${f} ${r[0][0]}.` : f;
 };
 
 function Divider() {
@@ -108,13 +114,14 @@ export default function SettingsPage() {
       setAuthEmail(user.email ?? '');
       const { data: row } = await supabase
         .from('members')
-        .select('id,name,email,whatsapp,consent_contact,leaderboard_opt_in,onboarding_complete')
+        .select('id,name,email,whatsapp,consent_contact,leaderboard_opt_in,leaderboard_name,onboarding_complete')
         .eq('auth_id', user.id)
         .maybeSingle();
       if (!row?.onboarding_complete) { router.replace('/member/onboarding'); return; }
       setMember(row as MemberData);
       setWhatsappOn(row.consent_contact ?? false);
       setLeaderboard(row.leaderboard_opt_in ?? true);
+      setNameMode(!row.leaderboard_name ? 'full' : row.leaderboard_name === firstInitial(row.name ?? '') ? 'first' : 'alias');
       setLoading(false);
 
       // Loaded separately so the page still works if the prefs column is missing
@@ -182,6 +189,16 @@ export default function SettingsPage() {
     setWhatsappOn(v);
     const supabase = createClient();
     await supabase.from('members').update({ consent_contact: v }).eq('id', member.id);
+  };
+
+  // Saved as members.leaderboard_name, which the leaderboard shows instead
+  // of the real name (null = full name)
+  const saveNameMode = async (mode: string) => {
+    if (!member) return;
+    setNameMode(mode);
+    const leaderboard_name = mode === 'full' ? null : mode === 'first' ? firstInitial(member.name) : 'Member';
+    const { error } = await createClient().from('members').update({ leaderboard_name }).eq('id', member.id);
+    if (error) showToast({ msg: 'Could not save — try again.' });
   };
 
   const toggleLeaderboard = async (v: boolean) => {
@@ -457,7 +474,7 @@ export default function SettingsPage() {
                     <button
                       key={o.v}
                       type="button"
-                      onClick={() => setNameMode(o.v)}
+                      onClick={() => saveNameMode(o.v)}
                       style={{ flex: 1, padding: '7px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: nameMode === o.v ? 'var(--navy)' : 'var(--surface)', color: nameMode === o.v ? '#fff' : 'var(--ink)', border: nameMode === o.v ? 'none' : '1px solid var(--line-2)', cursor: 'pointer' }}
                     >
                       {o.l}
@@ -468,7 +485,7 @@ export default function SettingsPage() {
                   <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 8 }}>
                     Preview: <b style={{ color: 'var(--ink-2)' }}>
                       {nameMode === 'full' ? member.name
-                        : nameMode === 'first' ? (() => { const [f, ...r] = member.name.split(' '); return r.length ? `${f} ${r[0][0]}.` : f; })()
+                        : nameMode === 'first' ? firstInitial(member.name)
                         : 'Member'}
                     </b>
                   </div>

@@ -6,6 +6,7 @@ import { AdminTopbar, AdminBody, Panel } from '@/components/admin/chrome';
 import { createClient } from '@/lib/supabase';
 import { getCurrentCoords } from '@/lib/geo';
 import LocationAutocomplete from '@/components/admin/LocationAutocomplete';
+import { useGrowthCycle, loadGrowthCycle, cycleLabelMonth } from '@/lib/cycle';
 
 const ADMIN_ROLES = [
   { value: 'super_admin', label: 'Super Admin' },
@@ -55,7 +56,23 @@ function SettingRow({ icon, title, sub, children }: { icon: string; title: strin
 export default function SettingsPage() {
   const [integrations, setIntegrations] = useState<{ email: boolean; whatsapp: boolean; push: boolean; scheduler: boolean } | null>(null);
   const [exportingAll, setExportingAll] = useState(false);
-  const cycleMonth = Math.max(1, Math.min(12, (new Date().getFullYear() - 2026) * 12 + new Date().getMonth() + 1));
+  const cycle = useGrowthCycle();
+  const [cycleEdit, setCycleEdit] = useState<{ label: string; start: string; months: string } | null>(null);
+  const [savingCycle, setSavingCycle] = useState(false);
+  const saveCycle = async () => {
+    if (!cycleEdit) return;
+    setSavingCycle(true);
+    const res = await fetch('/api/admin/cycle', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: cycleEdit.label, start: cycleEdit.start, months: Number(cycleEdit.months) }),
+    }).catch(() => null);
+    const json = res ? await res.json().catch(() => ({})) as { error?: string } : {};
+    setSavingCycle(false);
+    if (!res?.ok) { showToast(json.error ?? 'Could not save the cycle.', 'error'); return; }
+    await loadGrowthCycle(true);
+    setCycleEdit(null);
+    showToast('Cycle updated — refresh other open pages to see it.');
+  };
   const teamAccessRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -365,7 +382,9 @@ export default function SettingsPage() {
               </Panel>
 
               <Panel title="Cycle & baseline" pad={false}>
-                <SettingRow icon="calendarclock" title="Active cycle" sub={`2026 Growth Cycle · Month ${cycleMonth} of 12`} />
+                <SettingRow icon="calendarclock" title="Active cycle" sub={`${cycle.label} · ${cycleLabelMonth(cycle)} · from ${new Date(cycle.start + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}>
+                  {isDirector && <button className="btn btn-ghost btn-sm" onClick={() => setCycleEdit({ label: cycle.label, start: cycle.start, months: String(cycle.months) })}>Edit</button>}
+                </SettingRow>
                 <SettingRow icon="flag" title="Baselines captured" sub="Month 0 baselines locked">
                   <StatusPill status="done" size="sm" />
                 </SettingRow>
@@ -586,6 +605,29 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {cycleEdit && (
+        <Sheet open onClose={() => setCycleEdit(null)} title="Growth cycle">
+          <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5, margin: '0 0 14px' }}>
+            Shown on member and admin home screens (&ldquo;Month 3 of 12&rdquo;) and used for cycle-based point limits.
+          </p>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Name</label>
+          <input className="input" value={cycleEdit.label} onChange={e => setCycleEdit({ ...cycleEdit, label: e.target.value })} placeholder="2027 Growth Cycle" style={{ width: '100%', marginBottom: 12 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Starts</label>
+              <input className="input" type="date" value={cycleEdit.start} onChange={e => setCycleEdit({ ...cycleEdit, start: e.target.value })} style={{ width: '100%' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Length (months)</label>
+              <input className="input" type="number" min={1} max={36} value={cycleEdit.months} onChange={e => setCycleEdit({ ...cycleEdit, months: e.target.value })} style={{ width: '100%' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+            <button className="btn btn-ghost btn-block" onClick={() => setCycleEdit(null)}>Cancel</button>
+            <button className="btn btn-primary btn-block" onClick={saveCycle} disabled={savingCycle || !cycleEdit.label.trim() || !cycleEdit.start}>{savingCycle ? 'Saving…' : 'Save cycle'}</button>
+          </div>
+        </Sheet>
+      )}
       <Toast toast={toast} />
     </>
   );

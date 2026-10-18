@@ -11,6 +11,7 @@ import {
 } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
 import ProfileTaskCard from '@/components/member/ProfileTaskCard';
+import { useGrowthCycle, cycleMonth } from '@/lib/cycle';
 import NewGoalFlow from '@/components/member/NewGoalFlow';
 import { awardPoints } from '@/lib/points';
 import { usePoints } from '@/lib/hooks/useRealtimeData';
@@ -83,12 +84,6 @@ const fmtSession = (s: string): string => {
   );
 };
 
-const cycleMonth = (): number => {
-  const now = new Date();
-  const start = new Date('2026-01-01');
-  const m = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + 1;
-  return Math.max(1, Math.min(12, m));
-};
 
 // ─── Win types / Goal templates ───────────────────────────────────────────────
 
@@ -393,6 +388,7 @@ function DeskGoalCard({ goal, onClick }: { goal: Goal; onClick: () => void }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
+  const cycle = useGrowthCycle();
   const router = useRouter();
 
   // data
@@ -602,7 +598,7 @@ export default function HomePage() {
     );
   }
 
-  const month = cycleMonth();
+  const month = cycleMonth(cycle);
 
   return (
     <div className="member-page" style={{ position: 'relative', height: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
@@ -656,11 +652,11 @@ export default function HomePage() {
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ background: 'var(--navy)', color: '#fff', padding: '15px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,.6)' }}>2026 Growth Cycle</div>
-                <div style={{ fontSize: 17, fontWeight: 800, marginTop: 3 }}>Month {month} of 12 — keep going</div>
+                <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', fontWeight: 700, color: 'rgba(255,255,255,.6)' }}>{cycle.label}</div>
+                <div style={{ fontSize: 17, fontWeight: 800, marginTop: 3 }}>Month {month} of {cycle.months} — keep going</div>
               </div>
-              <ProgressRing value={month / 12} size={46} stroke={5} color="#fff" track="rgba(255,255,255,.22)">
-                <span className="tnum" style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{month}/12</span>
+              <ProgressRing value={month / cycle.months} size={46} stroke={5} color="#fff" track="rgba(255,255,255,.22)">
+                <span className="tnum" style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>{month}/{cycle.months}</span>
               </ProgressRing>
             </div>
             <button onClick={() => router.push('/member/leaderboard')} style={{ width: '100%', padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left' }}>
@@ -865,7 +861,7 @@ export default function HomePage() {
                 {greeting()}, {member?.name?.split(' ')[0] ?? ''}
               </h1>
               <p style={{ fontSize: 14, color: 'var(--muted)', marginTop: 4 }}>
-                Month {month} of 12 — here&apos;s you this cycle.
+                Month {month} of {cycle.months} — here&apos;s you this cycle.
               </p>
             </div>
             <PointsBadge value={liveBalance?.total_points ?? member?.points ?? 0} onClick={() => router.push('/member/leaderboard')} />
@@ -875,11 +871,11 @@ export default function HomePage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Cycle ring */}
             <div className="card card-pad" style={{ background: 'var(--navy)', border: 'none', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <ProgressRing value={month / 12} size={56} stroke={6} color="#fff" track="rgba(255,255,255,.22)">
-                <span className="tnum" style={{ color: '#fff', fontSize: 12, fontWeight: 800 }}>{month}/12</span>
+              <ProgressRing value={month / cycle.months} size={56} stroke={6} color="#fff" track="rgba(255,255,255,.22)">
+                <span className="tnum" style={{ color: '#fff', fontSize: 12, fontWeight: 800 }}>{month}/{cycle.months}</span>
               </ProgressRing>
               <div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.6)', fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' }}>2026 Cycle</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,.6)', fontWeight: 700, letterSpacing: '.09em', textTransform: 'uppercase' }}>{cycle.label}</div>
                 <div style={{ fontSize: 17, fontWeight: 800, color: '#fff', marginTop: 3 }}>On pace</div>
               </div>
             </div>

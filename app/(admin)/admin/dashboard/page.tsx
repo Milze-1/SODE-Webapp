@@ -4,6 +4,7 @@ import { Icon, pillarOf } from '@/components/sode/icons';
 import { PillarChip, ProgressRing, StatusPill } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, FilterChip, AdminSearch, LineChart, KpiCard, type Kpi, CyclePill } from '@/components/admin/chrome';
 import { useKPIs } from '@/lib/hooks/useRealtimeData';
+import { useGrowthCycle } from '@/lib/cycle';
 
 const PILLARS = [
   { key: 'spiritual', name: 'Spiritual', icon: 'sprout' },
@@ -66,6 +67,7 @@ function KpiDrawer({ k, onClose }: { k: Kpi | null; onClose: () => void }) {
 }
 
 export default function ScorecardPage() {
+  const cycle = useGrowthCycle();
   const [filter, setFilter] = useState('all');
   const [sel, setSel] = useState<Kpi | null>(null);
   const [search, setSearch] = useState('');
@@ -98,10 +100,10 @@ export default function ScorecardPage() {
     <>
       <AdminTopbar
         title="Team Scorecard"
-        subtitle="2026 Growth Cycle"
+        subtitle={cycle.label}
         actions={
           <>
-            <CyclePill label="Month 4 of 12" />
+            <CyclePill />
             <AdminSearch value={search} onChange={setSearch} placeholder="Search members…" />
             <button onClick={exportPack} className="btn btn-primary btn-sm">
               <Icon name="download" size={16} color="#fff" /> Export

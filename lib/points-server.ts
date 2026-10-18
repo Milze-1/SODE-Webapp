@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase-server';
+import { DEFAULT_CYCLE } from '@/lib/cycle-shared';
 
 // Default values for rules to ensure absolute robustness even if db rule is missing
 export const DEFAULT_POINT_RULES: Record<string, number> = {
@@ -40,12 +41,12 @@ export const DEFAULT_POINT_RULES: Record<string, number> = {
   member_registered: 0,
 };
 
-function capPeriodStart(period: string): Date {
+function capPeriodStart(period: string, cycleStart: string): Date {
   const now = new Date();
   if (period === 'day')   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (period === 'week')  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
   if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
-  if (period === 'cycle') return new Date('2026-01-01');
+  if (period === 'cycle') return new Date(cycleStart + 'T00:00:00');
   return new Date(0);
 }
 
@@ -181,7 +182,14 @@ export async function awardPointsServer(params: {
 
   // 7. Cap check
   if (cap) {
-    const since = capPeriodStart(capPeriod ?? 'day').toISOString();
+    // Growth cycle start lives in app_settings (Settings → Active cycle)
+    let cycleStart = DEFAULT_CYCLE.start;
+    if (capPeriod === 'cycle') {
+      const { data: setting } = await db.from('app_settings').select('value').eq('key', 'growth_cycle').maybeSingle();
+      const v = setting?.value as { start?: string } | undefined;
+      if (v?.start) cycleStart = v.start;
+    }
+    const since = capPeriodStart(capPeriod ?? 'day', cycleStart).toISOString();
     const { count } = await db
       .from('point_events')
       .select('*', { count: 'exact', head: true })

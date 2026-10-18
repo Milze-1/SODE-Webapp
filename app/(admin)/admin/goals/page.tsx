@@ -664,7 +664,7 @@ export default function GoalsPage() {
       <AdminTopbar
         title="Pillar Goals"
         subtitle="Member goals tracked by pillar"
-        actions={<CyclePill label="Month 4 of 12" />}
+        actions={<CyclePill />}
       />
       <AdminBody>
         {/* ── Tab switcher ─────────────────────────────────────────────────────── */}

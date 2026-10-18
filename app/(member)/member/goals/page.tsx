@@ -11,6 +11,7 @@ import {
 } from '@/components/sode/ui';
 import BottomNav from '@/components/member/bottom-nav';
 import NewGoalFlow from '@/components/member/NewGoalFlow';
+import { useGrowthCycle, cycleMonth } from '@/lib/cycle';
 import { GoalReminderPicker, DEFAULT_REMINDER, reminderColumns, reminderFromRow, type GoalReminder } from '@/components/member/goal-reminder';
 
 type PillarKey = 'spiritual' | 'career' | 'business' | 'character';
@@ -1006,6 +1007,7 @@ function CommunityGoalDetail({ goal, memberId, onUpdate, onCelebrate, onPoints, 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GoalsPage() {
+  const cycle = useGrowthCycle();
   const router = useRouter();
   const [loading, setLoading]           = useState(true);
   const [member, setMember]             = useState<{ id: string; points: number } | null>(null);
@@ -1119,10 +1121,7 @@ export default function GoalsPage() {
     </div>
   );
 
-  const month = Math.max(1, Math.min(12, (() => {
-    const n = new Date(); const s = new Date('2026-01-01');
-    return (n.getFullYear() - s.getFullYear()) * 12 + (n.getMonth() - s.getMonth()) + 1;
-  })()));
+  const month = cycleMonth(cycle);
 
   const activeGoals   = goals.filter(g => g.status !== 'archived');
   const archivedGoals = goals.filter(g => g.status === 'archived');

@@ -28,31 +28,6 @@ function getInitials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map(s => s[0]).join('').toUpperCase() || '?';
 }
 
-// ── Fetch helpers ──────────────────────────────────────────────────────────────
-
-type SB = ReturnType<typeof createClient>;
-
-// All tabs use members.points — the denormalized cumulative total kept in sync
-// by /api/points/award and lib/referral.ts. This matches the admin growth page
-// and the home page rank calculation exactly.
-async function fetchAllTime(sb: SB): Promise<LeaderEntry[]> {
-  const { data } = await sb
-    .from('members')
-    .select('id, name, auth_id, points')
-    .eq('onboarding_complete', true) // first-timers stay off the board until converted
-    .gt('points', 0)
-    .order('points', { ascending: false })
-    .limit(100);
-
-  return (data ?? []).map((m, i) => ({
-    rank: i + 1,
-    id: m.id,
-    auth_id: m.auth_id,
-    name: m.name ?? 'Member',
-    points: m.points ?? 0,
-  }));
-}
-
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function LeaderboardPage() {
@@ -62,6 +37,7 @@ export default function LeaderboardPage() {
   const [loading, setLoading]             = useState(true);
   const [authUser, setAuthUser]           = useState<{ id: string } | null>(null);
   const [currentMember, setCurrentMember] = useState<LeaderEntry | null>(null);
+  const [meHidden, setMeHidden]           = useState(false);
   const [smallScreen, setSmallScreen]     = useState(false);
 
   useEffect(() => {
@@ -98,33 +74,15 @@ export default function LeaderboardPage() {
 
     const load = async () => {
       setLoading(true);
-
-      const data = await fetchAllTime(sb);
-
+      // Server-side: ranks by points earned in the tab's period and hides
+      // members who opted out (see app/api/leaderboard)
+      const res = await fetch(`/api/leaderboard?period=${tab}`).catch(() => null);
+      const json = res?.ok ? await res.json() as { entries: LeaderEntry[]; me: (LeaderEntry & { hidden: boolean }) | null } : { entries: [], me: null };
       if (cancelled) return;
-      setEntries(data);
-
-      // Always fetch real member row so the bar never shows stale or 0 points
-      const { data: realMember } = await sb
-        .from('members')
-        .select('id, name, auth_id, points')
-        .eq('auth_id', authUser.id)
-        .single();
-
-      if (!realMember || cancelled) return;
-
-      const found = data.find(e => e.auth_id === authUser.id);
-
-      setCurrentMember({
-        rank: found?.rank ?? data.length + 1,
-        id: realMember.id,
-        auth_id: authUser.id,
-        name: realMember.name ?? '',
-        // Period pts when in this period's list; real total otherwise
-        points: found ? found.points : (realMember.points ?? 0),
-      });
-
-      if (!cancelled) setLoading(false);
+      setEntries(json.entries);
+      setCurrentMember(json.me);
+      setMeHidden(!!json.me?.hidden);
+      setLoading(false);
     };
 
     load();
@@ -342,6 +300,7 @@ export default function LeaderboardPage() {
             <Avatar name={currentMember.name} size={34} style={{ boxShadow: '0 0 0 2px rgba(255,255,255,.3)' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700 }}>You · {currentMember.name.split(' ')[0]}</div>
+              {meHidden && <div style={{ fontSize: 11, color: 'rgba(255,255,255,.7)' }}>Hidden from others — change in Settings</div>}
             </div>
             <span className="tnum" style={{ fontSize: 14, fontWeight: 800 }}>
               {currentMember.points.toLocaleString()} pts{barSuffix}
