@@ -14,7 +14,7 @@ export async function DELETE(request: Request) {
     .eq('user_id', user.id);
 
   const canDelete = (roles ?? []).some(
-    (r: { role: string }) => r.role === 'director' || r.role === 'data_ops_lead',
+    (r: { role: string }) => r.role === 'super_admin' || r.role === 'director' || r.role === 'data_ops_lead',
   );
   if (!canDelete) {
     return Response.json({ error: 'Only Directors and Data Ops can delete accounts' }, { status: 403 });

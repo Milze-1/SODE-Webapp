@@ -67,7 +67,7 @@ export default function MembersPage() {
         if (user) {
           const { data: rolesData } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
           const roles = (rolesData ?? []).map((r: { role: string }) => r.role);
-          setCanDelete(roles.includes('director') || roles.includes('data_ops_lead'));
+          setCanDelete(roles.includes('super_admin') || roles.includes('director') || roles.includes('data_ops_lead'));
         }
 
         const { data } = await supabase
@@ -235,12 +235,9 @@ export default function MembersPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'var(--navy)', color: '#fff', marginBottom: 12 }}>
                 <span className="tnum" style={{ fontWeight: 700 }}>{selected.size} selected</span>
                 <div style={{ flex: 1 }} />
-                <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,.18)', color: '#fff' }}>
+                <a href={`/admin/messages?members=${Array.from(selected).join(',')}`} className="btn btn-sm" style={{ background: 'rgba(255,255,255,.18)', color: '#fff', textDecoration: 'none' }}>
                   <Icon name="message" size={15} color="#fff" /> Message
-                </button>
-                <button className="btn btn-sm" style={{ background: 'rgba(255,255,255,.18)', color: '#fff' }}>
-                  <Icon name="flag" size={15} color="#fff" /> Assign
-                </button>
+                </a>
               </div>
             )}
 

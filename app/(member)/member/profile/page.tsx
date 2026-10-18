@@ -135,6 +135,19 @@ export default function ProfilePage() {
   };
 
   const [signingOut, setSigningOut] = useState(false);
+  const [requestingDeletion, setRequestingDeletion] = useState(false);
+
+  // Emails the SODE team (app/api/account/deletion-request) — this used to
+  // only show a toast, so requests never reached anyone.
+  const requestDeletion = async () => {
+    if (requestingDeletion) return;
+    if (!window.confirm('Send a request to the SODE team to delete your account and all your data? They will confirm with you before anything is removed.')) return;
+    setRequestingDeletion(true);
+    const res = await fetch('/api/account/deletion-request', { method: 'POST' }).catch(() => null);
+    const json = res ? await res.json().catch(() => ({})) as { error?: string } : {};
+    showToast({ msg: res?.ok ? "Request sent — we've emailed you a confirmation." : (json.error ?? 'Could not send — please email connect@thesode.org.') });
+    setRequestingDeletion(false);
+  };
   const [exporting, setExporting] = useState(false);
   const [exportSheet, setExportSheet] = useState(false);
   const [exportFmt, setExportFmt] = useState<ExportFormat>('pdf');
@@ -443,7 +456,7 @@ export default function ProfilePage() {
             <div style={{ padding: '14px 14px 4px' }}><div className="eyebrow">Contact &amp; consent</div></div>
             <SettingRow icon="message" title="WhatsApp updates" sub="Reminders &amp; celebrate moments" right={<Toggle on={whatsappOn} onChange={toggleWhatsapp} />} />
             <hr className="divider" />
-            <SettingRow icon="info" title="How your data is used" sub="Plain-language NDPA summary" onClick={() => showToast({ msg: 'Privacy summary coming soon.' })} />
+            <SettingRow icon="info" title="How your data is used" sub="Plain-language NDPA summary" onClick={() => router.push('/member/privacy')} />
           </div>
 
           {/* settings & account */}
@@ -452,7 +465,7 @@ export default function ProfilePage() {
             <hr className="divider" />
             <SettingRow icon="download" title="Export my data" sub={exporting ? 'Preparing…' : 'PDF, spreadsheet or web page'} onClick={() => setExportSheet(true)} />
             <hr className="divider" />
-            <SettingRow icon="x" title="Request account deletion" danger onClick={() => showToast({ msg: 'Request noted — our team will follow up.' })} />
+            <SettingRow icon="x" title="Request account deletion" sub={requestingDeletion ? 'Sending…' : undefined} danger onClick={requestDeletion} />
           </div>
 
           <button

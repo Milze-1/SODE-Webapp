@@ -29,6 +29,10 @@ export default function ReportsPage() {
     <>
       <AdminTopbar title="Reports & Export" subtitle="Generate leadership packs" />
       <AdminBody>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 12, background: '#fef3c7', color: '#92400e', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+          <Icon name="info" size={17} color="#92400e" />
+          <span><strong>Preview — sample data.</strong> Report generation isn&apos;t connected to live SODE data yet, so the figures and names below are examples.</span>
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           {/* Report type list */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -61,7 +65,7 @@ export default function ReportsPage() {
                 <div style={{ marginBottom: 18 }}>
                   <Segmented options={['PDF', 'CSV', 'Slides']} value={fmt} onChange={setFmt} size="sm" />
                 </div>
-                <button onClick={gen} className="btn btn-primary btn-block btn-lg">
+                <button onClick={gen} disabled title="Not connected yet" className="btn btn-primary btn-block btn-lg">
                   <Icon name="download" size={18} color="#fff" /> Generate {fmt}
                 </button>
               </>

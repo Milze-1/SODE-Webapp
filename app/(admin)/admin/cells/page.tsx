@@ -59,10 +59,14 @@ export default function RegistersPage() {
         title="Registers"
         subtitle="Verified records — guard against success theater"
         actions={
-          <button className="btn btn-ghost btn-sm"><Icon name="download" size={16} /> Export</button>
+          <button className="btn btn-ghost btn-sm" disabled title="Not connected yet"><Icon name="download" size={16} /> Export</button>
         }
       />
       <AdminBody>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', borderRadius: 12, background: '#fef3c7', color: '#92400e', fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
+          <Icon name="info" size={17} color="#92400e" />
+          <span><strong>Preview — sample data.</strong> This page isn&apos;t connected to live SODE data yet, so the figures and names below are examples.</span>
+        </div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
           {([['business', 'Business Registry'], ['cells', 'Cells'], ['leadership', 'Leadership'], ['certificates', 'Certificates']] as const).map(([k, l]) => (
             <FilterChip key={k} active={tab === k} label={l} onClick={() => setTab(k)} />

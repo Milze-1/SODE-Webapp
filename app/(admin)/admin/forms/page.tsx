@@ -990,7 +990,6 @@ export default function FormsPage() {
                 <Icon name="check" size={14} /> {importMsg}
               </div>
             )}
-            <button className="btn btn-primary btn-block" style={{ marginTop: 4 }}>Import 248 responses</button>
           </Panel>
         )}
       </AdminBody>

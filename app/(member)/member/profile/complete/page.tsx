@@ -140,11 +140,17 @@ export default function CompleteProfilePage() {
     try {
       const supabase = createClient();
       const now = new Date().toISOString();
-      const payload = finish
-        ? { ...stepPayload(step), profile_complete: true, profile_completed_at: now }
-        : stepPayload(step);
-      const { error: err } = await supabase.from('members').update(payload).eq('id', memberId);
-      if (err) { console.error('[profile/complete] save error:', err); throw err; }
+      // Saved server-side (see app/api/profile/save) — the direct browser
+      // update failed for some members with no useful error.
+      const res = await fetch('/api/profile/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: stepPayload(step), finish }),
+      });
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({ error: null })) as { error: string | null };
+        throw new Error(msg || 'Something went wrong — please try again.');
+      }
 
       if (!finish) { setStep(step + 1); return; }
 
@@ -182,8 +188,8 @@ export default function CompleteProfilePage() {
         .eq('member_id', memberId).eq('type', 'profile_incomplete').is('read_at', null);
 
       setDone(true);
-    } catch {
-      setError('Something went wrong — please try again.');
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : 'Something went wrong — please try again.');
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Icon, pillarOf } from '@/components/sode/icons';
-import { Avatar, PillarChip, ProgressRing, StatusPill } from '@/components/sode/ui';
+import { PillarChip, ProgressRing, StatusPill } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, FilterChip, AdminSearch, LineChart, KpiCard, type Kpi, CyclePill } from '@/components/admin/chrome';
 import { useKPIs } from '@/lib/hooks/useRealtimeData';
 
@@ -29,11 +29,6 @@ function KpiDrawer({ k, onClose }: { k: Kpi | null; onClose: () => void }) {
   if (!k) return null;
   const p = pillarOf(k.pillar);
   const color = k.pillar === 'overall' ? 'var(--navy)' : p.color;
-  const contributors = [
-    { name: 'Ada Obi', detail: 'Registered business · Jun 11', status: 'done' as const },
-    { name: 'Emeka Nwosu', detail: 'In progress · 2 of 3', status: 'ontrack' as const },
-    { name: 'Zara Bello', detail: 'No update in 3 weeks', status: 'atrisk' as const },
-  ];
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 40, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(17,20,28,.32)', animation: 'sode-fade .18s ease' }} />
@@ -61,23 +56,9 @@ function KpiDrawer({ k, onClose }: { k: Kpi | null; onClose: () => void }) {
             <Icon name="info" size={17} stroke={2} color="var(--navy)" />
             <div style={{ fontSize: 12.5, lineHeight: 1.45 }}><b>Source:</b> {k.source}. As of {k.asof}. Owned by {k.owner}.</div>
           </div>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>Contributing members</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {contributors.map((c, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--surface)' }}>
-                <Avatar name={c.name} size={32} tone="grey" />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700 }}>{c.name}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{c.detail}</div>
-                </div>
-                <StatusPill status={c.status} size="sm" />
-              </div>
-            ))}
-          </div>
         </div>
         <div style={{ padding: 16, borderTop: '1px solid var(--line)', display: 'flex', gap: 10 }}>
-          <button className="btn btn-ghost" style={{ flex: 1 }}><Icon name="message" size={17} /> Message segment</button>
-          <button className="btn btn-primary" style={{ flex: 1 }}><Icon name="flag" size={16} color="#fff" /> Assign follow-up</button>
+          <a href="/admin/messages" className="btn btn-primary" style={{ flex: 1, textDecoration: 'none' }}><Icon name="message" size={17} color="#fff" /> Message members</a>
         </div>
       </div>
     </div>

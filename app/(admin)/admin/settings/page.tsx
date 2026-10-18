@@ -1,7 +1,7 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Icon } from '@/components/sode/icons';
-import { Toggle, StatusPill, Avatar, Sheet, Toast, type ToastData } from '@/components/sode/ui';
+import { StatusPill, Avatar, Sheet, Toast, type ToastData } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Panel } from '@/components/admin/chrome';
 import { createClient } from '@/lib/supabase';
 import { getCurrentCoords } from '@/lib/geo';
@@ -27,6 +27,16 @@ interface AdminUser {
   member: { id: string; name: string; email: string } | null;
 }
 
+function ConnStatus({ on }: { on: boolean | undefined }) {
+  if (on === undefined) return <span style={{ fontSize: 12, color: 'var(--faint)' }}>…</span>;
+  return (
+    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99, whiteSpace: 'nowrap',
+      background: on ? '#dcfce7' : 'var(--surface-2)', color: on ? '#166534' : 'var(--muted)' }}>
+      {on ? 'Connected' : 'Not set up'}
+    </span>
+  );
+}
+
 function SettingRow({ icon, title, sub, children }: { icon: string; title: string; sub?: string; children?: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '14px 16px', borderBottom: '1px solid var(--line)' }}>
@@ -43,8 +53,41 @@ function SettingRow({ icon, title, sub, children }: { icon: string; title: strin
 }
 
 export default function SettingsPage() {
-  const [toggles, setToggles] = useState({ sheets: true, resend: true, whatsapp: false, retention: true });
-  const tog = (k: keyof typeof toggles) => setToggles(s => ({ ...s, [k]: !s[k] }));
+  const [integrations, setIntegrations] = useState<{ email: boolean; whatsapp: boolean; push: boolean; scheduler: boolean } | null>(null);
+  const [exportingAll, setExportingAll] = useState(false);
+  const cycleMonth = Math.max(1, Math.min(12, (new Date().getFullYear() - 2026) * 12 + new Date().getMonth() + 1));
+  const teamAccessRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/integrations').then(r => (r.ok ? r.json() : null)).then(setIntegrations).catch(() => {});
+  }, []);
+
+  // Full member export — same spreadsheet as Admin → Members, all members
+  const exportAll = async () => {
+    setExportingAll(true);
+    try {
+      const { data } = await createClient()
+        .from('members')
+        .select('name,email,whatsapp,pillar,life_stage,department,is_leader,is_mentor,onboarding_complete,points,created_at,updated_at')
+        .order('created_at', { ascending: false });
+      const res = await fetch('/api/admin/members/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ members: data ?? [] }),
+      });
+      if (!res.ok) throw new Error();
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sode-members-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast('Export failed — try again.', 'error');
+    } finally {
+      setExportingAll(false);
+    }
+  };
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isDirector, setIsDirector] = useState(false);
@@ -83,19 +126,11 @@ export default function SettingsPage() {
 
   const loadAdmins = useCallback(async () => {
     setAdminsLoading(true);
-    const supabase = createClient();
-    const { data: roles } = await supabase.from('user_roles').select('user_id, role').order('role');
-    if (!roles?.length) { setAdmins([]); setAdminsLoading(false); return; }
-
-    // Fetch member records for each auth_id
-    const authIds = Array.from(new Set(roles.map(r => r.user_id)));
-    const { data: members } = await supabase
-      .from('members')
-      .select('id, name, email, auth_id')
-      .in('auth_id', authIds);
-
-    const memberMap = Object.fromEntries((members ?? []).map(m => [m.auth_id, m]));
-    setAdmins(roles.map(r => ({ user_id: r.user_id, role: r.role, member: memberMap[r.user_id] ?? null })));
+    // Server-side list (app/api/admin/roles) — reading user_roles from the
+    // browser only returns your own row unless the DB policy knows your role.
+    const res = await fetch('/api/admin/roles').catch(() => null);
+    const json = res?.ok ? await res.json() as { admins: AdminUser[] } : { admins: [] };
+    setAdmins(json.admins);
     setAdminsLoading(false);
   }, []);
 
@@ -200,38 +235,17 @@ export default function SettingsPage() {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // One role per user: assigning a role REPLACES any existing assignment
-    // ("update on top") instead of stacking a duplicate row.
-    const { data: existingRoles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', selectedMember.auth_id);
-
-    if ((existingRoles ?? []).some((r: { role: string }) => r.role === selectedRole)) {
-      showToast(`${selectedMember.name} already has this role.`, 'error');
-      setGranting(false);
-      return;
-    }
-
-    if ((existingRoles ?? []).length > 0) {
-      const { error: clearError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', selectedMember.auth_id);
-      if (clearError) {
-        showToast(clearError.message, 'error');
-        setGranting(false);
-        return;
-      }
-    }
-
-    const { error } = await supabase.from('user_roles').insert({
-      user_id: selectedMember.auth_id,
-      role: selectedRole,
-    });
-
-    if (error) {
-      showToast(error.message.includes('duplicate') ? `${selectedMember.name} already has this role.` : error.message, 'error');
+    // Server-side (app/api/admin/roles): the user_roles write policy only
+    // admits Directors, so Super Admins were getting an RLS error here.
+    // One role per person — the new role replaces any existing one.
+    const res = await fetch('/api/admin/roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId: selectedMember.id, role: selectedRole }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      const { error } = res ? await res.json().catch(() => ({ error: null })) as { error: string | null } : { error: null };
+      showToast(error || 'Could not grant access — check your connection and try again.', 'error');
       setGranting(false);
       return;
     }
@@ -261,14 +275,17 @@ export default function SettingsPage() {
   const handleRevoke = async () => {
     if (!revokeTarget) return;
     setRevoking(true);
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('user_roles')
-      .delete()
-      .eq('user_id', revokeTarget.user_id)
-      .eq('role', revokeTarget.role);
-
-    if (error) { showToast(error.message, 'error'); setRevoking(false); return; }
+    const res = await fetch('/api/admin/roles', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: revokeTarget.user_id, role: revokeTarget.role }),
+    }).catch(() => null);
+    if (!res?.ok) {
+      const { error } = res ? await res.json().catch(() => ({ error: null })) as { error: string | null } : { error: null };
+      showToast(error || 'Could not remove access — try again.', 'error');
+      setRevoking(false);
+      return;
+    }
 
     showToast(`${revokeTarget.member?.name ?? 'User'}'s access has been removed.`);
     setRevokeTarget(null);
@@ -348,21 +365,21 @@ export default function SettingsPage() {
               </Panel>
 
               <Panel title="Cycle & baseline" pad={false}>
-                <SettingRow icon="calendarclock" title="Active cycle" sub="2026 Growth Cycle · Month 4 of 12">
-                  <button className="btn btn-ghost btn-sm">Edit</button>
-                </SettingRow>
+                <SettingRow icon="calendarclock" title="Active cycle" sub={`2026 Growth Cycle · Month ${cycleMonth} of 12`} />
                 <SettingRow icon="flag" title="Baselines captured" sub="Month 0 baselines locked">
                   <StatusPill status="done" size="sm" />
                 </SettingRow>
               </Panel>
 
               <Panel title="Roles & invites" pad={false}>
-                <SettingRow icon="users" title="Pillar Leads" sub="4 assigned · scoped to their pillar">
-                  <button className="btn btn-ghost btn-sm">Manage</button>
+                <SettingRow icon="users" title="Pillar Leads" sub={`${admins.filter(a => a.role.endsWith('_lead')).length} assigned · scoped to their pillar`}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => teamAccessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Manage</button>
                 </SettingRow>
-                <SettingRow icon="userplus" title="Invite a leader" sub="Send a back-office invite">
-                  <button className="btn btn-primary btn-sm">Invite</button>
-                </SettingRow>
+                {isDirector && (
+                  <SettingRow icon="userplus" title="Give someone access" sub="Grant a back-office role to a member">
+                    <button className="btn btn-primary btn-sm" onClick={() => setGrantOpen(true)}>Add</button>
+                  </SettingRow>
+                )}
               </Panel>
 
               <Panel title="Status thresholds" pad={false}>
@@ -378,38 +395,38 @@ export default function SettingsPage() {
             {/* Right column */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <Panel title="Integrations" pad={false}>
-                <SettingRow icon="refresh" title="Google Sheets" sub="Attendance + responses sync">
-                  <Toggle on={toggles.sheets} onChange={() => tog('sheets')} />
+                <SettingRow icon="mail" title="Email (Resend)" sub="Reminders, form and session emails">
+                  <ConnStatus on={integrations?.email} />
                 </SettingRow>
-                <SettingRow icon="mail" title="Resend (email)" sub="Reminders & recaps">
-                  <Toggle on={toggles.resend} onChange={() => tog('resend')} />
+                <SettingRow icon="message" title="WhatsApp / SMS (Termii)" sub="Group messages and milestone nudges">
+                  <ConnStatus on={integrations?.whatsapp} />
                 </SettingRow>
-                <SettingRow icon="message" title="WhatsApp Business" sub="Connect to send nudges">
-                  <Toggle on={toggles.whatsapp} onChange={() => tog('whatsapp')} />
+                <SettingRow icon="bell" title="Push notifications" sub="Phone and browser notifications">
+                  <ConnStatus on={integrations?.push} />
+                </SettingRow>
+                <SettingRow icon="clock" title="Scheduler" sub="Meeting start, 6am/7am devotion, goal reminders">
+                  <ConnStatus on={integrations?.scheduler} />
                 </SettingRow>
               </Panel>
 
-              <Panel title="Notification templates" pad={false}>
-                <SettingRow icon="bell" title="Win celebrate" sub='"Logged. Well done."'>
-                  <button className="btn btn-ghost btn-sm">Edit</button>
-                </SettingRow>
-                <SettingRow icon="calendarclock" title="Session reminder" sub="Sent 2h before">
-                  <button className="btn btn-ghost btn-sm">Edit</button>
-                </SettingRow>
+              <Panel title="Notification schedule" pad={false}>
+                <SettingRow icon="calendarclock" title="Sessions" sub="When created, 5pm the day before, and at start time (check-in opens)" />
+                <SettingRow icon="heart" title="Devotion" sub="6:00am for everyone · 7:00am if not done yet" />
+                <SettingRow icon="target" title="Goals" sub="At each member's chosen reminder time · 8pm if falling behind" />
+                <SettingRow icon="users" title="Profile task" sub="After onboarding, then ~day 1, 3 and 7 until complete" />
               </Panel>
 
               <Panel title="Data & retention" pad={false}>
-                <SettingRow icon="shieldcheck" title="NDPA mode" sub="Honour export & delete requests">
-                  <Toggle on={toggles.retention} onChange={() => tog('retention')} />
-                </SettingRow>
-                <SettingRow icon="download" title="Export all data" sub="Full org backup">
-                  <button className="btn btn-ghost btn-sm">Export</button>
+                <SettingRow icon="shieldcheck" title="Member data requests" sub="Members export their own data from Profile; deletion requests are emailed to the team" />
+                <SettingRow icon="download" title="Export all members" sub="Spreadsheet of every member">
+                  <button className="btn btn-ghost btn-sm" onClick={exportAll} disabled={exportingAll}>{exportingAll ? 'Exporting…' : 'Export'}</button>
                 </SettingRow>
               </Panel>
             </div>
           </div>
 
           {/* Team access — full width */}
+          <div ref={teamAccessRef} />
           <Panel
             title="Team access"
             action={isDirector ? (

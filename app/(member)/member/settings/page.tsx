@@ -485,7 +485,7 @@ export default function SettingsPage() {
                 icon="info"
                 title="Help &amp; FAQ"
                 sub="Common questions answered"
-                onClick={() => showToast({ msg: 'Help centre coming soon.' })}
+                onClick={() => router.push('/member/help')}
               />
               <Divider />
               <SettingRow
@@ -499,7 +499,7 @@ export default function SettingsPage() {
                 icon="info"
                 title="How your data is used"
                 sub="Plain-language privacy summary"
-                onClick={() => showToast({ msg: 'Privacy summary coming soon.' })}
+                onClick={() => router.push('/member/privacy')}
               />
             </div>
           </div>

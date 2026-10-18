@@ -67,6 +67,12 @@ export default function MessagesPage() {
         ]);
         setCells((cellsRes.data ?? []) as CellOption[]);
         setAllMembers((membersRes.data ?? []) as MemberOption[]);
+        // Opened from Admin → Members bulk "Message": preselect those members
+        const preset = new URLSearchParams(window.location.search).get('members');
+        if (preset) {
+          const ids = preset.split(',').filter(Boolean);
+          if (ids.length) setAudience({ type: 'specific', member_ids: ids });
+        }
         await loadHistory();
       } finally {
         setLoading(false);
