@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createAdminClient } from "@/lib/supabase-server";
 import { getUserRoles, hasAdminAccess } from "@/lib/roles";
 import { processReferralOnRegister } from "@/lib/referral";
 import { applyMentorInvite } from "@/lib/mentor-invite";
+
+// Escape LIKE wildcards so an email like a_b@x.com only matches itself
+const BACKSLASH = String.fromCharCode(92);
+function escapeLike(s: string): string {
+  return s.split('').map(ch => (ch === '%' || ch === '_' || ch === BACKSLASH ? BACKSLASH + ch : ch)).join('');
+}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -41,6 +47,29 @@ export async function GET(request: Request) {
   // First-time password setup
   if (user.user_metadata?.needs_password_setup) {
     return NextResponse.redirect(`${origin}/auth/set-password`);
+  }
+
+  // Link a pre-existing member record (added by an admin, or registered
+  // earlier) to this login by verified email. Done with the service role:
+  // with the user's own session, RLS hides rows not yet linked to them, so
+  // the lookup always came back empty and the member stayed unlinked
+  // (e.g. an admin then couldn't grant them access — "no login yet").
+  if (user.email && user.email_confirmed_at) {
+    const admin = createAdminClient();
+    const { data: linked } = await admin.from("members").select("id").eq("auth_id", user.id).maybeSingle();
+    if (!linked) {
+      const { data: byEmail } = await admin
+        .from("members")
+        .select("id")
+        .ilike("email", escapeLike(user.email)) // exact, case-insensitive
+        .is("auth_id", null)
+        .limit(1)
+        .maybeSingle();
+      if (byEmail) {
+        const { error: linkErr } = await admin.from("members").update({ auth_id: user.id }).eq("id", byEmail.id).is("auth_id", null);
+        if (linkErr) console.error("[callback] could not link member by email:", linkErr.message);
+      }
+    }
   }
 
   // Google OAuth: link or create member record

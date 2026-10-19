@@ -9,6 +9,18 @@ import { ROLES, canManageAccess, type Role } from '@/lib/roles';
 // Authorisation is enforced here instead: caller must be super_admin or
 // director, and only a super_admin can grant or remove super_admin.
 
+async function findVerifiedLoginByEmail(db: ReturnType<typeof createAdminClient>, email: string): Promise<string | null> {
+  const target = email.trim().toLowerCase();
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) return null;
+    const hit = data.users.find(u => (u.email ?? '').toLowerCase() === target && u.email_confirmed_at);
+    if (hit) return hit.id;
+    if (data.users.length < 1000) return null;
+  }
+  return null;
+}
+
 const GRANTABLE = new Set<string>(Object.values(ROLES).filter(r => r !== ROLES.MEMBER));
 
 async function caller() {
@@ -61,8 +73,21 @@ export async function POST(request: Request) {
 
   const { data: member } = await c.db.from('members').select('id, name, email, auth_id').eq('id', memberId).maybeSingle();
   if (!member) return Response.json({ error: 'Member not found.' }, { status: 404 });
+  if (!member.auth_id && member.email) {
+    // Their member record may exist without being linked to the login they
+    // created (see app/auth/callback). Link it if a verified login with the
+    // same email exists and isn't attached to another member.
+    const authId = await findVerifiedLoginByEmail(c.db, member.email);
+    if (authId) {
+      const { data: taken } = await c.db.from('members').select('id').eq('auth_id', authId).maybeSingle();
+      if (!taken) {
+        await c.db.from('members').update({ auth_id: authId }).eq('id', member.id).is('auth_id', null);
+        member.auth_id = authId;
+      }
+    }
+  }
   if (!member.auth_id) {
-    return Response.json({ error: `${member.name} hasn't created a login yet — they need to sign up before they can be given access.` }, { status: 400 });
+    return Response.json({ error: `${member.name} hasn't created a login yet — they need to sign up at app.thesode.org with ${member.email ?? 'their email'} before they can be given access.` }, { status: 400 });
   }
 
   const { data: existing } = await c.db.from('user_roles').select('role').eq('user_id', member.auth_id);
