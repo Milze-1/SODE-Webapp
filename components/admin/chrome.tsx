@@ -187,8 +187,8 @@ export function KpiCard({ k, onClick }: { k: Kpi; onClick?: () => void }) {
         </div>
         <div style={{ marginTop: 22, textAlign: 'center', color: 'var(--muted)' }}>
           <Icon name="clock" size={22} />
-          <div style={{ fontSize: 13, fontWeight: 600, marginTop: 6 }}>Awaiting update</div>
-          <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 2 }}>Manual KPI · owner notified</div>
+          <div style={{ fontSize: 13, fontWeight: 600, marginTop: 6 }}>{k.manual ? 'Awaiting update' : 'No data yet'}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 2 }}>{k.manual ? 'Click to enter the latest figure' : k.asof}</div>
         </div>
       </div>
     );
