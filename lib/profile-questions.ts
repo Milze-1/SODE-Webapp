@@ -4,7 +4,7 @@
 // means.
 
 export const LIFE_STAGES = ['Student', 'Professional', 'Entrepreneur', 'Between roles', 'Other'];
-export const DEPTS = ['Ushering', 'Media', 'Choir', 'Welfare', 'Tech', 'Not yet'];
+// Departments are editable by admins — see lib/departments.ts (useDepartments)
 
 // Maps display labels → DB enum values (pgEnum life_stage)
 export const LIFE_STAGE_MAP: Record<string, string> = {

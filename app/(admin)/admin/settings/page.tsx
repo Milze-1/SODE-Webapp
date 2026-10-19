@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase';
 import { getCurrentCoords } from '@/lib/geo';
 import LocationAutocomplete from '@/components/admin/LocationAutocomplete';
 import { useGrowthCycle, loadGrowthCycle, cycleLabelMonth } from '@/lib/cycle';
+import DepartmentsEditor from '@/components/admin/DepartmentsEditor';
 
 const ADMIN_ROLES = [
   { value: 'super_admin', label: 'Super Admin' },
@@ -235,13 +236,10 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!memberSearch.trim()) { setMemberResults([]); return; }
     const timer = setTimeout(async () => {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from('members')
-        .select('id, name, email, auth_id')
-        .ilike('name', `%${memberSearch}%`)
-        .limit(8);
-      setMemberResults((data ?? []) as { id: string; name: string; email: string; auth_id: string }[]);
+      const res = await fetch(`/api/admin/roles?search=${encodeURIComponent(memberSearch.trim())}`).catch(() => null);
+      const json = res?.ok ? await res.json() as { members: { id: string; name: string; email: string; auth_id: string }[] } : { members: [] };
+      if (!res?.ok) showToast('Could not search members — try again.', 'error');
+      setMemberResults(json.members);
     }, 300);
     return () => clearTimeout(timer);
   }, [memberSearch]);
@@ -427,6 +425,8 @@ export default function SettingsPage() {
                   <ConnStatus on={integrations?.scheduler} />
                 </SettingRow>
               </Panel>
+
+              <DepartmentsEditor notify={(m, k) => showToast(m, k)} />
 
               <Panel title="Notification schedule" pad={false}>
                 <SettingRow icon="calendarclock" title="Sessions" sub="When created, 5pm the day before, and at start time (check-in opens)" />

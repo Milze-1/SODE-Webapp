@@ -23,9 +23,20 @@ async function caller() {
 }
 
 // List everyone with a back-office role, with their member record.
-export async function GET() {
+export async function GET(request: Request) {
   const c = await caller();
   if ('error' in c) return c.error;
+
+  // ?search=… → member picker for the grant form (server-side so the search
+  // isn't limited by browser read policies)
+  const search = new URL(request.url).searchParams.get('search')?.trim();
+  if (search) {
+    const q = search.replace(/[%,()]/g, ' ').slice(0, 60);
+    const { data } = await c.db.from('members').select('id, name, email, auth_id')
+      .or(`name.ilike.%${q}%,email.ilike.%${q}%`).order('name').limit(8);
+    return Response.json({ members: data ?? [] });
+  }
+
   const { data: roles } = await c.db.from('user_roles').select('user_id, role').neq('role', ROLES.MEMBER).order('role');
   const rows = (roles ?? []) as { user_id: string; role: string }[];
   const authIds = Array.from(new Set(rows.map(r => r.user_id)));

@@ -6,8 +6,9 @@ import { createClient, getAuthUser } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { Field, TextInput, OptionChips, StickyFooter } from '@/components/sode/ui';
 import PageLoader from '@/components/PageLoader';
+import { useDepartments } from '@/lib/departments';
 import {
-  LIFE_STAGES, DEPTS, LIFE_STAGE_MAP, LIFE_STAGE_LABEL, INDUSTRIES, CAREER_STAGES, STRENGTH_AREAS,
+  LIFE_STAGES, LIFE_STAGE_MAP, LIFE_STAGE_LABEL, INDUSTRIES, CAREER_STAGES, STRENGTH_AREAS,
   MOUNTAINS, LEADERSHIP_OPTIONS, BUSINESS_STATUSES, HAS_BUSINESS_STATUSES, BUSINESS_DETAIL_STATUSES,
   BUSINESS_INDUSTRIES, BUSINESS_EMPLOYEES, SUPPORT_OPTIONS, MOUNTAIN_TO_PILLAR, PROFILE_FIELDS,
 } from '@/lib/profile-questions';
@@ -25,6 +26,7 @@ const QuestionLabel = ({ title, hint }: { title: string; hint?: string }) => (
 );
 
 export default function CompleteProfilePage() {
+  const departments = useDepartments();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -91,7 +93,8 @@ export default function CompleteProfilePage() {
       if (Array.isArray(m.strength_area)) {
         setStrengthArea((m.strength_area as (string | null)[]).filter((x): x is string => !!x));
       }
-      if (Array.isArray(m.leadership_role)) setLeadershipRole(m.leadership_role);
+      // Older onboarding saved empty slots ([null]) — drop them
+      if (Array.isArray(m.leadership_role)) setLeadershipRole((m.leadership_role as (string | null)[]).filter((x): x is string => !!x));
       if (m.business_status) setBusinessStatus(m.business_status);
       if (m.business_industry) setBusinessIndustry(m.business_industry);
       if (m.business_description) setBusinessDescription(m.business_description);
@@ -114,7 +117,7 @@ export default function CompleteProfilePage() {
       career_stage: careerStage || null,
       strength_area: strengthArea.length > 0 ? strengthArea : null,
       leadership_role: leadershipRole.length > 0 ? leadershipRole : null,
-      is_leader: leadershipRole.some(r => r.toLowerCase().startsWith('yes')),
+      is_leader: leadershipRole.some(r => typeof r === 'string' && r.toLowerCase().startsWith('yes')),
     };
     const hasDetails = BUSINESS_DETAIL_STATUSES.includes(businessStatus ?? '');
     return {
@@ -243,7 +246,7 @@ export default function CompleteProfilePage() {
 
             <div style={sectionGap}>
               <QuestionLabel title="Department / serving" />
-              <OptionChips options={DEPTS} value={dept ?? ''} onChange={v => setDept(v as string)} allowOther otherPlaceholder="Where do you serve?" />
+              <OptionChips options={departments} value={dept ?? ''} onChange={v => setDept(v as string)} allowOther otherPlaceholder="Where do you serve?" />
             </div>
 
             <div style={sectionGap}>
