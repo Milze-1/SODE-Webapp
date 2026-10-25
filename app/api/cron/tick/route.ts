@@ -16,6 +16,6 @@ export async function GET(request: Request) {
   }
 
   const result = await runAllScheduledJobs();
-  if (result.sessions.length || result.devotion || result.goals) console.log('[cron/tick]', JSON.stringify(result));
+  if (result.sessions.length || result.devotion || result.goals || result.points) console.log('[cron/tick]', JSON.stringify(result));
   return Response.json(result);
 }

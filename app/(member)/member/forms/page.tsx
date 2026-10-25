@@ -46,11 +46,13 @@ function WinFlow({ memberId, onClose, onToast }: { memberId: string; onClose: ()
       const supabase = createClient();
       const { data: newWin } = await supabase
         .from('wins')
-        .insert({ member_id: memberId, pillar: winPillar, win_type: type, description: desc, points_earned: 5 })
+        .insert({ member_id: memberId, pillar: winPillar, win_type: type, description: desc, points_earned: 0 })
         .select('id').single();
       const awarded = newWin ? await awardPoints(memberId, 'win_submitted', 'wins', newWin.id) : 0;
+      // record what was really earned (0 once the daily cap is reached)
+      if (newWin && awarded) await supabase.from('wins').update({ points_earned: awarded }).eq('id', newWin.id);
       onClose();
-      onToast({ msg: 'Logged. Well done.', points: awarded || 5 });
+      onToast({ msg: 'Logged. Well done.', points: awarded || undefined });
     } catch {
       onToast({ msg: 'Could not save — try again.' });
     } finally { setBusy(false); }

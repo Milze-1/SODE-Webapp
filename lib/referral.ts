@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { sendEmail } from '@/lib/email';
+import { syncMemberPoints } from '@/lib/points-sync';
 
 const getAdminClient = () =>
   createClient(
@@ -54,35 +55,7 @@ async function awardPointsToMember(
     return 0;
   }
 
-  const { data: member } = await db.from('members').select('points').eq('id', memberId).single();
-  await db
-    .from('members')
-    .update({ points: (member?.points || 0) + rule.points })
-    .eq('id', memberId);
-
-  const { data: balance } = await db
-    .from('user_points_balance')
-    .select('total_points, this_month_points')
-    .eq('member_id', memberId)
-    .maybeSingle();
-
-  if (balance) {
-    await db
-      .from('user_points_balance')
-      .update({
-        total_points: (balance.total_points || 0) + rule.points,
-        this_month_points: (balance.this_month_points || 0) + rule.points,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('member_id', memberId);
-  } else {
-    await db.from('user_points_balance').insert({
-      member_id: memberId,
-      total_points: rule.points,
-      this_month_points: rule.points,
-      updated_at: new Date().toISOString(),
-    });
-  }
+  await syncMemberPoints(db as never, memberId).catch(e => console.error('[Referral] points sync failed:', (e as Error).message));
 
   console.log('[Referral] Awarded', rule.points, 'pts for', ruleKey, 'to member', memberId);
   return rule.points as number;
@@ -237,23 +210,8 @@ export async function processReferralOnRegister(
       return;
     }
 
-    // Update members.points
-    const { data: inviterRow } = await db.from('members').select('points').eq('id', inviterId).single();
-    await db.from('members').update({ points: (inviterRow?.points || 0) + pts }).eq('id', inviterId);
-
-    // Upsert balance (read current so we increment correctly)
-    const { data: balance } = await db
-      .from('user_points_balance')
-      .select('total_points, this_month_points')
-      .eq('member_id', inviterId)
-      .maybeSingle();
-
-    await db.from('user_points_balance').upsert({
-      member_id: inviterId,
-      total_points: (balance?.total_points ?? 0) + pts,
-      this_month_points: (balance?.this_month_points ?? 0) + pts,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'member_id' });
+    // Totals are recomputed from the ledger (lib/points-sync.ts)
+    await syncMemberPoints(db as never, inviterId).catch(e => console.error('[referral] points sync failed:', (e as Error).message));
 
     console.log('[referral] Awarded', pts, 'pts for referral_joined to inviter', inviterId);
 

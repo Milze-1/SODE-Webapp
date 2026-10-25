@@ -165,16 +165,18 @@ function WinFlow({ memberId, onClose, onPoints, onToast, onCelebrate, onAdded }:
       const supabase = createClient();
       const { data: newWin, error } = await supabase
         .from('wins')
-        .insert({ member_id: memberId, pillar, win_type: type, description: desc, points_earned: 5 })
+        .insert({ member_id: memberId, pillar, win_type: type, description: desc, points_earned: 0 })
         .select('id,created_at')
         .single();
       if (error) throw error;
       const awarded = await awardPoints(memberId, 'win_submitted', 'wins', newWin.id);
-      onAdded({ id: newWin.id, pillar, win_type: type, description: desc, created_at: newWin.created_at, points_earned: awarded || 5 });
-      onPoints(awarded || 5);
+      // record what was really earned (0 once the daily cap is reached)
+      if (awarded) await supabase.from('wins').update({ points_earned: awarded }).eq('id', newWin.id);
+      onAdded({ id: newWin.id, pillar, win_type: type, description: desc, created_at: newWin.created_at, points_earned: awarded });
+      if (awarded) onPoints(awarded);
       onClose();
-      onToast({ msg: 'Logged. Well done.', points: 5 });
-      setTimeout(() => onCelebrate({ title: 'Logged. Well done.', sub: 'Your win is shared with the room — small seeds, real harvest.', points: 5 }), 350);
+      onToast({ msg: 'Logged. Well done.', points: awarded || undefined });
+      setTimeout(() => onCelebrate({ title: 'Logged. Well done.', sub: 'Your win is shared with the room — small seeds, real harvest.', points: awarded || undefined }), 350);
     } catch {
       onToast({ msg: 'Could not save — try again.' });
     } finally {
@@ -285,9 +287,9 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
       const supabase = createClient();
       await supabase.from('goals').update({ current: live.current, updated_at: new Date().toISOString() }).eq('id', live.id);
       const awarded = await awardPoints(memberId, 'goal_progress', 'goals', live.id);
-      onPoints(awarded || 2);
+      if (awarded) onPoints(awarded);
       onClose();
-      onToast({ msg: `Progress saved${awarded ? ` · +${awarded} pts` : ''}`, icon: 'check', points: awarded || 2 });
+      onToast({ msg: `Progress saved${awarded ? ` · +${awarded} pts` : ''}`, icon: 'check', points: awarded || undefined });
     } catch {
       onToast({ msg: 'Could not save — try again.' });
     }
@@ -299,10 +301,10 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
       await supabase.from('goals').update({ current: live.target, status: 'done', updated_at: new Date().toISOString() }).eq('id', live.id);
       const awarded = await awardPoints(memberId, 'goal_completed', 'goals', live.id);
       onGoalsChange(goals.map(g => g.id === live.id ? { ...g, current: g.target, status: 'done' } : g));
-      onPoints(awarded || 20);
+      if (awarded) onPoints(awarded);
       onClose();
       setTimeout(() => onCelebrate({
-        title: 'Goal complete!', sub: p.verse, points: 20,
+        title: 'Goal complete!', sub: p.verse, points: awarded || undefined,
         secondary: { label: 'Share it as a win', icon: 'sparkles', onClick: onOpenWin },
       }), 350);
     } catch {
@@ -513,13 +515,14 @@ export default function HomePage() {
 
       // RT3: queries that genuinely need memberRow.id or memberRow.points
       const [rankRes, pairingRes, devotionPlanRes, devotionJournalRes] = await Promise.all([
-        supabase.from('members').select('id', { count: 'exact', head: true }).gt('points', memberRow.points ?? 0),
+        // Same ranking as the leaderboard's "This Month" tab
+        fetch('/api/leaderboard?period=month').then(r => (r.ok ? r.json() : null)).catch(() => null) as Promise<{ me: { rank: number } | null } | null>,
         supabase.from('mentor_pairings').select('id,mentor:mentor_id(id,name,pillar)').eq('mentee_id', memberRow.id).eq('status', 'active').maybeSingle(),
         supabase.from('bible_reading_plans').select('start_date,chapters_per_day,testament').eq('member_id', memberRow.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
         supabase.from('devotion_journal').select('checklist').eq('member_id', memberRow.id).eq('entry_date', today).maybeSingle(),
       ]);
 
-      const computedRank = (rankRes.count ?? 0) + 1;
+      const computedRank = rankRes?.me?.rank ?? 0;
       setRank(computedRank);
       const computedPairing = (pairingRes.data ?? null) as unknown as PairingRow | null;
       setPairing(computedPairing);
@@ -664,7 +667,7 @@ export default function HomePage() {
                 <Icon name="trophy" size={20} stroke={2.1} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>You&apos;re #{rank} this month</div>
+                <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap' }}>{rank ? <>You&apos;re #{rank} this month</> : 'Earn points to rank this month'}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--muted)', marginTop: 2 }}>Keep climbing</div>
               </div>
               <Icon name="chevronright" size={20} color="var(--faint)" />
@@ -885,7 +888,7 @@ export default function HomePage() {
                 <Icon name="trophy" size={24} stroke={2} />
               </div>
               <div>
-                <div className="tnum" style={{ fontSize: 20, fontWeight: 800 }}>#{rank}</div>
+                <div className="tnum" style={{ fontSize: 20, fontWeight: 800 }}>{rank ? `#${rank}` : '—'}</div>
                 <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>Keep climbing</div>
               </div>
             </button>

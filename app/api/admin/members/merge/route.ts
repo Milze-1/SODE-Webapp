@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase-server';
+import { syncMemberPoints } from '@/lib/points-sync';
 
 // Merge a duplicate member account into the one the person actually uses.
 //
@@ -113,22 +114,9 @@ export async function POST(request: Request) {
       if (r.moved || r.dropped) report[`${t}.${c}`] = r;
     }
 
-    // 2. Points balance (one row per member): add together
-    const { data: balances } = await db.from('user_points_balance').select('*').in('member_id', [keepId, dropId]);
-    const kb = (balances ?? []).find(b => b.member_id === keepId);
-    const dbal = (balances ?? []).find(b => b.member_id === dropId);
-    if (dbal) {
-      if (kb) {
-        await db.from('user_points_balance').update({
-          total_points: (kb.total_points ?? 0) + (dbal.total_points ?? 0),
-          this_month_points: (kb.this_month_points ?? 0) + (dbal.this_month_points ?? 0),
-          updated_at: new Date().toISOString(),
-        }).eq('member_id', keepId);
-        await db.from('user_points_balance').delete().eq('member_id', dropId);
-      } else {
-        await db.from('user_points_balance').update({ member_id: keepId }).eq('member_id', dropId);
-      }
-    }
+    // 2. Points: drop the duplicate's cached balance; the kept member's totals
+    // are recomputed from the (now merged) ledger after step 6
+    await db.from('user_points_balance').delete().eq('member_id', dropId);
 
     // 3. Privacy prefs (one row per member): keep the kept account's
     const { data: prefs } = await db.from('user_privacy_prefs').select('member_id').in('member_id', [keepId, dropId]);
@@ -139,7 +127,6 @@ export async function POST(request: Request) {
 
     // 4. Member record: fill gaps, combine points and flags
     const patch: Record<string, unknown> = {
-      points: Number(keep.points ?? 0) + Number(drop.points ?? 0),
       onboarding_complete: !!(keep.onboarding_complete || drop.onboarding_complete),
       profile_complete: !!(keep.profile_complete || drop.profile_complete),
       is_mentor: !!(keep.is_mentor || drop.is_mentor),
@@ -171,6 +158,8 @@ export async function POST(request: Request) {
       loginRemoved = !error;
       if (error) console.error('[members/merge] login delete failed:', error.message);
     }
+
+    await syncMemberPoints(db, keepId);
 
     await db.from('audit_log').insert({
       actor_id: user.id, action: 'member_merge', target_table: 'members', target_id: keepId,

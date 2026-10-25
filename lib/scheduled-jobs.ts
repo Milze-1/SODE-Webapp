@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase-server';
 import { notifyAllMembers, notifyMembers } from '@/lib/notify-server';
 import { claimRun } from '@/lib/job-runs';
 import { lagosClock, hmToMinutes, type LagosClock } from '@/lib/lagos-time';
+import { reconcileAllPoints } from '@/lib/points-sync';
 
 // Time-based notification jobs, run by /api/cron/tick every minute.
 // Every job claims a (job, key) in job_runs before sending, so each send
@@ -125,12 +126,23 @@ export async function runGoalReminders(clock: LagosClock): Promise<number> {
   return sent;
 }
 
+// ── Points: nightly self-repair at 00:05 ────────────────────────────────────
+// Recomputes every member's totals and "this month" from the points ledger,
+// so the monthly figure resets just after midnight on the 1st and any drift
+// is corrected within a day.
+export async function runPointsReconcile(clock: LagosClock): Promise<{ members: number; corrected: number } | null> {
+  if (!inWindow(clock, 5)) return null;
+  if (!(await claimRun('points_reconcile', clock.date))) return null;
+  return reconcileAllPoints();
+}
+
 export async function runAllScheduledJobs(now = new Date()) {
   const clock = lagosClock(now);
-  const [sessions, devotion, goals] = await Promise.all([
+  const [sessions, devotion, goals, points] = await Promise.all([
     runSessionStart(now).catch(e => { console.error('[tick] sessions failed:', e); return []; }),
     runDevotion(clock).catch(e => { console.error('[tick] devotion failed:', e); return null; }),
     runGoalReminders(clock).catch(e => { console.error('[tick] goals failed:', e); return 0; }),
+    runPointsReconcile(clock).catch(e => { console.error('[tick] points reconcile failed:', e); return null; }),
   ]);
-  return { lagos: `${clock.date} ${String(Math.floor(clock.minutes / 60)).padStart(2, '0')}:${String(clock.minutes % 60).padStart(2, '0')}`, sessions, devotion, goals };
+  return { lagos: `${clock.date} ${String(Math.floor(clock.minutes / 60)).padStart(2, '0')}:${String(clock.minutes % 60).padStart(2, '0')}`, sessions, devotion, goals, points };
 }

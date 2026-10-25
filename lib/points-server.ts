@@ -1,4 +1,5 @@
 import { createClient, createAdminClient } from '@/lib/supabase-server';
+import { syncMemberPoints } from '@/lib/points-sync';
 import { DEFAULT_CYCLE } from '@/lib/cycle-shared';
 
 // Default values for rules to ensure absolute robustness even if db rule is missing
@@ -218,32 +219,10 @@ export async function awardPointsServer(params: {
     return { error: insertError.message, status: 500 };
   }
 
-  // 9. Update members.points
-  const newPoints = (memberRow.points ?? 0) + pts;
-  await db.from('members').update({ points: newPoints }).eq('id', memberRow.id);
+  // 9–10. Recompute members.points and user_points_balance from the event
+  // ledger (never increment — see lib/points-sync.ts)
+  await syncMemberPoints(db, memberRow.id).catch(e => console.error('[awardPointsServer] sync failed:', (e as Error).message));
 
-  // 10. Sync user_points_balance
-  const { data: bal } = await db
-    .from('user_points_balance')
-    .select('this_month_points')
-    .eq('member_id', memberRow.id)
-    .maybeSingle();
-
-  const now = new Date().toISOString();
-  if (bal) {
-    await db.from('user_points_balance').update({
-      total_points:      newPoints,
-      this_month_points: (bal.this_month_points ?? 0) + pts,
-      updated_at:        now,
-    }).eq('member_id', memberRow.id);
-  } else {
-    await db.from('user_points_balance').insert({
-      member_id:         memberRow.id,
-      total_points:      newPoints,
-      this_month_points: pts,
-      updated_at:        now,
-    });
-  }
   // 11. Trigger referral milestone checks if this is an attendance check-in
   if (ruleKey === 'attendance_present') {
     try {

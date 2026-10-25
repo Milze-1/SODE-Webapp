@@ -420,9 +420,9 @@ function GoalDetail({ goal, goals, memberId, onGoalsChange, onClose, onPoints, o
     const { newStatus } = await syncGoalProgress(updated);
     if (newStatus === 'done') {
       const goalAwarded = await awardPoints(memberId, 'goal_completed', 'goals', live.id);
-      onPoints(goalAwarded || 20);
+      if (goalAwarded) onPoints(goalAwarded);
       onClose();
-      setTimeout(() => onCelebrate({ title: 'Goal complete!', sub: p.verse, points: goalAwarded || 20 }), 350);
+      setTimeout(() => onCelebrate({ title: 'Goal complete!', sub: p.verse, points: goalAwarded || undefined }), 350);
     }
   };
 
@@ -830,8 +830,8 @@ function CommunityGoalDetail({ goal, memberId, onUpdate, onCelebrate, onPoints, 
     const { isDone } = await syncProgress(updated);
     if (isDone) {
       const goalAwarded = await awardPoints(memberId, 'community_goal_completed', 'member_community_goals', goal.mcg_id);
-      onPoints(goalAwarded || 30);
-      onCelebrate({ title: 'Community goal complete!', sub: `You finished "${goal.title}" for the community.`, points: goalAwarded || 30 });
+      if (goalAwarded) onPoints(goalAwarded);
+      onCelebrate({ title: 'Community goal complete!', sub: `You finished "${goal.title}" for the community.`, points: goalAwarded || undefined });
     }
   };
 

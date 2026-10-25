@@ -31,7 +31,7 @@ export default function PointsPage() {
   const [tab, setTab] = useState<'log' | 'rules' | 'referrals'>('log');
   const [editRule, setEditRule] = useState<RuleRow | null>(null);
   const [savingRule, setSavingRule] = useState(false);
-  const [leaderId, setLeaderId] = useState<string | null>(null);
+  const [, setLeaderId] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const memberRef = useRef<HTMLSelectElement>(null);
   const pointsRef = useRef<HTMLInputElement>(null);
@@ -48,7 +48,7 @@ export default function PointsPage() {
         const { data: { user } } = await supabase.auth.getUser();
         const [rulesRes, logRes, membersRes, leaderRes, settingsRes] = await Promise.all([
           supabase.from('point_rules').select('id,rule_key,label,points,description,is_active,cap_period,cap,requires_verification').order('points', { ascending: false }),
-          supabase.from('points_log').select('id,delta,reason,created_at,members:member_id(name)').order('created_at', { ascending: false }).limit(100),
+          fetch('/api/admin/points').then(r => (r.ok ? r.json() : { log: [] })).then(j => ({ data: j.log })).catch(() => ({ data: [] })),
           supabase.from('members').select('id,name').eq('onboarding_complete', true).order('name'),
           user ? supabase.from('members').select('id').eq('auth_id', user.id).maybeSingle() : Promise.resolve({ data: null }),
           supabase.from('leaderboard_settings').select('visibility').maybeSingle(),
@@ -96,10 +96,12 @@ export default function PointsPage() {
     if (!memberId || !pts || !reason) return;
     setAwarding(true);
     try {
-      const supabase = createClient();
-      await supabase.from('points_log').insert({ member_id: memberId, delta: pts, reason, created_by: leaderId });
-      const { data: memberRow } = await supabase.from('members').select('points').eq('id', memberId).single();
-      if (memberRow) await supabase.from('members').update({ points: ((memberRow as { points?: number }).points ?? 0) + pts }).eq('id', memberId);
+      // Recorded in the points ledger so totals, leaderboard and reports agree
+      const res = await fetch('/api/admin/points', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId, points: pts, reason }),
+      });
+      if (!res.ok) throw new Error();
       const memberName = memberOptions.find(m => m.id === memberId)?.name ?? '?';
       setLog(ls => [{ id: Date.now().toString(), delta: pts, reason, created_at: new Date().toISOString(), members: { name: memberName } }, ...ls]);
       setShowAward(false);

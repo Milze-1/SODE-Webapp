@@ -85,7 +85,7 @@ export default function GrowthPage() {
 
   // Reset leaderboard
   const [showReset, setShowReset] = useState(false);
-  const [resetInput, setResetInput] = useState('');
+  const [, setResetInput] = useState('');
   const [resetting, setResetting] = useState(false);
 
   const [toast, setToast] = useState<ToastData | null>(null);
@@ -278,35 +278,18 @@ export default function GrowthPage() {
     setShowEdit(null);
   };
 
+  // Monthly points now reset automatically (computed from the points ledger,
+  // recalculated nightly — lib/points-sync.ts). This recalculates everyone now.
   const handleReset = async () => {
-    if (resetInput !== 'RESET') return;
     setResetting(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const { data: adminMember } = await supabase.from('members').select('name').eq('auth_id', user?.id ?? '').maybeSingle();
-    const adminName = adminMember?.name ?? user?.email ?? 'Admin';
-
-    await supabase.from('user_points_balance').update({ this_month_points: 0 }).neq('member_id', '00000000-0000-0000-0000-000000000000');
-
-    const { data: allUsers } = await supabase.from('user_points_balance').select('member_id');
-    if (allUsers?.length) {
-      try {
-        await supabase.from('point_events').insert(
-          allUsers.map(u => ({
-            member_id: u.member_id,
-            rule_key: 'leaderboard_reset',
-            points: 0,
-            note: `Manual reset by ${adminName} on ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
-          })),
-        );
-      } catch { /* audit insert is non-critical */ }
-    }
-
+    const res = await fetch('/api/admin/points', { method: 'PUT' }).catch(() => null);
+    const json = res ? await res.json().catch(() => ({})) as { corrected?: number; error?: string } : {};
     setResetting(false);
     setShowReset(false);
     setResetInput('');
     loadMemberPoints();
-    showToast('Leaderboard reset ✓ All period points set to zero.', 'check');
+    if (!res?.ok) showToast(json.error ?? 'Could not recalculate — try again.', 'x');
+    else showToast(`Points recalculated ✓ ${json.corrected ?? 0} member total${json.corrected === 1 ? '' : 's'} corrected.`, 'check');
   };
 
   const joinRate = funnel[1]?.v && funnel[0]?.v ? Math.round((funnel[1].v / funnel[0].v) * 100) : 0;
@@ -333,9 +316,9 @@ export default function GrowthPage() {
             <button
               onClick={() => setShowReset(true)}
               className="btn btn-sm"
-              style={{ border: '1.5px solid #c53030', color: '#c53030', background: 'transparent', fontWeight: 700 }}
+              style={{ border: '1.5px solid var(--line-2)', color: 'var(--ink)', background: 'transparent', fontWeight: 700 }}
             >
-              <Icon name="refresh" size={15} color="#c53030" /> Reset leaderboard
+              <Icon name="refresh" size={15} /> Recalculate points
             </button>
             <button onClick={saveEdit} disabled={!showEdit || saving} className="btn btn-primary btn-sm">
               <Icon name="check" size={16} color="#fff" /> Save rules
@@ -770,33 +753,24 @@ export default function GrowthPage() {
               <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon name="info" size={18} color="#c53030" />
               </div>
-              <div style={{ fontSize: 17, fontWeight: 800 }}>Reset leaderboard?</div>
+              <div style={{ fontSize: 17, fontWeight: 800 }}>Recalculate points?</div>
             </div>
             <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 6 }}>
-              This will set <strong>all member points to zero</strong> for the current period.
-              Historical point events are kept for audit purposes.
-            </p>
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 18 }}>
-              All-time points are <strong>not affected</strong> — only current period points reset.
+              Rebuilds every member&apos;s total and &ldquo;this month&rdquo; points from their points history.
+              Nothing is deleted. Monthly points already reset automatically at the start of each month,
+              and this also runs every night.
             </p>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-2)', display: 'block', marginBottom: 7 }}>Type &quot;RESET&quot; to confirm</label>
-              <input
-                value={resetInput}
-                onChange={e => setResetInput(e.target.value)}
-                placeholder="RESET"
-                className="input"
-                style={{ width: '100%', letterSpacing: '.08em', fontWeight: 700, fontFamily: 'monospace' }}
-              />
+
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => { setShowReset(false); setResetInput(''); }} className="btn btn-ghost" style={{ flex: 1 }}>Cancel</button>
               <button
                 onClick={handleReset}
-                disabled={resetInput !== 'RESET' || resetting}
-                style={{ flex: 1, height: 42, borderRadius: 10, background: resetInput === 'RESET' ? '#c53030' : 'var(--surface-2)', color: resetInput === 'RESET' ? '#fff' : 'var(--muted)', fontWeight: 700, border: 'none', cursor: resetInput === 'RESET' ? 'pointer' : 'not-allowed', fontSize: 14 }}
+                disabled={resetting}
+                className="btn btn-primary" style={{ flex: 1 }}
               >
-                {resetting ? 'Resetting…' : 'Reset leaderboard'}
+                {resetting ? 'Recalculating…' : 'Recalculate'}
               </button>
             </div>
           </div>

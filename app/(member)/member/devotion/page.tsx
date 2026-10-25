@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient, getAuthUser } from '@/lib/supabase';
 import { awardPoints } from '@/lib/points';
+import { usePointRules } from '@/lib/point-rules';
 import { Icon } from '@/components/sode/icons';
 import BottomNav from '@/components/member/bottom-nav';
 
@@ -148,6 +149,7 @@ function StreakCalendar({ checkins }: { checkins: { checkin_date: string; comple
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DevotionPage() {
+  const pointRules = usePointRules();
   const router = useRouter();
 
   const [loading, setLoading]             = useState(true);
@@ -178,6 +180,10 @@ export default function DevotionPage() {
   const checkedCount = allItems.filter(it => checklist[it.key]).length;
   const allChecked  = checkedCount === allItems.length;
   const canComplete = checkedCount >= 3;
+  // What completing is actually worth, from the live points rules
+  const devotionPts = pointRules
+    ? (pointRules.devotion_checkin ?? 0) + (allChecked ? pointRules.devotion_full_day ?? 0 : 0)
+    : 0;
   const alreadyDone = checkin?.completed ?? false;
 
   const showToast = (msg: string) => {
@@ -529,7 +535,7 @@ export default function DevotionPage() {
             {completing
               ? 'Completing…'
               : canComplete
-                ? `Complete devotion · +${allChecked ? 15 : 5} pts`
+                ? (devotionPts ? `Complete devotion · +${devotionPts} pts` : 'Complete devotion')
                 : 'Complete devotion (3 items required)'
             }
           </button>
