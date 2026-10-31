@@ -49,8 +49,11 @@ export async function resolveAudienceMembers(
   supabase: SupabaseClient,
   audience: FormAudience,
 ): Promise<{ id: string; name: string; whatsapp: string }[]> {
+  // WhatsApp broadcasts only go to members who opted in (Settings →
+  // WhatsApp alerts / consent_contact); replying STOP turns it off.
   let q = supabase.from('members').select('id, name, whatsapp')
     .eq('onboarding_complete', true)
+    .eq('consent_contact', true)
     .not('whatsapp', 'is', null);
 
   if (audience.type === 'pillar') {

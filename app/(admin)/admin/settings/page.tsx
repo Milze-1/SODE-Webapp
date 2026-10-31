@@ -415,7 +415,7 @@ export default function SettingsPage() {
                 <SettingRow icon="mail" title="Email (Resend)" sub="Reminders, form and session emails">
                   <ConnStatus on={integrations?.email} />
                 </SettingRow>
-                <SettingRow icon="message" title="WhatsApp / SMS (Termii)" sub="Group messages and milestone nudges">
+                <SettingRow icon="message" title="WhatsApp (OpenWA)" sub="Broadcasts from Messages and milestone nudges">
                   <ConnStatus on={integrations?.whatsapp} />
                 </SettingRow>
                 <SettingRow icon="bell" title="Push notifications" sub="Phone and browser notifications">

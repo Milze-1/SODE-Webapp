@@ -1,36 +1,64 @@
-import { createClient, createAdminClient } from '@/lib/supabase-server';
-import { getUserRoles, hasAdminAccess } from '@/lib/roles';
+import { requireAdmin } from '@/lib/admin-auth';
 import { resolveAudienceMembers, type FormAudience } from '@/lib/forms-audience';
-import { sendBulkWhatsApp, personalizeMessage } from '@/lib/whatsapp';
+import { personalizeMessage, whatsappProvider, OPT_OUT_FOOTER } from '@/lib/whatsapp';
+import { enqueueWhatsApp, cancelBroadcast } from '@/lib/whatsapp-queue';
 
+// Queue a WhatsApp broadcast. Sending happens a few messages per minute via
+// /api/cron/tick (lib/whatsapp-queue.ts), so any audience size works and the
+// pace stays human. Only members who opted in to WhatsApp are included.
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const a = await requireAdmin();
+  if (!a.ok) return a.response;
 
-  const roles = await getUserRoles(user.id);
-  if (!hasAdminAccess(roles)) return Response.json({ error: 'Admin access required' }, { status: 403 });
-
-  const { message, audience } = await request.json() as { message?: string; audience?: FormAudience };
+  const { message, audience } = await request.json().catch(() => ({})) as { message?: string; audience?: FormAudience };
   if (!message?.trim()) return Response.json({ error: 'Message is required' }, { status: 400 });
+  if (message.length > 3800) return Response.json({ error: 'Message is too long (max 3,800 characters).' }, { status: 400 });
   if (!audience) return Response.json({ error: 'Audience is required' }, { status: 400 });
+  if (!whatsappProvider()) return Response.json({ error: 'WhatsApp is not set up yet — connect it first.' }, { status: 400 });
 
-  const db = createAdminClient();
-  const members = await resolveAudienceMembers(db, audience);
+  const members = await resolveAudienceMembers(a.db, audience);
   if (members.length === 0) {
-    return Response.json({ error: 'No members with a WhatsApp number match this audience' }, { status: 400 });
+    return Response.json({ error: 'No members in this audience have a WhatsApp number and WhatsApp alerts switched on.' }, { status: 400 });
   }
 
-  const { sent, failed } = await sendBulkWhatsApp(members, m => personalizeMessage(message, m));
-
-  await db.from('group_messages').insert({
-    sender_id: user.id,
+  const { data: gm, error } = await a.db.from('group_messages').insert({
+    sender_id: a.userId,
     body: message,
     audience,
+    channel: 'whatsapp',
     recipient_count: members.length,
-    sent_count: sent,
-    failed_count: failed,
-  });
+    sent_count: 0,
+    failed_count: 0,
+    pending_count: members.length,
+  }).select('id').single();
+  if (error) return Response.json({ error: error.message }, { status: 500 });
 
-  return Response.json({ ok: true, recipientCount: members.length, sent, failed });
+  const queued = await enqueueWhatsApp(a.db, gm.id, members.map(m => ({
+    memberId: m.id,
+    phone: m.whatsapp,
+    body: personalizeMessage(message.trim(), m) + OPT_OUT_FOOTER,
+  })));
+  if (queued !== members.length) {
+    await a.db.from('group_messages').update({ recipient_count: queued, pending_count: queued }).eq('id', gm.id);
+  }
+
+  const perMinute = Math.max(1, Math.min(10, Number(process.env.WHATSAPP_PER_MINUTE) || 4));
+  return Response.json({ ok: true, id: gm.id, queued, skipped: members.length - queued, minutes: Math.ceil(queued / perMinute) });
+}
+
+// Recent broadcasts with live progress
+export async function GET() {
+  const a = await requireAdmin();
+  if (!a.ok) return a.response;
+  const { data } = await a.db.from('group_messages').select('*').order('created_at', { ascending: false }).limit(20);
+  return Response.json({ history: data ?? [] });
+}
+
+// Stop the rest of a broadcast: { id }
+export async function DELETE(request: Request) {
+  const a = await requireAdmin();
+  if (!a.ok) return a.response;
+  const { id } = await request.json().catch(() => ({})) as { id?: string };
+  if (!id) return Response.json({ error: 'id required' }, { status: 400 });
+  return Response.json({ ok: true, cancelled: await cancelBroadcast(a.db, id) });
 }

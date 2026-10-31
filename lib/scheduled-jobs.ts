@@ -3,6 +3,7 @@ import { notifyAllMembers, notifyMembers } from '@/lib/notify-server';
 import { claimRun } from '@/lib/job-runs';
 import { lagosClock, hmToMinutes, type LagosClock } from '@/lib/lagos-time';
 import { reconcileAllPoints } from '@/lib/points-sync';
+import { processWhatsAppQueue } from '@/lib/whatsapp-queue';
 
 // Time-based notification jobs, run by /api/cron/tick every minute.
 // Every job claims a (job, key) in job_runs before sending, so each send
@@ -138,11 +139,13 @@ export async function runPointsReconcile(clock: LagosClock): Promise<{ members: 
 
 export async function runAllScheduledJobs(now = new Date()) {
   const clock = lagosClock(now);
-  const [sessions, devotion, goals, points] = await Promise.all([
+  const [sessions, devotion, goals, points, whatsapp] = await Promise.all([
     runSessionStart(now).catch(e => { console.error('[tick] sessions failed:', e); return []; }),
     runDevotion(clock).catch(e => { console.error('[tick] devotion failed:', e); return null; }),
     runGoalReminders(clock).catch(e => { console.error('[tick] goals failed:', e); return 0; }),
     runPointsReconcile(clock).catch(e => { console.error('[tick] points reconcile failed:', e); return null; }),
+    // WhatsApp queue — a few paced sends per minute
+    processWhatsAppQueue().catch(e => { console.error('[tick] whatsapp queue failed:', e); return null; }),
   ]);
-  return { lagos: `${clock.date} ${String(Math.floor(clock.minutes / 60)).padStart(2, '0')}:${String(clock.minutes % 60).padStart(2, '0')}`, sessions, devotion, goals, points };
+  return { lagos: `${clock.date} ${String(Math.floor(clock.minutes / 60)).padStart(2, '0')}:${String(clock.minutes % 60).padStart(2, '0')}`, sessions, devotion, goals, points, whatsapp };
 }

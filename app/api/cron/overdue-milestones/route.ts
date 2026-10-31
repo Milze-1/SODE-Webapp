@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendEmail, emailWrapper, ctaButton } from '@/lib/email';
-import { sendWhatsApp } from '@/lib/whatsapp';
+import { OPT_OUT_FOOTER } from '@/lib/whatsapp';
+import { enqueueWhatsApp } from '@/lib/whatsapp-queue';
 import { notifyMembers } from '@/lib/notify-server';
 import { emailRecipientSet } from '@/lib/notification-prefs-server';
 
@@ -93,11 +94,17 @@ export async function GET(request: Request) {
       url: '/member/goals',
     }).catch(e => console.error('[cron/overdue-milestones] notify error (non-fatal):', e));
 
+    // WhatsApp only for members who opted in; queued so it's paced with
+    // everything else sent from the linked number (lib/whatsapp-queue.ts)
     if (member.whatsapp) {
-      await sendWhatsApp(
-        member.whatsapp,
-        `Hi ${member.name}! ⚠️\n\nYour SODE goal milestone is overdue:\n"${milestone.title}"\n\nGoal: ${milestone.goal_title}\nWas due: ${milestone.deadline}\n\nUpdate it here: ${appUrl}/member/goals`,
-      );
+      const { data: c } = await db.from('members').select('consent_contact').eq('id', member.id).maybeSingle();
+      if (c?.consent_contact) {
+        await enqueueWhatsApp(db, null, [{
+          memberId: member.id,
+          phone: member.whatsapp,
+          body: `Hi ${member.name}! ⚠️\n\nYour SODE goal milestone is overdue:\n"${milestone.title}"\n\nGoal: ${milestone.goal_title}\nWas due: ${milestone.deadline}\n\nUpdate it here: ${appUrl}/member/goals` + OPT_OUT_FOOTER,
+        }]).catch(e => console.error('[cron/overdue-milestones] whatsapp enqueue failed:', (e as Error).message));
+      }
     }
 
     // Admin notification

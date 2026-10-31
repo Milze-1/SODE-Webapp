@@ -1,0 +1,5 @@
+# HTTPS for the OpenWA gateway (certificates are automatic).
+# Change the domain to the subdomain you pointed at this server.
+wa.thesode.org {
+	reverse_proxy 127.0.0.1:2785
+}

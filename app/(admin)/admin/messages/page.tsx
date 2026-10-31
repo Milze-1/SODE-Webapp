@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
 import { TextInput, Field } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Panel, THead, TRow, Skeleton } from '@/components/admin/chrome';
+import WhatsAppConnection from '@/components/admin/WhatsAppConnection';
 import { summarizeAudience, PILLAR_OPTIONS, LIFE_STAGE_OPTIONS, type FormAudience } from '@/lib/forms-audience';
 
 interface CellOption { id: string; name: string; }
@@ -16,11 +17,12 @@ interface MessageRow {
   recipient_count: number;
   sent_count: number;
   failed_count: number;
+  pending_count?: number;
   created_at: string;
 }
 
 const AUDIENCE_TYPES: { key: FormAudience['type']; label: string; desc: string }[] = [
-  { key: 'everyone', label: 'Everyone', desc: 'All members with a WhatsApp number on file' },
+  { key: 'everyone', label: 'Everyone', desc: 'All members with a WhatsApp number who allow WhatsApp messages' },
   { key: 'pillar', label: 'By pillar', desc: 'Members whose primary pillar matches' },
   { key: 'life_stage', label: 'By life stage', desc: 'Members at a matching life stage' },
   { key: 'cell', label: 'By cell', desc: 'Members of one cell group' },
@@ -47,14 +49,14 @@ export default function MessagesPage() {
   const [message, setMessage] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ sent: number; failed: number } | null>(null);
+  const [result, setResult] = useState<{ queued: number; minutes: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<MessageRow[]>([]);
 
   const loadHistory = async () => {
-    const supabase = createClient();
-    const { data } = await supabase.from('group_messages').select('*').order('created_at', { ascending: false }).limit(20);
-    setHistory((data ?? []) as MessageRow[]);
+    const r = await fetch('/api/admin/messages/send').catch(() => null);
+    const j = r?.ok ? await r.json() as { history: MessageRow[] } : { history: [] };
+    setHistory(j.history);
   };
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function MessagesPage() {
         const supabase = createClient();
         const [cellsRes, membersRes] = await Promise.all([
           supabase.from('cells').select('id,name').order('name'),
-          supabase.from('members').select('id,name').eq('onboarding_complete', true).not('whatsapp', 'is', null).order('name'),
+          supabase.from('members').select('id,name').eq('onboarding_complete', true).eq('consent_contact', true).not('whatsapp', 'is', null).order('name'),
         ]);
         setCells((cellsRes.data ?? []) as CellOption[]);
         setAllMembers((membersRes.data ?? []) as MemberOption[]);
@@ -81,6 +83,18 @@ export default function MessagesPage() {
   }, []);
 
   const cellNameById = new Map(cells.map(c => [c.id, c.name]));
+  const anySending = history.some(h => (h.pending_count ?? 0) > 0);
+  useEffect(() => {
+    if (!anySending) return;
+    const t = setInterval(loadHistory, 15_000);
+    return () => clearInterval(t);
+  }, [anySending]);
+
+  const stopBroadcast = async (id: string) => {
+    if (!window.confirm('Stop the rest of this broadcast? Messages already sent stay sent.')) return;
+    await fetch('/api/admin/messages/send', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null);
+    loadHistory();
+  };
 
   useEffect(() => {
     (async () => {
@@ -88,12 +102,16 @@ export default function MessagesPage() {
       const supabase = createClient();
       if (audience.type === 'cell') {
         if (!audience.cell_id) { setTargetCount(0); return; }
-        const { count } = await supabase.from('cell_members').select('id', { count: 'exact', head: true }).eq('cell_id', audience.cell_id);
+        const { data: cm } = await supabase.from('cell_members').select('member_id').eq('cell_id', audience.cell_id);
+        const ids = ((cm ?? []) as { member_id: string }[]).map(x => x.member_id);
+        if (ids.length === 0) { setTargetCount(0); return; }
+        const { count } = await supabase.from('members').select('id', { count: 'exact', head: true })
+          .in('id', ids).eq('onboarding_complete', true).eq('consent_contact', true).not('whatsapp', 'is', null);
         setTargetCount(count ?? 0);
         return;
       }
       let q = supabase.from('members').select('id', { count: 'exact', head: true })
-        .eq('onboarding_complete', true).not('whatsapp', 'is', null);
+        .eq('onboarding_complete', true).eq('consent_contact', true).not('whatsapp', 'is', null);
       if (audience.type === 'pillar') {
         if (audience.pillars.length === 0) { setTargetCount(0); return; }
         q = q.in('pillar', audience.pillars);
@@ -133,7 +151,7 @@ export default function MessagesPage() {
       });
       const data = await res.json();
       if (!res.ok) { setErrorMsg(data.error ?? 'Failed to send'); setConfirming(false); return; }
-      setResult({ sent: data.sent, failed: data.failed });
+      setResult({ queued: data.queued, minutes: data.minutes });
       setMessage('');
       setConfirming(false);
       await loadHistory();
@@ -148,7 +166,7 @@ export default function MessagesPage() {
   if (loading) {
     return (
       <>
-        <AdminTopbar title="Messages" subtitle="Send a personalized WhatsApp message to members" />
+        <AdminTopbar title="Messages" subtitle="WhatsApp broadcasts to members who opted in" />
         <AdminBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <Skeleton h={200} /><Skeleton h={260} /><Skeleton h={160} />
@@ -160,12 +178,12 @@ export default function MessagesPage() {
 
   return (
     <>
-      <AdminTopbar title="Messages" subtitle="Send a personalized WhatsApp message to members" />
+      <AdminTopbar title="Messages" subtitle="WhatsApp broadcasts to members who opted in" />
       <AdminBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {result && (
             <div style={{ padding: '10px 12px', borderRadius: 9, background: 'var(--navy-tint)', fontSize: 12.5, color: 'var(--navy)', fontWeight: 600 }}>
-              <Icon name="check" size={14} /> Sent to {result.sent} member{result.sent === 1 ? '' : 's'}{result.failed > 0 ? ` · ${result.failed} failed` : ''}.
+              <Icon name="check" size={14} /> {result.queued} message{result.queued === 1 ? '' : 's'} queued — sending at a steady pace, about {result.minutes} minute{result.minutes === 1 ? '' : 's'} in total. Progress shows below.
             </div>
           )}
           {errorMsg && (
@@ -174,11 +192,22 @@ export default function MessagesPage() {
             </div>
           )}
 
+          <WhatsAppConnection />
+
           <Panel title="Compose">
-            <Field label="Message" hint="Use {{name}} anywhere in the message to personalize it — e.g. Hi {{name}}, don't forget...">
+            <Field label="Message" hint="Use {{first_name}} or {{name}} to personalize — e.g. Hi {{first_name}}, don't forget…">
               <TextInput value={message} onChange={v => { setMessage(v); setResult(null); }} placeholder="Write your message…" multiline rows={5} />
             </Field>
             <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: -8 }}>{message.length} characters</div>
+            {message.trim() && (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>Preview</div>
+                <div style={{ maxWidth: 380, padding: '10px 12px', borderRadius: '12px 12px 12px 4px', background: '#dcf8c6', color: '#111', fontSize: 13.5, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                  {message.replaceAll('{{first_name}}', 'Ada').replaceAll('{{name}}', 'Ada Obi')}
+                  {'\n\n'}<i>Reply STOP to stop these messages.</i>
+                </div>
+              </div>
+            )}
           </Panel>
 
           <Panel title="Audience">
@@ -268,6 +297,7 @@ export default function MessagesPage() {
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--line)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>
                 <strong style={{ color: 'var(--ink)' }}>{targetCount}</strong> member{targetCount === 1 ? '' : 's'} will receive this message
+                <span style={{ display: 'block', fontSize: 11.5, color: 'var(--faint)' }}>Only members who allow WhatsApp messages are included.</span>
               </div>
               {!confirming ? (
                 <button
@@ -281,7 +311,7 @@ export default function MessagesPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 600 }}>Send to {targetCount} member{targetCount === 1 ? '' : 's'}?</span>
                   <button onClick={() => setConfirming(false)} disabled={sending} className="btn btn-ghost btn-sm">Cancel</button>
-                  <button onClick={send} disabled={sending} className="btn btn-primary btn-sm">{sending ? 'Sending…' : 'Yes, send'}</button>
+                  <button onClick={send} disabled={sending} className="btn btn-primary btn-sm">{sending ? 'Queueing…' : 'Yes, send'}</button>
                 </div>
               )}
             </div>
@@ -292,16 +322,19 @@ export default function MessagesPage() {
               <div style={{ padding: '20px 12px', textAlign: 'center', fontSize: 12.5, color: 'var(--faint)' }}>No messages sent yet.</div>
             ) : (
               <div>
-                <THead cols={['Sent', 'Message', 'Audience', 'Result']} template="120px 1fr 160px 140px" />
+                <THead cols={['Sent', 'Message', 'Audience', 'Progress']} template="120px 1fr 160px 190px" />
                 {history.map(h => (
-                  <TRow key={h.id} template="120px 1fr 160px 140px">
+                  <TRow key={h.id} template="120px 1fr 160px 190px">
                     <span style={{ fontSize: 12, color: 'var(--muted)' }}>
                       {new Date(h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
                     </span>
                     <span title={h.body}>{h.body}</span>
                     <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{summarizeAudience(h.audience, h.audience?.type === 'cell' ? cellNameById.get(h.audience.cell_id) : undefined)}</span>
-                    <span style={{ fontSize: 12.5 }}>
-                      {h.sent_count} sent{h.failed_count > 0 ? `, ${h.failed_count} failed` : ''}
+                    <span style={{ fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span>{h.sent_count}/{h.recipient_count} sent{h.failed_count > 0 ? ` · ${h.failed_count} failed` : ''}{(h.pending_count ?? 0) > 0 ? ` · ${h.pending_count} waiting` : ''}</span>
+                      {(h.pending_count ?? 0) > 0 && (
+                        <button onClick={() => stopBroadcast(h.id)} className="btn btn-ghost btn-sm" style={{ height: 26, padding: '0 8px', fontSize: 11.5 }}>Stop</button>
+                      )}
                     </span>
                   </TRow>
                 ))}
