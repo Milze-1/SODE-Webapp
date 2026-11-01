@@ -41,11 +41,12 @@ RESOLVE_LID_TO_PHONE=true
 the app's pacing. `RESOLVE_LID_TO_PHONE` lets STOP replies be matched to members.
 
 ```bash
-docker compose up -d
-docker compose exec openwa cat /app/data/.api-key   # copy this API key
+docker compose up -d --build        # first build takes several minutes
+docker compose exec openwa-api cat /app/data/.api-key   # copy this API key
 ```
 
-(If the container isn't called `openwa`, use `docker compose ps` to find it.)
+OpenWA only listens on the server itself (`127.0.0.1:2785`); Caddy (next step)
+is what makes it reachable over HTTPS.
 
 ## 3. Put HTTPS in front (Caddy)
 
