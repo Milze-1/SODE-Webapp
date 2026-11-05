@@ -24,6 +24,8 @@ export async function GET() {
   if (provider !== 'openwa') return Response.json({ provider, status: provider ? 'ready' : 'not_configured', queue, perMinute });
   try {
     const s = await getOpenWaSession();
+    // Keeps the webhook's events current (e.g. read receipts added later)
+    if (s?.status === 'ready') await openWaEnsureWebhook(s.id).catch(e => console.error('[whatsapp] webhook update failed:', (e as Error).message));
     return Response.json({ provider, status: s?.status ?? 'no_session', phone: s?.phone ?? null, name: s?.pushName ?? null, lastError: s?.lastError ?? null, restriction: s?.restriction ?? null, queue, perMinute });
   } catch (e) {
     return Response.json({ provider, status: 'unreachable', error: (e as Error).message, queue, perMinute });

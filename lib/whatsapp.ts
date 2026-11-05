@@ -88,19 +88,28 @@ export async function openWaLogout(sessionId: string) {
   await openwa(`/sessions/${encodeURIComponent(sessionId)}/logout`, { method: 'POST' });
 }
 
-// Register (or re-register) our webhook for replies (STOP / START) and status
+// Register our webhook — incoming messages (inbox, STOP / START), connection
+// status, and delivery/read receipts (message.ack → ticks in the inbox).
+// An older registration missing an event is updated in place.
+const WEBHOOK_EVENTS = ['message.received', 'session.status', 'message.ack'];
+
 export async function openWaEnsureWebhook(sessionId: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.thesode.org';
   const secret = process.env.OPENWA_WEBHOOK_SECRET;
   if (!secret) return;
   const url = `${appUrl.replace(/\/+$/, '')}/api/whatsapp/webhook`;
-  const list = await openwa(`/sessions/${encodeURIComponent(sessionId)}/webhooks`);
-  const existing = list.ok ? ((await list.json()) as { id: string; url: string }[]) : [];
-  if (existing.some(w => w.url === url)) return;
-  await openwa(`/sessions/${encodeURIComponent(sessionId)}/webhooks`, {
-    method: 'POST',
-    body: JSON.stringify({ url, events: ['message.received', 'session.status'], secret }),
-  });
+  const base = `/sessions/${encodeURIComponent(sessionId)}/webhooks`;
+  const list = await openwa(base);
+  const existing = list.ok ? ((await list.json()) as { id: string; url: string; events?: string[] }[]) : [];
+  const ours = existing.find(w => w.url === url);
+  if (ours) {
+    if (WEBHOOK_EVENTS.every(e => ours.events?.includes(e))) return;
+    await openwa(`${base}/${encodeURIComponent(ours.id)}`, {
+      method: 'PUT', body: JSON.stringify({ events: Array.from(new Set([...(ours.events ?? []), ...WEBHOOK_EVENTS])) }),
+    });
+    return;
+  }
+  await openwa(base, { method: 'POST', body: JSON.stringify({ url, events: WEBHOOK_EVENTS, secret }) });
 }
 
 // ── Send ────────────────────────────────────────────────────────────────────

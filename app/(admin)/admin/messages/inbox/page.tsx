@@ -8,12 +8,29 @@ import { refreshWhatsAppUnread } from '@/lib/hooks/useWhatsAppUnread';
 
 interface Conversation {
   contact: string; phone: string | null; member_id: string | null; name: string;
-  last_body: string; last_direction: 'in' | 'out'; last_at: string; unread: number;
+  last_body: string; last_direction: 'in' | 'out'; last_status: Message['delivery_status']; last_at: string; unread: number;
 }
 interface Message {
   id: string; direction: 'in' | 'out'; body: string; created_at: string; read_at: string | null;
+  delivery_status?: 'sent' | 'delivered' | 'read' | 'failed' | null;
+}
+
+// WhatsApp-style ticks on messages SODE sent: ✓ sent · ✓✓ delivered · blue ✓✓ read
+function Ticks({ status }: { status?: Message['delivery_status'] }) {
+  if (status === 'failed') return <span title="Not delivered" style={{ color: '#c0392b', fontWeight: 800 }}>!</span>;
+  const double = status === 'delivered' || status === 'read';
+  const color = status === 'read' ? '#34b7f1' : '#8696a0';
+  const label = status === 'read' ? 'Read' : status === 'delivered' ? 'Delivered' : 'Sent';
+  return (
+    <svg width={double ? 16 : 11} height="11" viewBox={double ? '0 0 16 11' : '0 0 11 11'} aria-label={label} role="img" style={{ verticalAlign: '-1px', flex: 'none' }}>
+      <title>{label}</title>
+      <path d="M1 6l3 3 6-7" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      {double && <path d="M7 8.2l.8.8 6-7" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />}
+    </svg>
+  );
 }
 interface ThreadMember { id: string; name: string; consent_contact: boolean }
+interface MemberOption { id: string; name: string; contact: string; consent_contact: boolean }
 
 function when(iso: string): string {
   const d = new Date(iso), now = new Date();
@@ -36,6 +53,12 @@ export default function InboxPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [members, setMembers] = useState<MemberOption[]>([]);
+
+  useEffect(() => {
+    fetch('/api/admin/whatsapp/inbox?contact=*members').then(r => r.ok ? r.json() : { members: [] })
+      .then((j: { members: MemberOption[] }) => setMembers(j.members)).catch(() => {});
+  }, []);
 
   const loadList = useCallback(async () => {
     try {
@@ -106,10 +129,18 @@ export default function InboxPage() {
   };
 
   const needsReply = conversations.filter(c => c.unread > 0).length;
+  const q = search.trim().toLowerCase();
+  const qDigits = q.replace(/\D/g, '');
+  const matches = (name: string, phone: string | null) =>
+    !q || name.toLowerCase().includes(q) || (qDigits.length >= 3 && (phone ?? '').includes(qDigits));
   const shown = conversations
     .filter(c => filter === 'all' || c.unread > 0)
-    .filter(c => !search.trim() || c.name.toLowerCase().includes(search.trim().toLowerCase()) || (c.phone ?? '').includes(search.replace(/\D/g, '') || '\u0000'));
+    .filter(c => matches(c.name, c.phone));
+  // Members with no conversation yet — searching lets you start one
+  const withChat = new Set(conversations.map(c => c.contact));
+  const memberResults = q ? members.filter(m => !withChat.has(m.contact) && matches(m.name, m.contact)).slice(0, 30) : [];
   const current = conversations.find(c => c.contact === active);
+  const activeMember = members.find(m => m.contact === active);
 
   return (
     <>
@@ -126,7 +157,7 @@ export default function InboxPage() {
             {/* Conversation list */}
             <div style={{ width: 330, flex: 'none', borderRight: '1px solid var(--line)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <div style={{ padding: 12, borderBottom: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input className="input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name or number…" style={{ height: 36 }} />
+                <input className="input" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search or start a chat — name or number…" style={{ height: 36 }} />
                 <div style={{ display: 'flex', gap: 6 }}>
                   {([['all', 'All'], ['needs', `Needs reply${needsReply ? ` (${needsReply})` : ''}`]] as const).map(([k, label]) => (
                     <button key={k} onClick={() => setFilter(k)} style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer', background: filter === k ? 'var(--navy)' : 'var(--surface)', color: filter === k ? '#fff' : 'var(--ink-2)', border: filter === k ? '1px solid var(--navy)' : '1px solid var(--line-2)' }}>
@@ -136,11 +167,12 @@ export default function InboxPage() {
                 </div>
               </div>
               <div className="slim-scroll" style={{ flex: 1, overflowY: 'auto' }}>
-                {shown.length === 0 ? (
+                {shown.length === 0 && memberResults.length === 0 ? (
                   <div style={{ padding: '36px 18px', textAlign: 'center', fontSize: 12.5, color: 'var(--faint)', lineHeight: 1.5 }}>
-                    {conversations.length === 0
-                      ? 'No WhatsApp messages yet. When someone messages the SODE number, it shows up here.'
-                      : filter === 'needs' ? 'All caught up — nobody is waiting for a reply.' : 'No conversations match.'}
+                    {q ? 'No conversations or members match.'
+                      : conversations.length === 0
+                        ? 'No WhatsApp messages yet. Search for a member above to start a chat, or wait for someone to message the SODE number.'
+                        : filter === 'needs' ? 'All caught up — nobody is waiting for a reply.' : 'No conversations yet.'}
                   </div>
                 ) : shown.map(c => {
                   const sel = c.contact === active;
@@ -154,7 +186,7 @@ export default function InboxPage() {
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                           <span style={{ flex: 1, fontSize: 12, color: c.unread ? 'var(--ink-2)' : 'var(--muted)', fontWeight: c.unread ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {c.last_direction === 'out' && <span style={{ color: 'var(--faint)' }}>You: </span>}{c.last_body}
+                            {c.last_direction === 'out' && <><Ticks status={c.last_status} />{' '}</>}{c.last_body}
                           </span>
                           {c.unread > 0 && (
                             <span style={{ minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999, background: '#25d366', color: '#fff', fontSize: 10.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{c.unread}</span>
@@ -164,6 +196,28 @@ export default function InboxPage() {
                     </button>
                   );
                 })}
+                {memberResults.length > 0 && (
+                  <>
+                    <div style={{ padding: '10px 12px 6px', fontSize: 11, fontWeight: 800, letterSpacing: '.04em', textTransform: 'uppercase', color: 'var(--muted)', background: 'var(--bg)', borderBottom: '1px solid var(--line)' }}>
+                      Start a new chat
+                    </div>
+                    {memberResults.map(m => {
+                      const off = !m.consent_contact;
+                      return (
+                        <button key={m.id} disabled={off} onClick={() => { setActive(m.contact); setSearch(''); }}
+                          title={off ? 'WhatsApp alerts are off for this member (or they replied STOP), so you can’t message them first.' : `Message ${m.name}`}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '10px 12px', borderBottom: '1px solid var(--line)', background: 'transparent', cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.5 : 1 }}>
+                          <Avatar name={m.name} size={32} tone="grey" />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>{off ? 'WhatsApp alerts off' : `+${m.contact}`}</div>
+                          </div>
+                          {!off && <Icon name="message" size={16} color="var(--navy)" />}
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             </div>
 
@@ -177,11 +231,11 @@ export default function InboxPage() {
               ) : (
                 <>
                   <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface)' }}>
-                    <Avatar name={current?.name ?? member?.name ?? '?'} size={34} tone="grey" />
+                    <Avatar name={member?.name ?? current?.name ?? activeMember?.name ?? '?'} size={34} tone="grey" />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 800 }}>{member?.name ?? current?.name ?? 'Conversation'}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800 }}>{member?.name ?? current?.name ?? activeMember?.name ?? 'Conversation'}</div>
                       <div style={{ fontSize: 11.5, color: 'var(--muted)' }}>
-                        {current?.phone ? `+${current.phone}` : 'Number hidden by WhatsApp'}
+                        {current?.phone ? `+${current.phone}` : /^\d{10,15}$/.test(active) ? `+${active}` : 'Number hidden by WhatsApp'}
                         {member ? (member.consent_contact ? ' · WhatsApp alerts on' : ' · WhatsApp alerts off') : ' · Not linked to a member'}
                       </div>
                     </div>
@@ -201,13 +255,19 @@ export default function InboxPage() {
                           )}
                           <div style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '72%', padding: '8px 11px 6px', borderRadius: mine ? '12px 12px 4px 12px' : '12px 12px 12px 4px', background: mine ? '#dcf8c6' : 'var(--surface)', border: mine ? 'none' : '1px solid var(--line)', color: '#111', fontSize: 13.5, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                             {m.body}
-                            <div style={{ fontSize: 10.5, color: '#667', textAlign: 'right', marginTop: 2 }}>
+                            <div style={{ fontSize: 10.5, color: '#667', marginTop: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
                               {new Date(m.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                              {mine && <Ticks status={m.delivery_status} />}
                             </div>
                           </div>
                         </div>
                       );
                     })}
+                    {messages.length === 0 && (
+                      <div style={{ margin: 'auto', textAlign: 'center', fontSize: 12.5, color: 'var(--faint)' }}>
+                        No messages yet — write the first one below.
+                      </div>
+                    )}
                     <div ref={bottomRef} />
                   </div>
 

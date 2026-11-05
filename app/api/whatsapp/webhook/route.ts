@@ -24,6 +24,22 @@ function verified(raw: string, header: string | null): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Delivery / read receipt for a message we sent → the ticks in the inbox.
+// Only moves forward (sent → delivered → read), so a late receipt can't downgrade.
+const ACK_RANK: Record<string, number> = { sent: 1, delivered: 2, read: 3 };
+async function handleAck(d: { messageId?: string; id?: string; status?: string }) {
+  const id = d.messageId ?? d.id;
+  const status = d.status;
+  if (!id || !status || !(status in ACK_RANK || status === 'failed')) return Response.json({ ok: true });
+  const db = createAdminClient();
+  const lower = status === 'failed' ? ['sent'] : Object.keys(ACK_RANK).filter(k => ACK_RANK[k] < ACK_RANK[status]);
+  const { error } = await db.from('whatsapp_messages').update({ delivery_status: status })
+    .eq('provider_message_id', id).eq('direction', 'out')
+    .or(`delivery_status.is.null${lower.length ? `,delivery_status.in.(${lower.join(',')})` : ''}`);
+  if (error) console.error('[whatsapp webhook] ack update failed:', error.message);
+  return Response.json({ ok: true });
+}
+
 interface IncomingData {
   id?: string; from?: string; chatId?: string; body?: string; type?: string;
   fromMe?: boolean; isGroup?: boolean; isStatusBroadcast?: boolean;
@@ -35,6 +51,7 @@ export async function POST(request: Request) {
   if (!verified(raw, request.headers.get('x-openwa-signature'))) return new Response('Invalid signature', { status: 401 });
 
   const payload = JSON.parse(raw) as { event?: string; data?: unknown };
+  if (payload.event === 'message.ack' && payload.data) return handleAck(payload.data as { messageId?: string; id?: string; status?: string });
   if (payload.event !== 'message.received' || !payload.data) return Response.json({ ok: true });
 
   const d = payload.data as IncomingData;

@@ -20,8 +20,12 @@ export interface InboxMessage {
   msg_type: string;
   sender_name: string | null;
   read_at: string | null;
+  delivery_status?: DeliveryStatus | null;
   created_at: string;
 }
+
+// Ticks on messages SODE sent: null (just logged) is shown as sent
+export type DeliveryStatus = 'sent' | 'delivered' | 'read' | 'failed';
 
 export interface Conversation {
   contact: string;
@@ -30,6 +34,7 @@ export interface Conversation {
   name: string;
   last_body: string;
   last_direction: 'in' | 'out';
+  last_status: DeliveryStatus | null;
   last_at: string;
   unread: number;
 }
@@ -93,16 +98,16 @@ export async function notifyAdminsOfMessage(db: DB, who: string, preview: string
 // Conversations, newest first, with unread counts (inbound not yet opened).
 export async function listConversations(db: DB): Promise<Conversation[]> {
   const { data } = await db.from('whatsapp_messages')
-    .select('contact, phone, member_id, direction, body, sender_name, read_at, created_at')
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(2000);
-  const rows = (data ?? []) as Pick<InboxMessage, 'contact' | 'phone' | 'member_id' | 'direction' | 'body' | 'sender_name' | 'read_at' | 'created_at'>[];
+  const rows = (data ?? []) as InboxMessage[];
 
   const byContact = new Map<string, Conversation & { sender_name: string | null }>();
   for (const r of rows) {
     let c = byContact.get(r.contact);
     if (!c) {
-      c = { contact: r.contact, phone: r.phone, member_id: r.member_id, name: '', last_body: r.body, last_direction: r.direction, last_at: r.created_at, unread: 0, sender_name: null };
+      c = { contact: r.contact, phone: r.phone, member_id: r.member_id, name: '', last_body: r.body, last_direction: r.direction, last_status: r.delivery_status ?? null, last_at: r.created_at, unread: 0, sender_name: null };
       byContact.set(r.contact, c);
     }
     if (!c.member_id && r.member_id) c.member_id = r.member_id;
