@@ -1,6 +1,8 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { resolveAudienceMembers, type FormAudience } from '@/lib/forms-audience';
-import { personalizeMessage, whatsappProvider, OPT_OUT_FOOTER } from '@/lib/whatsapp';
+import { whatsappProvider, OPT_OUT_FOOTER } from '@/lib/whatsapp';
+import { personalize } from '@/lib/message-fields';
+import { loadPersonalizeData } from '@/lib/message-fields-server';
 import { enqueueWhatsApp, cancelBroadcast } from '@/lib/whatsapp-queue';
 
 // Queue a WhatsApp broadcast. Sending happens a few messages per minute via
@@ -33,10 +35,12 @@ export async function POST(request: Request) {
   }).select('id').single();
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
+  // Each person gets their own copy, filled from their record ({{first_name}}, {{cell}}, …)
+  const details = await loadPersonalizeData(a.db, members.map(m => m.id));
   const queued = await enqueueWhatsApp(a.db, gm.id, members.map(m => ({
     memberId: m.id,
     phone: m.whatsapp,
-    body: personalizeMessage(message.trim(), m) + OPT_OUT_FOOTER,
+    body: personalize(message.trim(), details.get(m.id) ?? m) + OPT_OUT_FOOTER,
   })));
   if (queued !== members.length) {
     await a.db.from('group_messages').update({ recipient_count: queued, pending_count: queued }).eq('id', gm.id);
@@ -47,9 +51,27 @@ export async function POST(request: Request) {
 }
 
 // Recent broadcasts with live progress
-export async function GET() {
+// ?people=1 → every member with a WhatsApp number plus their personalisation
+//             details, for the compose preview and "missing value" warnings
+export async function GET(request: Request) {
   const a = await requireAdmin();
   if (!a.ok) return a.response;
+  if (new URL(request.url).searchParams.get('people')) {
+    const { data: ms } = await a.db.from('members').select('id, consent_contact, pillar')
+      .eq('onboarding_complete', true).not('whatsapp', 'is', null).order('name');
+    const base = (ms ?? []) as { id: string; consent_contact: boolean; pillar: string | null }[];
+    const [details, { data: cms }] = await Promise.all([
+      loadPersonalizeData(a.db, base.map(m => m.id)),
+      a.db.from('cell_members').select('member_id, cell_id'),
+    ]);
+    const cellIds = new Map<string, string[]>();
+    for (const cm of (cms ?? []) as { member_id: string; cell_id: string }[]) {
+      cellIds.set(cm.member_id, [...(cellIds.get(cm.member_id) ?? []), cm.cell_id]);
+    }
+    const people = base.map(m => ({ ...details.get(m.id), id: m.id, consent_contact: m.consent_contact, pillar: m.pillar, cell_ids: cellIds.get(m.id) ?? [] }))
+      .filter(p => p.name);
+    return Response.json({ people });
+  }
   const { data } = await a.db.from('group_messages').select('*').order('created_at', { ascending: false }).limit(20);
   return Response.json({ history: data ?? [] });
 }

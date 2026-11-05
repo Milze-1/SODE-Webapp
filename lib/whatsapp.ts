@@ -7,10 +7,8 @@
 
 import { createAdminClient } from '@/lib/supabase-server';
 
-export function personalizeMessage(template: string, member: { name: string }): string {
-  const first = member.name.trim().split(/\s+/)[0] ?? member.name;
-  return template.replaceAll('{{name}}', member.name).replaceAll('{{first_name}}', first);
-}
+// Fills {{first_name}}, {{cell}}, {{department|fallback}}, … — see lib/message-fields.ts
+export { personalize as personalizeMessage } from '@/lib/message-fields';
 
 export const OPT_OUT_FOOTER = '\n\n_Reply STOP to stop these messages._';
 

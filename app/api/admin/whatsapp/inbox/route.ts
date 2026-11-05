@@ -1,5 +1,7 @@
 import { requireAdmin } from '@/lib/admin-auth';
 import { sendWhatsApp, sendWhatsAppChat, whatsappProvider, normalizePhone } from '@/lib/whatsapp';
+import { personalize } from '@/lib/message-fields';
+import { loadPersonalizeData } from '@/lib/message-fields-server';
 import { listConversations, unreadCount, logOutbound, membersByPhone, type InboxMessage } from '@/lib/whatsapp-inbox';
 
 export const dynamic = 'force-dynamic';
@@ -82,10 +84,17 @@ export async function POST(request: Request) {
     }
   }
 
-  const r = chatId ? await sendWhatsAppChat(chatId, text) : await sendWhatsApp(phone!, text);
+  // {{first_name}} etc. work here too, filled from the member's record
+  let finalText = text;
+  if (text.includes('{{') && memberId) {
+    const m = (await loadPersonalizeData(a.db, [memberId])).get(memberId);
+    if (m) finalText = personalize(text, m);
+  }
+
+  const r = chatId ? await sendWhatsAppChat(chatId, finalText) : await sendWhatsApp(phone!, finalText);
   if (!r.ok) return Response.json({ error: r.error ?? 'Could not send' }, { status: 502 });
 
-  await logOutbound(a.db, { contact, phone: phone ?? contact, chatId, body: text, memberId, providerMessageId: r.messageId, sentBy: a.userId });
+  await logOutbound(a.db, { contact, phone: phone ?? contact, chatId, body: finalText, memberId, providerMessageId: r.messageId, sentBy: a.userId });
   // Answering a conversation clears it from "needs reply"
   await a.db.from('whatsapp_messages').update({ read_at: new Date().toISOString() })
     .eq('contact', contact).eq('direction', 'in').is('read_at', null);

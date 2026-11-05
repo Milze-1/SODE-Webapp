@@ -1,15 +1,17 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase';
 import { Icon } from '@/components/sode/icons';
-import { TextInput, Field } from '@/components/sode/ui';
+import { TextInput } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Panel, THead, TRow, Skeleton } from '@/components/admin/chrome';
 import WhatsAppConnection from '@/components/admin/WhatsAppConnection';
 import MessagesTabs from '@/components/admin/MessagesTabs';
+import { MESSAGE_FIELDS, personalize, memberFieldValues, fieldsWithoutFallback, unknownFields, type PersonalizeMember } from '@/lib/message-fields';
 import { summarizeAudience, PILLAR_OPTIONS, LIFE_STAGE_OPTIONS, type FormAudience } from '@/lib/forms-audience';
 
 interface CellOption { id: string; name: string; }
 interface MemberOption { id: string; name: string; whatsapp: string | null; consent_contact: boolean; }
+type Person = PersonalizeMember & { id: string; consent_contact: boolean; pillar: string | null; cell_ids: string[] };
 
 interface MessageRow {
   id: string;
@@ -53,6 +55,9 @@ export default function MessagesPage() {
   const [result, setResult] = useState<{ queued: number; minutes: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<MessageRow[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [previewId, setPreviewId] = useState<string>('');
+  const messageRef = useRef<HTMLTextAreaElement>(null);
 
   const loadHistory = async () => {
     const r = await fetch('/api/admin/messages/send').catch(() => null);
@@ -76,7 +81,11 @@ export default function MessagesPage() {
           const ids = preset.split(',').filter(Boolean);
           if (ids.length) setAudience({ type: 'specific', member_ids: ids });
         }
-        await loadHistory();
+        await Promise.all([
+          loadHistory(),
+          fetch('/api/admin/messages/send?people=1').then(r => r.ok ? r.json() : { people: [] })
+            .then((j: { people: Person[] }) => setPeople(j.people)).catch(() => {}),
+        ]);
       } finally {
         setLoading(false);
       }
@@ -84,6 +93,34 @@ export default function MessagesPage() {
   }, []);
 
   const cellNameById = new Map(cells.map(c => [c.id, c.name]));
+
+  // Who this message would go to (mirrors the server's audience rules) — for
+  // the preview and the "missing details" warning
+  const recipients = people.filter(p => {
+    if (!p.consent_contact) return false;
+    switch (audience.type) {
+      case 'specific': return audience.member_ids.includes(p.id);
+      case 'pillar': return !!p.pillar && audience.pillars.includes(p.pillar);
+      case 'life_stage': return !!p.life_stage && audience.stages.includes(p.life_stage);
+      case 'cell': return !!audience.cell_id && p.cell_ids.includes(audience.cell_id);
+      default: return true;
+    }
+  });
+  const previewPerson = recipients.find(p => p.id === previewId) ?? recipients[0] ?? null;
+  const missing = fieldsWithoutFallback(message)
+    .map(key => ({ key, label: MESSAGE_FIELDS.find(f => f.key === key)?.label ?? key, count: recipients.filter(p => !memberFieldValues(p)[key]).length }))
+    .filter(x => x.count > 0);
+  const unknown = unknownFields(message);
+
+  // Put {{field}} where the cursor is
+  const insertField = (key: string) => {
+    const el = messageRef.current;
+    const token = `{{${key}}}`;
+    const start = el?.selectionStart ?? message.length, end = el?.selectionEnd ?? message.length;
+    const next = message.slice(0, start) + token + message.slice(end);
+    setMessage(next); setResult(null);
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(start + token.length, start + token.length); });
+  };
   const anySending = history.some(h => (h.pending_count ?? 0) > 0);
   useEffect(() => {
     if (!anySending) return;
@@ -201,15 +238,59 @@ export default function MessagesPage() {
           <WhatsAppConnection />
 
           <Panel title="Compose">
-            <Field label="Message" hint="Use {{first_name}} or {{name}} to personalize — e.g. Hi {{first_name}}, don't forget…">
-              <TextInput value={message} onChange={v => { setMessage(v); setResult(null); }} placeholder="Write your message…" multiline rows={5} />
-            </Field>
-            <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: -8 }}>{message.length} characters</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>Message</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--muted)', marginRight: 2 }}>Personalise — insert:</span>
+              {MESSAGE_FIELDS.map(f => (
+                <button key={f.key} type="button" onClick={() => insertField(f.key)} title={`Adds {{${f.key}}} — ${f.hint}`}
+                  style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: 'var(--surface)', color: 'var(--navy)', border: '1px solid var(--line-2)' }}>
+                  + {f.label}
+                </button>
+              ))}
+            </div>
+            <textarea
+              ref={messageRef}
+              value={message}
+              onChange={e => { setMessage(e.target.value); setResult(null); }}
+              placeholder={'Hi {{first_name}}, thank you for serving in {{department|your department}}…'}
+              rows={6}
+              className="input"
+              style={{ width: '100%', height: 'auto', padding: '12px 14px', resize: 'vertical', lineHeight: 1.45 }}
+            />
+            <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 4 }}>
+              {message.length} characters · Each person gets their own copy. Add a fallback for blank details with <code>{'{{cell|your cell}}'}</code>.
+            </div>
+
+            {unknown.length > 0 && (
+              <div style={{ marginTop: 10, padding: '8px 11px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#c0392b' }}>
+                Not a known detail: {unknown.map(u => `{{${u}}}`).join(', ')} — it will be sent exactly as typed. Use the buttons above.
+              </div>
+            )}
+            {missing.length > 0 && (
+              <div style={{ marginTop: 10, padding: '8px 11px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+                {missing.map(m => (
+                  <div key={m.key}>
+                    <strong>{m.count}</strong> of {recipients.length} recipients have no {m.label.toLowerCase()} on file — that spot will be blank.
+                    {' '}Try <code>{`{{${m.key}|…}}`}</code> with a fallback word.
+                  </div>
+                ))}
+              </div>
+            )}
+
             {message.trim() && (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>Preview</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Preview as</span>
+                  {recipients.length > 0 ? (
+                    <select className="input" value={previewPerson?.id ?? ''} onChange={e => setPreviewId(e.target.value)} style={{ height: 32, maxWidth: 240, fontSize: 12.5, padding: '0 8px' }}>
+                      {recipients.slice(0, 300).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  ) : (
+                    <span style={{ fontSize: 12, color: 'var(--faint)' }}>an example member (pick an audience to see real people)</span>
+                  )}
+                </div>
                 <div style={{ maxWidth: 380, padding: '10px 12px', borderRadius: '12px 12px 12px 4px', background: '#dcf8c6', color: '#111', fontSize: 13.5, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
-                  {message.replaceAll('{{first_name}}', 'Ada').replaceAll('{{name}}', 'Ada Obi')}
+                  {personalize(message, previewPerson ?? { name: 'Ada Obi', cell: 'Victory Cell', department: 'Choir', life_stage: 'professional', career_stage: 'Building (3–7 yrs)', industry: 'Technology', points: 120 })}
                   {'\n\n'}<i>Reply STOP to stop these messages.</i>
                 </div>
               </div>
