@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase';
 import Image from 'next/image';
 import { Icon } from '@/components/sode/icons';
 import { Avatar } from '@/components/sode/ui';
+import { useWhatsAppUnread } from '@/lib/hooks/useWhatsAppUnread';
 
 const ADMIN_NAV = [
   { href: '/admin/dashboard', icon: 'grid', label: 'Scorecard' },
@@ -30,6 +31,7 @@ export default function AdminSidebar() {
   const router = useRouter();
   const [adminName, setAdminName] = useState('Admin');
   const [adminRole, setAdminRole] = useState('');
+  const waUnread = useWhatsAppUnread();
 
   useEffect(() => {
     (async () => {
@@ -71,6 +73,11 @@ export default function AdminSidebar() {
             >
               <Icon name={n.icon} size={18} stroke={2} color={active ? '#fff' : 'var(--muted)'} />
               {n.label}
+              {n.href === '/admin/messages' && waUnread > 0 && (
+                <span title={`${waUnread} WhatsApp conversation${waUnread === 1 ? '' : 's'} waiting for a reply`} style={{ marginLeft: 'auto', minWidth: 19, height: 19, padding: '0 6px', borderRadius: 999, background: '#25d366', color: '#fff', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {waUnread > 99 ? '99+' : waUnread}
+                </span>
+              )}
             </Link>
           );
         })}

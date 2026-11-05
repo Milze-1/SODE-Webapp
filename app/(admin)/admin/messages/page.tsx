@@ -5,10 +5,11 @@ import { Icon } from '@/components/sode/icons';
 import { TextInput, Field } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Panel, THead, TRow, Skeleton } from '@/components/admin/chrome';
 import WhatsAppConnection from '@/components/admin/WhatsAppConnection';
+import MessagesTabs from '@/components/admin/MessagesTabs';
 import { summarizeAudience, PILLAR_OPTIONS, LIFE_STAGE_OPTIONS, type FormAudience } from '@/lib/forms-audience';
 
 interface CellOption { id: string; name: string; }
-interface MemberOption { id: string; name: string; }
+interface MemberOption { id: string; name: string; whatsapp: string | null; consent_contact: boolean; }
 
 interface MessageRow {
   id: string;
@@ -23,10 +24,10 @@ interface MessageRow {
 
 const AUDIENCE_TYPES: { key: FormAudience['type']; label: string; desc: string }[] = [
   { key: 'everyone', label: 'Everyone', desc: 'All members with a WhatsApp number who allow WhatsApp messages' },
+  { key: 'specific', label: 'Selected people', desc: 'Tick the individual members you want to message' },
   { key: 'pillar', label: 'By pillar', desc: 'Members whose primary pillar matches' },
   { key: 'life_stage', label: 'By life stage', desc: 'Members at a matching life stage' },
   { key: 'cell', label: 'By cell', desc: 'Members of one cell group' },
-  { key: 'specific', label: 'Specific members', desc: 'Hand-pick individual members' },
 ];
 
 function defaultAudience(key: FormAudience['type']): FormAudience {
@@ -65,7 +66,7 @@ export default function MessagesPage() {
         const supabase = createClient();
         const [cellsRes, membersRes] = await Promise.all([
           supabase.from('cells').select('id,name').order('name'),
-          supabase.from('members').select('id,name').eq('onboarding_complete', true).eq('consent_contact', true).not('whatsapp', 'is', null).order('name'),
+          supabase.from('members').select('id,name,whatsapp,consent_contact').eq('onboarding_complete', true).not('whatsapp', 'is', null).order('name'),
         ]);
         setCells((cellsRes.data ?? []) as CellOption[]);
         setAllMembers((membersRes.data ?? []) as MemberOption[]);
@@ -130,15 +131,20 @@ export default function MessagesPage() {
   const toggleStage = (key: string) => setAudience(a => a.type === 'life_stage'
     ? { type: 'life_stage', stages: a.stages.includes(key) ? a.stages.filter(s => s !== key) : [...a.stages, key] }
     : a);
-  const addSpecificMember = (id: string) => { setAudience(a => a.type === 'specific' && !a.member_ids.includes(id) ? { type: 'specific', member_ids: [...a.member_ids, id] } : a); setMemberSearch(''); };
-  const removeSpecificMember = (id: string) => setAudience(a => a.type === 'specific' ? { type: 'specific', member_ids: a.member_ids.filter(m => m !== id) } : a);
+  const toggleSpecificMember = (id: string) => setAudience(a => a.type === 'specific'
+    ? { type: 'specific', member_ids: a.member_ids.includes(id) ? a.member_ids.filter(m => m !== id) : [...a.member_ids, id] }
+    : a);
 
-  const filteredMembers = memberSearch.trim()
-    ? allMembers.filter(m =>
-        m.name.toLowerCase().includes(memberSearch.trim().toLowerCase()) &&
-        !(audience.type === 'specific' && audience.member_ids.includes(m.id)),
-      ).slice(0, 6)
-    : [];
+  // Picker list: search by name or phone digits; members with alerts off are shown but can't be picked
+  const q = memberSearch.trim().toLowerCase();
+  const qDigits = q.replace(/\D/g, '');
+  const shownMembers = allMembers.filter(m => !q
+    || m.name.toLowerCase().includes(q)
+    || (qDigits.length >= 3 && (m.whatsapp ?? '').replace(/\D/g, '').includes(qDigits)));
+  const selectableShown = shownMembers.filter(m => m.consent_contact);
+  const selectAllShown = () => setAudience(a => a.type === 'specific'
+    ? { type: 'specific', member_ids: Array.from(new Set([...a.member_ids, ...selectableShown.map(m => m.id)])) }
+    : a);
 
   const send = async () => {
     setSending(true);
@@ -178,7 +184,7 @@ export default function MessagesPage() {
 
   return (
     <>
-      <AdminTopbar title="Messages" subtitle="WhatsApp broadcasts to members who opted in" />
+      <AdminTopbar title="Messages" subtitle="WhatsApp messages to members who opted in" actions={<MessagesTabs />} />
       <AdminBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {result && (
@@ -263,30 +269,38 @@ export default function MessagesPage() {
                     )}
 
                     {sel && opt.key === 'specific' && audience.type === 'specific' && (
-                      <div style={{ marginTop: 8, marginLeft: 32, maxWidth: 360 }}>
-                        <TextInput value={memberSearch} onChange={setMemberSearch} placeholder="Search members by name…" />
-                        {filteredMembers.length > 0 && (
-                          <div style={{ marginTop: 6, border: '1px solid var(--line-2)', borderRadius: 9, overflow: 'hidden' }}>
-                            {filteredMembers.map(m => (
-                              <div key={m.id} onClick={() => addSpecificMember(m.id)} style={{ padding: '8px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', background: 'var(--surface)', borderBottom: '1px solid var(--line)' }}>
-                                {m.name}
-                              </div>
-                            ))}
+                      <div style={{ marginTop: 8, marginLeft: 32, maxWidth: 520 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <div style={{ flex: 1 }}>
+                            <TextInput value={memberSearch} onChange={setMemberSearch} placeholder="Search by name or number…" />
                           </div>
-                        )}
-                        {audience.member_ids.length > 0 && (
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                            {audience.member_ids.map(id => {
-                              const m = allMembers.find(x => x.id === id);
-                              return (
-                                <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: 'var(--navy)', color: '#fff' }}>
-                                  {m?.name ?? id}
-                                  <button onClick={() => removeSpecificMember(id)} style={{ color: '#fff', background: 'none', cursor: 'pointer', display: 'flex', padding: 2 }}><Icon name="x" size={13} /></button>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
+                          <button onClick={selectAllShown} disabled={selectableShown.length === 0} className="btn btn-ghost btn-sm" style={{ whiteSpace: 'nowrap' }}>
+                            Select {memberSearch.trim() ? 'shown' : 'all'} ({selectableShown.length})
+                          </button>
+                          {audience.member_ids.length > 0 && (
+                            <button onClick={() => setAudience({ type: 'specific', member_ids: [] })} className="btn btn-ghost btn-sm">Clear</button>
+                          )}
+                        </div>
+                        <div className="slim-scroll" style={{ marginTop: 8, maxHeight: 300, overflowY: 'auto', border: '1px solid var(--line-2)', borderRadius: 10, background: 'var(--surface)' }}>
+                          {shownMembers.length === 0 ? (
+                            <div style={{ padding: '16px 12px', fontSize: 12.5, color: 'var(--faint)', textAlign: 'center' }}>No members match.</div>
+                          ) : shownMembers.map(m => {
+                            const checked = audience.member_ids.includes(m.id);
+                            const off = !m.consent_contact;
+                            return (
+                              <label key={m.id} title={off ? 'This member has WhatsApp alerts switched off (or replied STOP), so broadcasts skip them.' : undefined}
+                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderBottom: '1px solid var(--line)', cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.55 : 1, background: checked ? 'var(--navy-tint)' : 'transparent' }}>
+                                <input type="checkbox" checked={checked} disabled={off} onChange={() => toggleSpecificMember(m.id)} style={{ width: 16, height: 16, accentColor: 'var(--navy)' }} />
+                                <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
+                                <span style={{ fontSize: 11.5, color: 'var(--muted)', flex: 'none' }}>{off ? 'WhatsApp alerts off' : m.whatsapp}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 6 }}>
+                          <strong style={{ color: 'var(--ink)' }}>{audience.member_ids.length}</strong> selected
+                          {audience.member_ids.length > 0 && <> · {audience.member_ids.slice(0, 4).map(id => allMembers.find(x => x.id === id)?.name.split(' ')[0] ?? '…').join(', ')}{audience.member_ids.length > 4 ? ` +${audience.member_ids.length - 4} more` : ''}</>}
+                        </div>
                       </div>
                     )}
                   </div>

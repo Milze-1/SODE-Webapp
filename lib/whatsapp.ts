@@ -107,25 +107,30 @@ export async function openWaEnsureWebhook(sessionId: string) {
 
 export interface SendResult { ok: boolean; provider: string | null; messageId?: string; error?: string }
 
+// Send to an exact WhatsApp chat id (OpenWA only). Inbox replies use this so a
+// sender whose number WhatsApp hides (an …@lid privacy id) can still be answered.
+export async function sendWhatsAppChat(chatId: string, message: string, sessionId?: string): Promise<SendResult> {
+  if (whatsappProvider() !== 'openwa') return { ok: false, provider: whatsappProvider(), error: 'Replying needs the OpenWA gateway' };
+  try {
+    const sid = sessionId ?? (await getOpenWaSession())?.id;
+    if (!sid) return { ok: false, provider: 'openwa', error: 'WhatsApp is not connected' };
+    const r = await openwa(`/sessions/${encodeURIComponent(sid)}/messages/send-text`, {
+      method: 'POST', body: JSON.stringify({ chatId, text: message.slice(0, 4096) }),
+    });
+    if (!r.ok) return { ok: false, provider: 'openwa', error: `OpenWA ${r.status}: ${(await r.text()).slice(0, 300)}` };
+    const j = await r.json().catch(() => ({})) as { messageId?: string };
+    return { ok: true, provider: 'openwa', messageId: j.messageId };
+  } catch (e) {
+    return { ok: false, provider: 'openwa', error: (e as Error).message };
+  }
+}
+
 export async function sendWhatsApp(phone: string, message: string, sessionId?: string): Promise<SendResult> {
   const provider = whatsappProvider();
   const to = normalizePhone(phone);
   if (!to) return { ok: false, provider, error: `Invalid phone number: ${phone}` };
 
-  if (provider === 'openwa') {
-    try {
-      const sid = sessionId ?? (await getOpenWaSession())?.id;
-      if (!sid) return { ok: false, provider, error: 'WhatsApp is not connected' };
-      const r = await openwa(`/sessions/${encodeURIComponent(sid)}/messages/send-text`, {
-        method: 'POST', body: JSON.stringify({ chatId: `${to}@c.us`, text: message.slice(0, 4096) }),
-      });
-      if (!r.ok) return { ok: false, provider, error: `OpenWA ${r.status}: ${(await r.text()).slice(0, 300)}` };
-      const j = await r.json().catch(() => ({})) as { messageId?: string };
-      return { ok: true, provider, messageId: j.messageId };
-    } catch (e) {
-      return { ok: false, provider, error: (e as Error).message };
-    }
-  }
+  if (provider === 'openwa') return sendWhatsAppChat(`${to}@c.us`, message, sessionId);
 
   if (provider === 'termii') {
     try {

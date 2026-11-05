@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server';
 import { sendWhatsApp, whatsappProvider, getOpenWaSession, normalizePhone } from '@/lib/whatsapp';
+import { logOutbound } from '@/lib/whatsapp-inbox';
 
 // Paced WhatsApp delivery. Messages are queued (whatsapp_queue) and sent by
 // /api/cron/tick a few per minute with random gaps, so a broadcast to any
@@ -66,7 +67,7 @@ export async function processWhatsAppQueue(): Promise<{ sent: number; failed: nu
     const { data: claimed } = await db.from('whatsapp_queue')
       .update({ status: 'sending', send_after: new Date().toISOString() })
       .eq('id', due[i].id).eq('status', 'pending')
-      .select('id,group_message_id,phone,body,attempts').maybeSingle();
+      .select('id,group_message_id,member_id,phone,body,attempts').maybeSingle();
     if (!claimed) continue;
 
     const r = await sendWhatsApp(claimed.phone, claimed.body, sessionId);
@@ -74,6 +75,7 @@ export async function processWhatsAppQueue(): Promise<{ sent: number; failed: nu
     if (r.ok) {
       sent++;
       await db.from('whatsapp_queue').update({ status: 'sent', attempts, sent_at: new Date().toISOString(), provider: r.provider, provider_message_id: r.messageId ?? null, last_error: null }).eq('id', claimed.id);
+      await logOutbound(db, { phone: claimed.phone, body: claimed.body, memberId: claimed.member_id, providerMessageId: r.messageId });
     } else if (attempts < MAX_ATTEMPTS) {
       // retry later with backoff: 5 min, then 30 min
       await db.from('whatsapp_queue').update({ status: 'pending', attempts, last_error: r.error ?? null, send_after: new Date(Date.now() + (attempts === 1 ? 5 : 30) * 60_000).toISOString() }).eq('id', claimed.id);

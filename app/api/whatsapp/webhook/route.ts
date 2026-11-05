@@ -2,11 +2,15 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { createAdminClient } from '@/lib/supabase-server';
 import { normalizePhone } from '@/lib/whatsapp';
 import { enqueueWhatsApp } from '@/lib/whatsapp-queue';
+import { membersByPhone, describeMessage, notifyAdminsOfMessage } from '@/lib/whatsapp-inbox';
 
 // OpenWA webhook (registered automatically when WhatsApp is connected).
-// Handles opt-out/in replies: STOP turns off WhatsApp messages for that
-// member (consent_contact = false), START turns them back on. Every delivery
-// is verified with X-OpenWA-Signature (HMAC-SHA256 of the raw body).
+// - Every direct message to the SODE number lands in the inbox
+//   (whatsapp_messages) and admins get a push when a conversation newly
+//   needs a reply.
+// - STOP turns off WhatsApp messages for that member (consent_contact =
+//   false), START turns them back on; those are answered automatically.
+// Every delivery is verified with X-OpenWA-Signature (HMAC-SHA256 of the raw body).
 export const dynamic = 'force-dynamic';
 
 const STOP = /^\s*(stop|unsubscribe|stop all|cancel|quit|end)\s*[.!]?\s*$/i;
@@ -20,23 +24,64 @@ function verified(raw: string, header: string | null): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+interface IncomingData {
+  id?: string; from?: string; chatId?: string; body?: string; type?: string;
+  fromMe?: boolean; isGroup?: boolean; isStatusBroadcast?: boolean;
+  senderPhone?: string | null; contact?: { pushName?: string; name?: string };
+}
+
 export async function POST(request: Request) {
   const raw = await request.text();
   if (!verified(raw, request.headers.get('x-openwa-signature'))) return new Response('Invalid signature', { status: 401 });
 
-  const payload = JSON.parse(raw) as { event?: string; data?: Record<string, unknown> };
+  const payload = JSON.parse(raw) as { event?: string; data?: unknown };
   if (payload.event !== 'message.received' || !payload.data) return Response.json({ ok: true });
 
-  const d = payload.data as { from?: string; body?: string; fromMe?: boolean; isGroup?: boolean; senderPhone?: string | null };
-  if (d.fromMe || d.isGroup || !d.body) return Response.json({ ok: true });
-  const wantsStop = STOP.test(d.body), wantsStart = START.test(d.body);
-  if (!wantsStop && !wantsStart) return Response.json({ ok: true });
+  const d = payload.data as IncomingData;
+  const chatId = d.chatId ?? d.from ?? '';
+  if (d.fromMe || d.isGroup || d.isStatusBroadcast || chatId.endsWith('@broadcast') || chatId.endsWith('@newsletter')) {
+    return Response.json({ ok: true });
+  }
 
-  // Sender phone: senderPhone (privacy-id senders) or the digits of `from`
-  const phone = normalizePhone(d.senderPhone ?? (d.from ?? '').split('@')[0]);
-  if (!phone) return Response.json({ ok: true });
+  // Sender phone: senderPhone (privacy-id senders) or the digits of a …@c.us id
+  const phone = normalizePhone(d.senderPhone ?? (chatId.endsWith('@c.us') ? chatId.split('@')[0] : null));
+  const contact = phone ?? chatId;
+  if (!contact) return Response.json({ ok: true });
 
   const db = createAdminClient();
+  const member = phone ? (await membersByPhone(db)).get(phone) ?? null : null;
+  const body = describeMessage(d.type, d.body);
+  const text = (d.body ?? '').trim();
+  const wantsStop = STOP.test(text), wantsStart = START.test(text);
+
+  // Did this conversation already have unread messages? (only alert on the first)
+  const { count: unreadBefore } = await db.from('whatsapp_messages').select('id', { count: 'exact', head: true })
+    .eq('contact', contact).eq('direction', 'in').is('read_at', null);
+
+  const { error: insertError } = await db.from('whatsapp_messages').upsert({
+    contact,
+    phone,
+    chat_id: chatId,
+    member_id: member?.id ?? null,
+    direction: 'in',
+    body,
+    msg_type: d.type ?? 'text',
+    sender_name: d.contact?.pushName ?? d.contact?.name ?? null,
+    provider_message_id: d.id ?? null,
+    // STOP / START are handled automatically — nothing to answer
+    read_at: wantsStop || wantsStart ? new Date().toISOString() : null,
+  }, { onConflict: 'provider_message_id', ignoreDuplicates: true });
+  if (insertError) console.error('[whatsapp webhook] inbox insert failed:', insertError.message);
+
+  if (!wantsStop && !wantsStart) {
+    if (!insertError && !unreadBefore) {
+      await notifyAdminsOfMessage(db, member?.name ?? d.contact?.pushName ?? (phone ? `+${phone}` : 'a contact'), body, contact)
+        .catch(e => console.error('[whatsapp webhook] admin push failed:', e));
+    }
+    return Response.json({ ok: true });
+  }
+
+  if (!phone) return Response.json({ ok: true, matched: 0 });
   const { data: members } = await db.from('members').select('id, whatsapp').not('whatsapp', 'is', null);
   const matches = ((members ?? []) as { id: string; whatsapp: string }[]).filter(m => normalizePhone(m.whatsapp) === phone);
   if (matches.length === 0) return Response.json({ ok: true, matched: 0 });
