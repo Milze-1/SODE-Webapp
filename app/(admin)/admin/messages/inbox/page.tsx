@@ -4,6 +4,7 @@ import { Icon } from '@/components/sode/icons';
 import { Avatar } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Skeleton } from '@/components/admin/chrome';
 import MessagesTabs from '@/components/admin/MessagesTabs';
+import TemplateEditor, { FieldButtons, type TemplateEditorHandle } from '@/components/admin/TemplateEditor';
 import { refreshWhatsAppUnread } from '@/lib/hooks/useWhatsAppUnread';
 
 interface Conversation {
@@ -54,6 +55,7 @@ export default function InboxPage() {
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
+  const replyRef = useRef<TemplateEditorHandle>(null);
 
   useEffect(() => {
     fetch('/api/admin/whatsapp/inbox?contact=*members').then(r => r.ok ? r.json() : { members: [] })
@@ -273,16 +275,21 @@ export default function InboxPage() {
 
                   <div style={{ padding: 12, borderTop: '1px solid var(--line)', background: 'var(--surface)' }}>
                     {error && <div style={{ fontSize: 12, color: '#c0392b', fontWeight: 600, marginBottom: 8 }}><Icon name="alertcircle" size={13} /> {error}</div>}
+                    {(member || activeMember) && (
+                      <div style={{ marginBottom: 8 }}><FieldButtons compact onInsert={k => replyRef.current?.insertField(k)} /></div>
+                    )}
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                      <textarea
-                        value={reply}
-                        onChange={e => setReply(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                        placeholder="Type a reply… (Enter to send, Shift+Enter for a new line)"
-                        rows={2}
-                        className="input"
-                        style={{ flex: 1, height: 'auto', padding: '10px 12px', resize: 'none', lineHeight: 1.45 }}
-                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <TemplateEditor
+                          ref={replyRef}
+                          value={reply}
+                          onChange={setReply}
+                          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                          placeholder="Type a reply… (Enter to send, Shift+Enter for a new line)"
+                          minHeight={44}
+                          maxHeight={180}
+                        />
+                      </div>
                       <button onClick={send} disabled={sending || !reply.trim()} className="btn btn-primary btn-sm" style={{ height: 40 }}>
                         <Icon name="arrowright" size={15} color="#fff" /> {sending ? 'Sending…' : 'Send'}
                       </button>

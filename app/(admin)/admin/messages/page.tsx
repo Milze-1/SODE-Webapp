@@ -6,6 +6,7 @@ import { TextInput } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Panel, THead, TRow, Skeleton } from '@/components/admin/chrome';
 import WhatsAppConnection from '@/components/admin/WhatsAppConnection';
 import MessagesTabs from '@/components/admin/MessagesTabs';
+import TemplateEditor, { FieldButtons, type TemplateEditorHandle } from '@/components/admin/TemplateEditor';
 import { MESSAGE_FIELDS, personalize, memberFieldValues, fieldsWithoutFallback, unknownFields, type PersonalizeMember } from '@/lib/message-fields';
 import { summarizeAudience, PILLAR_OPTIONS, LIFE_STAGE_OPTIONS, type FormAudience } from '@/lib/forms-audience';
 
@@ -57,7 +58,7 @@ export default function MessagesPage() {
   const [history, setHistory] = useState<MessageRow[]>([]);
   const [people, setPeople] = useState<Person[]>([]);
   const [previewId, setPreviewId] = useState<string>('');
-  const messageRef = useRef<HTMLTextAreaElement>(null);
+  const messageRef = useRef<TemplateEditorHandle>(null);
 
   const loadHistory = async () => {
     const r = await fetch('/api/admin/messages/send').catch(() => null);
@@ -112,15 +113,8 @@ export default function MessagesPage() {
     .filter(x => x.count > 0);
   const unknown = unknownFields(message);
 
-  // Put {{field}} where the cursor is
-  const insertField = (key: string) => {
-    const el = messageRef.current;
-    const token = `{{${key}}}`;
-    const start = el?.selectionStart ?? message.length, end = el?.selectionEnd ?? message.length;
-    const next = message.slice(0, start) + token + message.slice(end);
-    setMessage(next); setResult(null);
-    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(start + token.length, start + token.length); });
-  };
+  // Put a detail pill where the cursor is
+  const insertField = (key: string) => { messageRef.current?.insertField(key); setResult(null); };
   const anySending = history.some(h => (h.pending_count ?? 0) > 0);
   useEffect(() => {
     if (!anySending) return;
@@ -239,31 +233,21 @@ export default function MessagesPage() {
 
           <Panel title="Compose">
             <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 6 }}>Message</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <span style={{ fontSize: 11.5, color: 'var(--muted)', marginRight: 2 }}>Personalise — insert:</span>
-              {MESSAGE_FIELDS.map(f => (
-                <button key={f.key} type="button" onClick={() => insertField(f.key)} title={`Adds {{${f.key}}} — ${f.hint}`}
-                  style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: 'var(--surface)', color: 'var(--navy)', border: '1px solid var(--line-2)' }}>
-                  + {f.label}
-                </button>
-              ))}
-            </div>
-            <textarea
+            <div style={{ marginBottom: 8 }}><FieldButtons onInsert={insertField} /></div>
+            <TemplateEditor
               ref={messageRef}
               value={message}
-              onChange={e => { setMessage(e.target.value); setResult(null); }}
-              placeholder={'Hi {{first_name}}, thank you for serving in {{department|your department}}…'}
-              rows={6}
-              className="input"
-              style={{ width: '100%', height: 'auto', padding: '12px 14px', resize: 'vertical', lineHeight: 1.45 }}
+              onChange={v => { setMessage(v); setResult(null); }}
+              placeholder="Write your message… use the buttons above to add each person's name, cell and more."
+              minHeight={140}
             />
             <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 4 }}>
-              {message.length} characters · Each person gets their own copy. Add a fallback for blank details with <code>{'{{cell|your cell}}'}</code>.
+              Each person gets their own copy with their details filled in. Click a blue detail to set a word to use when someone has nothing on file.
             </div>
 
             {unknown.length > 0 && (
               <div style={{ marginTop: 10, padding: '8px 11px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#c0392b' }}>
-                Not a known detail: {unknown.map(u => `{{${u}}}`).join(', ')} — it will be sent exactly as typed. Use the buttons above.
+                Not a known detail: {unknown.map(u => `{{${u}}}`).join(', ')} — it will be sent exactly as typed. Use the + buttons above instead.
               </div>
             )}
             {missing.length > 0 && (
@@ -271,7 +255,7 @@ export default function MessagesPage() {
                 {missing.map(m => (
                   <div key={m.key}>
                     <strong>{m.count}</strong> of {recipients.length} recipients have no {m.label.toLowerCase()} on file — that spot will be blank.
-                    {' '}Try <code>{`{{${m.key}|…}}`}</code> with a fallback word.
+                    {' '}Click the “{m.label}” detail in your message to set a word to use instead.
                   </div>
                 ))}
               </div>
