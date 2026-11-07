@@ -6,6 +6,7 @@ import { TextInput } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Panel, THead, TRow, Skeleton } from '@/components/admin/chrome';
 import WhatsAppConnection from '@/components/admin/WhatsAppConnection';
 import MessagesTabs from '@/components/admin/MessagesTabs';
+import BroadcastRecipients from '@/components/admin/BroadcastRecipients';
 import TemplateEditor, { FieldButtons, type TemplateEditorHandle } from '@/components/admin/TemplateEditor';
 import { AttachButton, AttachmentPreview, uploadImage, type Attachment } from '@/components/admin/ImageAttach';
 import { MESSAGE_FIELDS, personalize, memberFieldValues, fieldsWithoutFallback, unknownFields, type PersonalizeMember } from '@/lib/message-fields';
@@ -57,6 +58,8 @@ export default function MessagesPage() {
   const [result, setResult] = useState<{ queued: number; minutes: number } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [history, setHistory] = useState<MessageRow[]>([]);
+  const [queueWaiting, setQueueWaiting] = useState(0);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [previewId, setPreviewId] = useState<string>('');
   const messageRef = useRef<TemplateEditorHandle>(null);
@@ -71,8 +74,9 @@ export default function MessagesPage() {
 
   const loadHistory = async () => {
     const r = await fetch('/api/admin/messages/send').catch(() => null);
-    const j = r?.ok ? await r.json() as { history: MessageRow[] } : { history: [] };
+    const j = r?.ok ? await r.json() as { history: MessageRow[]; queue?: number } : { history: [] as MessageRow[], queue: 0 };
     setHistory(j.history);
+    setQueueWaiting(j.queue ?? 0);
   };
 
   useEffect(() => {
@@ -131,9 +135,10 @@ export default function MessagesPage() {
     return () => clearInterval(t);
   }, [anySending]);
 
-  const stopBroadcast = async (id: string) => {
-    if (!window.confirm('Stop the rest of this broadcast? Messages already sent stay sent.')) return;
-    await fetch('/api/admin/messages/send', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => null);
+  // Cancel every message still waiting, in every broadcast
+  const cancelEverything = async () => {
+    if (!window.confirm(`Cancel all ${queueWaiting} WhatsApp message${queueWaiting === 1 ? '' : 's'} that haven't gone out yet? Messages already sent stay sent.`)) return;
+    await fetch('/api/admin/messages/send', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ all: true }) }).catch(() => null);
     loadHistory();
   };
 
@@ -415,27 +420,47 @@ export default function MessagesPage() {
             </div>
           </Panel>
 
-          <Panel title="Recent messages">
+          <Panel
+            title="Recent messages"
+            action={queueWaiting > 0 ? (
+              <button onClick={cancelEverything} className="btn btn-sm"
+                style={{ height: 30, fontSize: 12, background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+                Cancel all unsent ({queueWaiting})
+              </button>
+            ) : undefined}
+            pad={false}
+          >
             {history.length === 0 ? (
               <div style={{ padding: '20px 12px', textAlign: 'center', fontSize: 12.5, color: 'var(--faint)' }}>No messages sent yet.</div>
             ) : (
               <div>
-                <THead cols={['Sent', 'Message', 'Audience', 'Progress']} template="120px 1fr 160px 190px" />
-                {history.map(h => (
-                  <TRow key={h.id} template="120px 1fr 160px 190px">
-                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                      {new Date(h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    </span>
-                    <span title={h.body}>{h.body}</span>
-                    <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{summarizeAudience(h.audience, h.audience?.type === 'cell' ? cellNameById.get(h.audience.cell_id) : undefined)}</span>
-                    <span style={{ fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span>{h.sent_count}/{h.recipient_count} sent{h.failed_count > 0 ? ` · ${h.failed_count} failed` : ''}{(h.pending_count ?? 0) > 0 ? ` · ${h.pending_count} waiting` : ''}</span>
-                      {(h.pending_count ?? 0) > 0 && (
-                        <button onClick={() => stopBroadcast(h.id)} className="btn btn-ghost btn-sm" style={{ height: 26, padding: '0 8px', fontSize: 11.5 }}>Stop</button>
-                      )}
-                    </span>
-                  </TRow>
-                ))}
+                <THead cols={['Sent', 'Message', 'Audience', 'Progress']} template="120px 1fr 160px 250px" />
+                {history.map(h => {
+                  const cancelled = Math.max(0, h.recipient_count - h.sent_count - h.failed_count - (h.pending_count ?? 0));
+                  const open = expanded === h.id;
+                  return (
+                    <div key={h.id}>
+                      <TRow template="120px 1fr 160px 250px" onClick={() => setExpanded(open ? null : h.id)}>
+                        <span style={{ fontSize: 12, color: 'var(--muted)' }}>
+                          {new Date(h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                          <span style={{ display: 'block', fontSize: 11 }}>{new Date(h.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </span>
+                        <span title={h.body}>{h.body}</span>
+                        <span style={{ fontSize: 12.5, color: 'var(--muted)' }}>{summarizeAudience(h.audience, h.audience?.type === 'cell' ? cellNameById.get(h.audience.cell_id) : undefined)}</span>
+                        <span style={{ fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span>
+                            {h.sent_count}/{h.recipient_count} sent
+                            {h.failed_count > 0 ? ` · ${h.failed_count} failed` : ''}
+                            {(h.pending_count ?? 0) > 0 ? ` · ${h.pending_count} waiting` : ''}
+                            {cancelled > 0 ? ` · ${cancelled} cancelled` : ''}
+                          </span>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--navy)' }}>{open ? 'Hide ▴' : 'Recipients ▾'}</span>
+                        </span>
+                      </TRow>
+                      {open && <BroadcastRecipients broadcastId={h.id} onChanged={loadHistory} />}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </Panel>

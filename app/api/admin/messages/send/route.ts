@@ -4,7 +4,7 @@ import { whatsappProvider, OPT_OUT_FOOTER } from '@/lib/whatsapp';
 import { personalize } from '@/lib/message-fields';
 import { loadPersonalizeData } from '@/lib/message-fields-server';
 import { isOurMediaPath } from '@/lib/whatsapp-media';
-import { enqueueWhatsApp, cancelBroadcast } from '@/lib/whatsapp-queue';
+import { enqueueWhatsApp, cancelBroadcast, cancelQueued, cancelAllPending, refreshBroadcastCounts } from '@/lib/whatsapp-queue';
 
 // Queue a WhatsApp broadcast. Sending happens a few messages per minute via
 // /api/cron/tick (lib/whatsapp-queue.ts), so any audience size works and the
@@ -77,15 +77,51 @@ export async function GET(request: Request) {
       .filter(p => p.name);
     return Response.json({ people });
   }
+  // ?recipients=<broadcast id> → who it goes to, with each person's status
+  const rid = new URL(request.url).searchParams.get('recipients');
+  if (rid) {
+    const { data: rows } = await a.db.from('whatsapp_queue')
+      .select('id, member_id, phone, status, last_error, sent_at, send_after, attempts')
+      .eq('group_message_id', rid).order('created_at').limit(2000);
+    const list = (rows ?? []) as { id: string; member_id: string | null; phone: string; status: string; last_error: string | null; sent_at: string | null; send_after: string; attempts: number }[];
+    const ids = Array.from(new Set(list.map(r => r.member_id).filter((x): x is string => !!x)));
+    const names = new Map<string, string>();
+    for (let i = 0; i < ids.length; i += 200) {
+      const { data: ms } = await a.db.from('members').select('id, name').in('id', ids.slice(i, i + 200));
+      for (const m of (ms ?? []) as { id: string; name: string }[]) names.set(m.id, m.name);
+    }
+    return Response.json({ recipients: list.map(r => ({ ...r, name: (r.member_id && names.get(r.member_id)) || `+${r.phone}` })) });
+  }
+
   const { data } = await a.db.from('group_messages').select('*').order('created_at', { ascending: false }).limit(20);
-  return Response.json({ history: data ?? [] });
+  const history = (data ?? []) as { id: string; pending_count?: number }[];
+  // Keep "waiting" honest for broadcasts still in progress
+  const live = history.filter(h => (h.pending_count ?? 0) > 0);
+  if (live.length) {
+    await Promise.all(live.map(h => refreshBroadcastCounts(a.db, h.id)));
+    const { data: fresh } = await a.db.from('group_messages').select('*').in('id', live.map(h => h.id));
+    const byId = new Map(((fresh ?? []) as { id: string }[]).map(f => [f.id, f]));
+    return Response.json({ history: history.map(h => byId.get(h.id) ?? h), queue: await pendingTotal(a.db) });
+  }
+  return Response.json({ history, queue: await pendingTotal(a.db) });
 }
 
-// Stop the rest of a broadcast: { id }
+async function pendingTotal(db: Parameters<typeof cancelBroadcast>[0]): Promise<number> {
+  const { count } = await db.from('whatsapp_queue').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+  return count ?? 0;
+}
+
+// Cancel messages that haven't gone out yet:
+//   { id }        → the rest of one broadcast
+//   { queue_id }  → one person's message
+//   { all: true } → everything still waiting, every broadcast
+// Messages already sent stay sent.
 export async function DELETE(request: Request) {
   const a = await requireAdmin();
   if (!a.ok) return a.response;
-  const { id } = await request.json().catch(() => ({})) as { id?: string };
-  if (!id) return Response.json({ error: 'id required' }, { status: 400 });
-  return Response.json({ ok: true, cancelled: await cancelBroadcast(a.db, id) });
+  const { id, queue_id, all } = await request.json().catch(() => ({})) as { id?: string; queue_id?: string; all?: boolean };
+  if (id) return Response.json({ ok: true, cancelled: await cancelBroadcast(a.db, id) });
+  if (queue_id) return Response.json({ ok: true, cancelled: await cancelQueued(a.db, queue_id) });
+  if (all) return Response.json({ ok: true, cancelled: await cancelAllPending(a.db) });
+  return Response.json({ error: 'Nothing to cancel' }, { status: 400 });
 }

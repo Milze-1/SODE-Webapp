@@ -29,7 +29,7 @@ export async function enqueueWhatsApp(db: DB, groupMessageId: string | null, ite
   return rows.length;
 }
 
-async function refreshBroadcastCounts(db: DB, groupMessageId: string) {
+export async function refreshBroadcastCounts(db: DB, groupMessageId: string) {
   const count = async (status: string) =>
     (await db.from('whatsapp_queue').select('id', { count: 'exact', head: true }).eq('group_message_id', groupMessageId).eq('status', status)).count ?? 0;
   const [sent, failed, pending, sending] = await Promise.all([count('sent'), count('failed'), count('pending'), count('sending')]);
@@ -111,6 +111,26 @@ export async function processWhatsAppQueue(): Promise<{ sent: number; failed: nu
   }
   for (const id of Array.from(touched)) await refreshBroadcastCounts(db, id);
   return { sent, failed };
+}
+
+// One person's message, if it hasn't gone out yet
+export async function cancelQueued(db: DB, queueId: string): Promise<number> {
+  const { data } = await db.from('whatsapp_queue').update({ status: 'cancelled' })
+    .eq('id', queueId).eq('status', 'pending').select('id, group_message_id');
+  const row = (data ?? [])[0] as { group_message_id: string | null } | undefined;
+  if (row?.group_message_id) await refreshBroadcastCounts(db, row.group_message_id);
+  return data?.length ?? 0;
+}
+
+// Everything still waiting, across every broadcast
+export async function cancelAllPending(db: DB): Promise<number> {
+  const { data } = await db.from('whatsapp_queue').update({ status: 'cancelled' })
+    .eq('status', 'pending').select('id, group_message_id');
+  const rows = (data ?? []) as { group_message_id: string | null }[];
+  for (const id of Array.from(new Set(rows.map(r => r.group_message_id).filter((x): x is string => !!x)))) {
+    await refreshBroadcastCounts(db, id);
+  }
+  return rows.length;
 }
 
 export async function cancelBroadcast(db: DB, groupMessageId: string): Promise<number> {
