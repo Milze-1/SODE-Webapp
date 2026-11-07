@@ -41,9 +41,14 @@ export async function POST(request: Request) {
     if (action === 'connect') {
       const s = await getOpenWaSession(true);
       if (!s) throw new Error('Could not create a WhatsApp session');
-      if (s.status !== 'ready') await openWaStart(s.id);
+      // Already waiting for a scan (e.g. after WhatsApp logged the number out): just show the QR
+      let startError: string | null = null;
+      if (s.status !== 'ready' && s.status !== 'qr_ready') {
+        await openWaStart(s.id).catch(e => { startError = (e as Error).message; });
+      }
       await openWaEnsureWebhook(s.id).catch(e => console.error('[whatsapp] webhook register failed:', (e as Error).message));
       const qr = s.status === 'ready' ? null : await openWaQr(s.id);
+      if (!qr && startError && s.status !== 'ready') throw new Error(startError);
       return Response.json({ ok: true, status: s.status, qr });
     }
     if (action === 'qr') {

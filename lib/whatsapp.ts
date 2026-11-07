@@ -72,7 +72,11 @@ export async function getOpenWaSession(create = false): Promise<OpenWaSession | 
 
 export async function openWaStart(sessionId: string) {
   const r = await openwa(`/sessions/${encodeURIComponent(sessionId)}/start`, { method: 'POST' });
-  if (!r.ok && r.status !== 409) throw new Error(`OpenWA ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  if (r.ok || r.status === 409) return;
+  const text = await r.text();
+  // Already running (e.g. waiting for a QR scan after WhatsApp logged it out) — that's fine
+  if (r.status === 400 && /already started|already running/i.test(text)) return;
+  throw new Error(`OpenWA ${r.status}: ${text.slice(0, 200)}`);
 }
 
 export async function openWaQr(sessionId: string): Promise<string | null> {

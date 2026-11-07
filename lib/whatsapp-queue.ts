@@ -81,6 +81,19 @@ export async function processWhatsAppQueue(): Promise<{ sent: number; failed: nu
     } else {
       r = await sendWhatsApp(claimed.phone, claimed.body, sessionId);
     }
+    // Paused, not failed: the gateway's daily limit for a young number (429) or
+    // the number being disconnected (409). Put it back without using up an
+    // attempt, hold everything else waiting, and stop this round.
+    const paused = !r.ok && /OpenWA 429|Daily allowance|OpenWA 409|not connected|not ready/i.test(r.error ?? '');
+    if (paused) {
+      const limit = /429|Daily allowance/i.test(r.error ?? '');
+      const until = new Date(Date.now() + (limit ? 60 : 5) * 60_000).toISOString();
+      await db.from('whatsapp_queue').update({ status: 'pending', last_error: r.error ?? null, send_after: until }).eq('id', claimed.id);
+      await db.from('whatsapp_queue').update({ send_after: until }).eq('status', 'pending').lt('send_after', until);
+      if (claimed.group_message_id) touched.add(claimed.group_message_id);
+      break;
+    }
+
     const attempts = (claimed.attempts ?? 0) + 1;
     if (r.ok) {
       sent++;
