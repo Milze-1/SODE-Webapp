@@ -21,6 +21,8 @@ export interface InboxMessage {
   sender_name: string | null;
   read_at: string | null;
   delivery_status?: DeliveryStatus | null;
+  media_path?: string | null;
+  media_mime?: string | null;
   created_at: string;
 }
 
@@ -55,8 +57,10 @@ export async function membersByPhone(db: DB): Promise<Map<string, { id: string; 
 export async function logOutbound(db: DB, m: {
   phone: string; body: string; memberId?: string | null; chatId?: string | null;
   providerMessageId?: string | null; sentBy?: string | null; contact?: string;
+  mediaPath?: string | null;
 }) {
   const { error } = await db.from('whatsapp_messages').insert({
+    ...(m.mediaPath ? { media_path: m.mediaPath, msg_type: 'image' } : {}),
     contact: m.contact ?? m.phone,
     phone: m.phone,
     chat_id: m.chatId ?? `${m.phone}@c.us`,
@@ -107,7 +111,8 @@ export async function listConversations(db: DB): Promise<Conversation[]> {
   for (const r of rows) {
     let c = byContact.get(r.contact);
     if (!c) {
-      c = { contact: r.contact, phone: r.phone, member_id: r.member_id, name: '', last_body: r.body, last_direction: r.direction, last_status: r.delivery_status ?? null, last_at: r.created_at, unread: 0, sender_name: null };
+      const text = r.body?.trim() || (r.media_path ? '' : r.body);
+      c = { contact: r.contact, phone: r.phone, member_id: r.member_id, name: '', last_body: r.media_path ? `📷 ${text || 'Photo'}` : text, last_direction: r.direction, last_status: r.delivery_status ?? null, last_at: r.created_at, unread: 0, sender_name: null };
       byContact.set(r.contact, c);
     }
     if (!c.member_id && r.member_id) c.member_id = r.member_id;

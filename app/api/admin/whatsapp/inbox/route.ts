@@ -1,5 +1,6 @@
 import { requireAdmin } from '@/lib/admin-auth';
-import { sendWhatsApp, sendWhatsAppChat, whatsappProvider, normalizePhone } from '@/lib/whatsapp';
+import { sendWhatsApp, sendWhatsAppChat, sendWhatsAppImage, whatsappProvider, normalizePhone } from '@/lib/whatsapp';
+import { signedMediaUrl, signedMediaUrls, isOurMediaPath } from '@/lib/whatsapp-media';
 import { personalize } from '@/lib/message-fields';
 import { loadPersonalizeData } from '@/lib/message-fields-server';
 import { listConversations, unreadCount, logOutbound, membersByPhone, type InboxMessage } from '@/lib/whatsapp-inbox';
@@ -35,7 +36,10 @@ export async function GET(request: Request) {
   const { data } = await a.db.from('whatsapp_messages')
     .select('*')
     .eq('contact', contact).order('created_at', { ascending: false }).limit(200);
-  const messages = ((data ?? []) as InboxMessage[]).reverse();
+  const rows = ((data ?? []) as InboxMessage[]).reverse();
+  // Photos: short-lived links for the page to show
+  const links = await signedMediaUrls(a.db, rows.map(m => m.media_path ?? '').filter(Boolean)).catch(() => new Map<string, string>());
+  const messages = rows.map(m => ({ ...m, media_url: m.media_path ? links.get(m.media_path) ?? null : null }));
 
   if (url.searchParams.get('markRead') !== '0') {
     await a.db.from('whatsapp_messages').update({ read_at: new Date().toISOString() })
@@ -53,13 +57,15 @@ export async function GET(request: Request) {
   return Response.json({ messages, member });
 }
 
-// POST { contact, body } → reply now (not queued: it's a 1-to-1 answer)
+// POST { contact, body, media_path? } → reply now (not queued: it's a 1-to-1 answer).
+// With media_path (from /api/admin/whatsapp/media) the image is sent and the text is its caption.
 export async function POST(request: Request) {
   const a = await requireAdmin();
   if (!a.ok) return a.response;
-  const { contact, body } = await request.json().catch(() => ({})) as { contact?: string; body?: string };
-  const text = body?.trim();
-  if (!contact || !text) return Response.json({ error: 'Write a message first.' }, { status: 400 });
+  const { contact, body, media_path } = await request.json().catch(() => ({})) as { contact?: string; body?: string; media_path?: string };
+  const text = body?.trim() ?? '';
+  const mediaPath = isOurMediaPath(media_path) ? media_path : null;
+  if (!contact || (!text && !mediaPath)) return Response.json({ error: 'Write a message or attach an image first.' }, { status: 400 });
   if (text.length > 4000) return Response.json({ error: 'Message is too long (max 4,000 characters).' }, { status: 400 });
   if (!whatsappProvider()) return Response.json({ error: 'WhatsApp is not set up yet — connect it first.' }, { status: 400 });
 
@@ -91,10 +97,17 @@ export async function POST(request: Request) {
     if (m) finalText = personalize(text, m);
   }
 
-  const r = chatId ? await sendWhatsAppChat(chatId, finalText) : await sendWhatsApp(phone!, finalText);
+  let r;
+  if (mediaPath) {
+    const link = await signedMediaUrl(a.db, mediaPath);
+    if (!link) return Response.json({ error: 'That image could not be found — attach it again.' }, { status: 400 });
+    r = await sendWhatsAppImage(chatId ?? `${phone}@c.us`, link, finalText);
+  } else {
+    r = chatId ? await sendWhatsAppChat(chatId, finalText) : await sendWhatsApp(phone!, finalText);
+  }
   if (!r.ok) return Response.json({ error: r.error ?? 'Could not send' }, { status: 502 });
 
-  await logOutbound(a.db, { contact, phone: phone ?? contact, chatId, body: finalText, memberId, providerMessageId: r.messageId, sentBy: a.userId });
+  await logOutbound(a.db, { contact, phone: phone ?? contact, chatId, body: finalText, memberId, providerMessageId: r.messageId, sentBy: a.userId, mediaPath });
   // Answering a conversation clears it from "needs reply"
   await a.db.from('whatsapp_messages').update({ read_at: new Date().toISOString() })
     .eq('contact', contact).eq('direction', 'in').is('read_at', null);

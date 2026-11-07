@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server';
-import { sendWhatsApp, whatsappProvider, getOpenWaSession, normalizePhone } from '@/lib/whatsapp';
+import { sendWhatsApp, sendWhatsAppImage, whatsappProvider, getOpenWaSession, normalizePhone, type SendResult } from '@/lib/whatsapp';
+import { signedMediaUrl } from '@/lib/whatsapp-media';
 import { logOutbound } from '@/lib/whatsapp-inbox';
 
 // Paced WhatsApp delivery. Messages are queued (whatsapp_queue) and sent by
@@ -14,13 +15,13 @@ const PER_TICK = Math.max(1, Math.min(10, Number(process.env.WHATSAPP_PER_MINUTE
 const GAP_MS: [number, number] = [3_000, 6_000];
 const MAX_ATTEMPTS = 3;
 
-export interface QueueItem { memberId: string | null; phone: string; body: string }
+export interface QueueItem { memberId: string | null; phone: string; body: string; mediaPath?: string | null }
 
 export async function enqueueWhatsApp(db: DB, groupMessageId: string | null, items: QueueItem[]): Promise<number> {
   const rows = items
     .map(i => ({ ...i, phone: normalizePhone(i.phone) }))
     .filter((i): i is QueueItem & { phone: string } => !!i.phone)
-    .map(i => ({ group_message_id: groupMessageId, member_id: i.memberId, phone: i.phone, body: i.body }));
+    .map(i => ({ group_message_id: groupMessageId, member_id: i.memberId, phone: i.phone, body: i.body, ...(i.mediaPath ? { media_path: i.mediaPath } : {}) }));
   for (let i = 0; i < rows.length; i += 500) {
     const { error } = await db.from('whatsapp_queue').insert(rows.slice(i, i + 500));
     if (error) throw new Error(error.message);
@@ -67,15 +68,24 @@ export async function processWhatsAppQueue(): Promise<{ sent: number; failed: nu
     const { data: claimed } = await db.from('whatsapp_queue')
       .update({ status: 'sending', send_after: new Date().toISOString() })
       .eq('id', due[i].id).eq('status', 'pending')
-      .select('id,group_message_id,member_id,phone,body,attempts').maybeSingle();
+      .select('*').maybeSingle();
     if (!claimed) continue;
 
-    const r = await sendWhatsApp(claimed.phone, claimed.body, sessionId);
+    // With an image: a fresh link for the gateway, the text as its caption
+    let r: SendResult;
+    if (claimed.media_path) {
+      const link = await signedMediaUrl(db, claimed.media_path).catch(() => null);
+      r = link
+        ? await sendWhatsAppImage(`${claimed.phone}@c.us`, link, claimed.body, sessionId)
+        : { ok: false, provider, error: 'Attached image is missing from storage' };
+    } else {
+      r = await sendWhatsApp(claimed.phone, claimed.body, sessionId);
+    }
     const attempts = (claimed.attempts ?? 0) + 1;
     if (r.ok) {
       sent++;
       await db.from('whatsapp_queue').update({ status: 'sent', attempts, sent_at: new Date().toISOString(), provider: r.provider, provider_message_id: r.messageId ?? null, last_error: null }).eq('id', claimed.id);
-      await logOutbound(db, { phone: claimed.phone, body: claimed.body, memberId: claimed.member_id, providerMessageId: r.messageId });
+      await logOutbound(db, { phone: claimed.phone, body: claimed.body, memberId: claimed.member_id, providerMessageId: r.messageId, mediaPath: claimed.media_path ?? null });
     } else if (attempts < MAX_ATTEMPTS) {
       // retry later with backoff: 5 min, then 30 min
       await db.from('whatsapp_queue').update({ status: 'pending', attempts, last_error: r.error ?? null, send_after: new Date(Date.now() + (attempts === 1 ? 5 : 30) * 60_000).toISOString() }).eq('id', claimed.id);

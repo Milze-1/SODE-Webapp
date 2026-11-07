@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { createAdminClient } from '@/lib/supabase-server';
-import { normalizePhone } from '@/lib/whatsapp';
+import { normalizePhone, openWaDownloadMedia } from '@/lib/whatsapp';
+import { storeMedia } from '@/lib/whatsapp-media';
 import { enqueueWhatsApp } from '@/lib/whatsapp-queue';
 import { membersByPhone, describeMessage, notifyAdminsOfMessage } from '@/lib/whatsapp-inbox';
 
@@ -44,6 +45,7 @@ interface IncomingData {
   id?: string; from?: string; chatId?: string; body?: string; type?: string;
   fromMe?: boolean; isGroup?: boolean; isStatusBroadcast?: boolean;
   senderPhone?: string | null; contact?: { pushName?: string; name?: string };
+  media?: { mimetype?: string; data?: string; omitted?: boolean };
 }
 
 export async function POST(request: Request) {
@@ -66,8 +68,34 @@ export async function POST(request: Request) {
   if (!contact) return Response.json({ ok: true });
 
   const db = createAdminClient();
+  // A redelivery of a message we already have: nothing to do
+  if (d.id) {
+    const { count } = await db.from('whatsapp_messages').select('id', { count: 'exact', head: true }).eq('provider_message_id', d.id);
+    if (count) return Response.json({ ok: true, duplicate: true });
+  }
   const member = phone ? (await membersByPhone(db)).get(phone) ?? null : null;
-  const body = describeMessage(d.type, d.body);
+
+  // A photo they sent: keep a copy so it shows in the inbox. Small ones come
+  // inline; bigger ones are fetched from the gateway. Failure just leaves the
+  // "📷 Photo" label.
+  let mediaPath: string | null = null, mediaMime: string | null = null;
+  if ((d.type === 'image' || d.type === 'sticker') && d.id) {
+    try {
+      let bytes: ArrayBuffer | Buffer | null = null, mime = d.media?.mimetype?.split(';')[0] ?? '';
+      if (d.media?.data) bytes = Buffer.from(d.media.data, 'base64');
+      else {
+        const got = await openWaDownloadMedia(chatId, d.id);
+        if (got) { bytes = got.bytes; mime = got.mime || mime; }
+      }
+      if (bytes && /^image\/(jpeg|png|webp|gif)$/.test(mime)) {
+        mediaPath = await storeMedia(db, bytes, mime, 'in');
+        mediaMime = mime;
+      }
+    } catch (e) {
+      console.error('[whatsapp webhook] could not keep media:', (e as Error).message);
+    }
+  }
+  const body = mediaPath ? (d.body ?? '').trim() : describeMessage(d.type, d.body);
   const text = (d.body ?? '').trim();
   const wantsStop = STOP.test(text), wantsStart = START.test(text);
 
@@ -83,6 +111,7 @@ export async function POST(request: Request) {
     direction: 'in',
     body,
     msg_type: d.type ?? 'text',
+    ...(mediaPath ? { media_path: mediaPath, media_mime: mediaMime } : {}),
     sender_name: d.contact?.pushName ?? d.contact?.name ?? null,
     provider_message_id: d.id ?? null,
     // STOP / START are handled automatically — nothing to answer
@@ -92,7 +121,7 @@ export async function POST(request: Request) {
 
   if (!wantsStop && !wantsStart) {
     if (!insertError && !unreadBefore) {
-      await notifyAdminsOfMessage(db, member?.name ?? d.contact?.pushName ?? (phone ? `+${phone}` : 'a contact'), body, contact)
+      await notifyAdminsOfMessage(db, member?.name ?? d.contact?.pushName ?? (phone ? `+${phone}` : 'a contact'), mediaPath ? `📷 ${body || 'Photo'}` : body, contact)
         .catch(e => console.error('[whatsapp webhook] admin push failed:', e));
     }
     return Response.json({ ok: true });

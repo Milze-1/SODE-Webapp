@@ -5,6 +5,7 @@ import { Avatar } from '@/components/sode/ui';
 import { AdminTopbar, AdminBody, Skeleton } from '@/components/admin/chrome';
 import MessagesTabs from '@/components/admin/MessagesTabs';
 import TemplateEditor, { FieldButtons, type TemplateEditorHandle } from '@/components/admin/TemplateEditor';
+import { AttachButton, AttachmentPreview, uploadImage, type Attachment } from '@/components/admin/ImageAttach';
 import { refreshWhatsAppUnread } from '@/lib/hooks/useWhatsAppUnread';
 
 interface Conversation {
@@ -14,6 +15,7 @@ interface Conversation {
 interface Message {
   id: string; direction: 'in' | 'out'; body: string; created_at: string; read_at: string | null;
   delivery_status?: 'sent' | 'delivered' | 'read' | 'failed' | null;
+  media_path?: string | null; media_url?: string | null;
 }
 
 // WhatsApp-style ticks on messages SODE sent: ✓ sent · ✓✓ delivered · blue ✓✓ read
@@ -56,6 +58,8 @@ export default function InboxPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const replyRef = useRef<TemplateEditorHandle>(null);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetch('/api/admin/whatsapp/inbox?contact=*members').then(r => r.ok ? r.json() : { members: [] })
@@ -79,7 +83,9 @@ export default function InboxPage() {
     const j = await r.json() as { messages: Message[]; member: ThreadMember | null };
     setMessages(prev => {
       if (scroll || j.messages.length !== prev.length) setTimeout(() => bottomRef.current?.scrollIntoView({ block: 'end' }), 30);
-      return j.messages;
+      // Keep image links already loaded (each fetch signs new ones; swapping would reload every photo)
+      const known = new Map(prev.filter(m => m.media_url).map(m => [m.id, m.media_url]));
+      return j.messages.map(m => known.has(m.id) ? { ...m, media_url: known.get(m.id) } : m);
     });
     setMember(j.member);
     setConversations(cs => cs.map(c => c.contact === contact ? { ...c, unread: 0 } : c));
@@ -97,23 +103,30 @@ export default function InboxPage() {
 
   useEffect(() => {
     if (!active) return;
-    setMessages([]); setMember(null); setError(null); setReply('');
+    setMessages([]); setMember(null); setError(null); setReply(''); setAttachment(null);
     loadThread(active);
     const t = setInterval(() => { if (document.visibilityState === 'visible') loadThread(active, false); }, 10_000);
     return () => clearInterval(t);
   }, [active, loadThread]);
 
+  const attach = async (file: File) => {
+    setError(null); setUploading(true); setAttachment(null);
+    try { setAttachment(await uploadImage(file)); }
+    catch (e) { setError((e as Error).message); }
+    finally { setUploading(false); }
+  };
+
   const send = async () => {
-    if (!active || !reply.trim()) return;
+    if (!active || uploading || (!reply.trim() && !attachment)) return;
     setSending(true); setError(null);
     try {
       const r = await fetch('/api/admin/whatsapp/inbox', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contact: active, body: reply }),
+        body: JSON.stringify({ contact: active, body: reply, media_path: attachment?.path }),
       });
       const j = await r.json().catch(() => ({})) as { error?: string };
       if (!r.ok) { setError(j.error ?? 'Could not send'); return; }
-      setReply('');
+      setReply(''); setAttachment(null);
       await Promise.all([loadThread(active), loadList()]);
     } catch {
       setError('Could not send. Check your connection and try again.');
@@ -256,6 +269,15 @@ export default function InboxPage() {
                             </div>
                           )}
                           <div style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '72%', padding: '8px 11px 6px', borderRadius: mine ? '12px 12px 4px 12px' : '12px 12px 12px 4px', background: mine ? '#dcf8c6' : 'var(--surface)', border: mine ? 'none' : '1px solid var(--line)', color: '#111', fontSize: 13.5, lineHeight: 1.45, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                            {m.media_url ? (
+                              <a href={m.media_url} target="_blank" rel="noreferrer" title="Open full size" style={{ display: 'block', margin: '-3px -6px 4px' }}>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={m.media_url} alt={m.body || 'Photo'} loading="lazy"
+                                  style={{ display: 'block', maxWidth: 'min(320px, 100%)', maxHeight: 360, borderRadius: 8, objectFit: 'cover' }} />
+                              </a>
+                            ) : m.media_path ? (
+                              <div style={{ fontSize: 12, color: 'var(--muted)' }}>📷 Photo</div>
+                            ) : null}
                             {m.body}
                             <div style={{ fontSize: 10.5, color: '#667', marginTop: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4 }}>
                               {new Date(m.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
@@ -278,19 +300,26 @@ export default function InboxPage() {
                     {(member || activeMember) && (
                       <div style={{ marginBottom: 8 }}><FieldButtons compact onInsert={k => replyRef.current?.insertField(k)} /></div>
                     )}
+                    {(attachment || uploading) && (
+                      <div style={{ marginBottom: 8 }}>
+                        <AttachmentPreview attachment={attachment} uploading={uploading} onRemove={() => setAttachment(null)} />
+                      </div>
+                    )}
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+                      <AttachButton onFile={attach} disabled={uploading || sending} label="" />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <TemplateEditor
                           ref={replyRef}
                           value={reply}
                           onChange={setReply}
                           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-                          placeholder="Type a reply… (Enter to send, Shift+Enter for a new line)"
+                          onPasteImage={attach}
+                          placeholder={attachment ? 'Add a caption… (optional)' : 'Type a reply… (Enter to send, Shift+Enter for a new line)'}
                           minHeight={44}
                           maxHeight={180}
                         />
                       </div>
-                      <button onClick={send} disabled={sending || !reply.trim()} className="btn btn-primary btn-sm" style={{ height: 40 }}>
+                      <button onClick={send} disabled={sending || uploading || (!reply.trim() && !attachment)} className="btn btn-primary btn-sm" style={{ height: 40 }}>
                         <Icon name="arrowright" size={15} color="#fff" /> {sending ? 'Sending…' : 'Send'}
                       </button>
                     </div>

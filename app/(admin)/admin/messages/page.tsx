@@ -7,6 +7,7 @@ import { AdminTopbar, AdminBody, Panel, THead, TRow, Skeleton } from '@/componen
 import WhatsAppConnection from '@/components/admin/WhatsAppConnection';
 import MessagesTabs from '@/components/admin/MessagesTabs';
 import TemplateEditor, { FieldButtons, type TemplateEditorHandle } from '@/components/admin/TemplateEditor';
+import { AttachButton, AttachmentPreview, uploadImage, type Attachment } from '@/components/admin/ImageAttach';
 import { MESSAGE_FIELDS, personalize, memberFieldValues, fieldsWithoutFallback, unknownFields, type PersonalizeMember } from '@/lib/message-fields';
 import { summarizeAudience, PILLAR_OPTIONS, LIFE_STAGE_OPTIONS, type FormAudience } from '@/lib/forms-audience';
 
@@ -59,6 +60,14 @@ export default function MessagesPage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [previewId, setPreviewId] = useState<string>('');
   const messageRef = useRef<TemplateEditorHandle>(null);
+  const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const attach = async (file: File) => {
+    setErrorMsg(null); setUploading(true); setAttachment(null); setResult(null);
+    try { setAttachment(await uploadImage(file)); }
+    catch (e) { setErrorMsg((e as Error).message); }
+    finally { setUploading(false); }
+  };
 
   const loadHistory = async () => {
     const r = await fetch('/api/admin/messages/send').catch(() => null);
@@ -184,12 +193,12 @@ export default function MessagesPage() {
       const res = await fetch('/api/admin/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, audience }),
+        body: JSON.stringify({ message, audience, media_path: attachment?.path }),
       });
       const data = await res.json();
       if (!res.ok) { setErrorMsg(data.error ?? 'Failed to send'); setConfirming(false); return; }
       setResult({ queued: data.queued, minutes: data.minutes });
-      setMessage('');
+      setMessage(''); setAttachment(null);
       setConfirming(false);
       await loadHistory();
     } catch {
@@ -238,11 +247,17 @@ export default function MessagesPage() {
               ref={messageRef}
               value={message}
               onChange={v => { setMessage(v); setResult(null); }}
+              onPasteImage={attach}
               placeholder="Write your message… use the buttons above to add each person's name, cell and more."
               minHeight={140}
             />
             <div style={{ fontSize: 11.5, color: 'var(--faint)', marginTop: 4 }}>
               Each person gets their own copy with their details filled in. Click a blue detail to set a word to use when someone has nothing on file.
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+              {!attachment && !uploading && <AttachButton onFile={attach} label="Attach image" />}
+              <AttachmentPreview attachment={attachment} uploading={uploading} onRemove={() => setAttachment(null)} />
+              {!attachment && !uploading && <span style={{ fontSize: 11.5, color: 'var(--faint)' }}>or paste one into the message box</span>}
             </div>
 
             {unknown.length > 0 && (
@@ -261,7 +276,7 @@ export default function MessagesPage() {
               </div>
             )}
 
-            {message.trim() && (
+            {(message.trim() || attachment) && (
               <div style={{ marginTop: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>Preview as</span>
@@ -274,6 +289,10 @@ export default function MessagesPage() {
                   )}
                 </div>
                 <div style={{ maxWidth: 380, padding: '10px 12px', borderRadius: '12px 12px 12px 4px', background: '#dcf8c6', color: '#111', fontSize: 13.5, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>
+                  {attachment?.url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={attachment.url} alt="Attached image" style={{ display: 'block', width: 'calc(100% + 12px)', margin: '-4px -6px 8px', maxHeight: 300, objectFit: 'cover', borderRadius: 8 }} />
+                  )}
                   {personalize(message, previewPerson ?? { name: 'Ada Obi', cell: 'Victory Cell', department: 'Choir', life_stage: 'professional', career_stage: 'Building (3–7 yrs)', industry: 'Technology', points: 120 })}
                   {'\n\n'}<i>Reply STOP to stop these messages.</i>
                 </div>
@@ -381,7 +400,7 @@ export default function MessagesPage() {
               {!confirming ? (
                 <button
                   onClick={() => setConfirming(true)}
-                  disabled={!message.trim() || targetCount === 0}
+                  disabled={(!message.trim() && !attachment) || uploading || targetCount === 0}
                   className="btn btn-primary btn-sm"
                 >
                   <Icon name="message" size={15} color="#fff" /> Send

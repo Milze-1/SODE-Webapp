@@ -17,6 +17,7 @@ interface Props {
   maxHeight?: number;
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   disabled?: boolean;
+  onPasteImage?: (f: File) => void;
 }
 
 const TOKEN = /\{\{\s*([a-z_]+)\s*(?:\|([^}]*))?\}\}/gi;
@@ -61,7 +62,7 @@ function serialize(root: Node): string {
 }
 
 const TemplateEditor = forwardRef<TemplateEditorHandle, Props>(function TemplateEditor(
-  { value, onChange, placeholder, minHeight = 120, maxHeight = 360, onKeyDown, disabled }, ref,
+  { value, onChange, placeholder, minHeight = 120, maxHeight = 360, onKeyDown, disabled, onPasteImage }, ref,
 ) {
   const el = useRef<HTMLDivElement>(null);
   const wrap = useRef<HTMLDivElement>(null);
@@ -163,6 +164,9 @@ const TemplateEditor = forwardRef<TemplateEditorHandle, Props>(function Template
 
   const onPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
+    // A pasted screenshot/photo → attach it (when the page supports images)
+    const img = Array.from(e.clipboardData.files).find(f => f.type.startsWith('image/'));
+    if (img && onPasteImage) { onPasteImage(img); return; }
     const text = e.clipboardData.getData('text/plain');
     document.execCommand('insertText', false, text);
   };

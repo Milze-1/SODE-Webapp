@@ -132,6 +132,47 @@ export async function sendWhatsAppChat(chatId: string, message: string, sessionI
   }
 }
 
+// Send an image (OpenWA fetches it from a short-lived link). The text rides as
+// the caption; WhatsApp captions stop at 1,024 characters, so a longer text
+// follows as its own message.
+const CAPTION_MAX = 1024;
+export async function sendWhatsAppImage(chatId: string, imageUrl: string, text: string, sessionId?: string): Promise<SendResult> {
+  if (whatsappProvider() !== 'openwa') return { ok: false, provider: whatsappProvider(), error: 'Sending images needs the OpenWA gateway' };
+  try {
+    const sid = sessionId ?? (await getOpenWaSession())?.id;
+    if (!sid) return { ok: false, provider: 'openwa', error: 'WhatsApp is not connected' };
+    const caption = text.trim();
+    const fits = caption.length <= CAPTION_MAX;
+    const r = await openwa(`/sessions/${encodeURIComponent(sid)}/messages/send-image`, {
+      method: 'POST',
+      body: JSON.stringify({ chatId, url: imageUrl, ...(fits && caption ? { caption } : {}) }),
+      signal: AbortSignal.timeout(45_000),
+    });
+    if (!r.ok) return { ok: false, provider: 'openwa', error: `OpenWA ${r.status}: ${(await r.text()).slice(0, 300)}` };
+    const j = await r.json().catch(() => ({})) as { messageId?: string };
+    if (!fits) {
+      const t = await sendWhatsAppChat(chatId, caption, sid);
+      if (!t.ok) return { ...t, error: `Image sent, but the text failed: ${t.error}` };
+    }
+    return { ok: true, provider: 'openwa', messageId: j.messageId };
+  } catch (e) {
+    return { ok: false, provider: 'openwa', error: (e as Error).message };
+  }
+}
+
+// Bytes of a photo someone sent us (when the webhook didn't carry it inline)
+export async function openWaDownloadMedia(chatId: string, messageId: string): Promise<{ bytes: ArrayBuffer; mime: string } | null> {
+  if (whatsappProvider() !== 'openwa') return null;
+  const sid = (await getOpenWaSession())?.id;
+  if (!sid) return null;
+  const r = await openwa(`/sessions/${encodeURIComponent(sid)}/messages/${encodeURIComponent(chatId)}/${encodeURIComponent(messageId)}/media`, {
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!r.ok) return null;
+  const mime = (r.headers.get('content-type') ?? '').split(';')[0].trim();
+  return { bytes: await r.arrayBuffer(), mime };
+}
+
 export async function sendWhatsApp(phone: string, message: string, sessionId?: string): Promise<SendResult> {
   const provider = whatsappProvider();
   const to = normalizePhone(phone);

@@ -3,6 +3,7 @@ import { resolveAudienceMembers, type FormAudience } from '@/lib/forms-audience'
 import { whatsappProvider, OPT_OUT_FOOTER } from '@/lib/whatsapp';
 import { personalize } from '@/lib/message-fields';
 import { loadPersonalizeData } from '@/lib/message-fields-server';
+import { isOurMediaPath } from '@/lib/whatsapp-media';
 import { enqueueWhatsApp, cancelBroadcast } from '@/lib/whatsapp-queue';
 
 // Queue a WhatsApp broadcast. Sending happens a few messages per minute via
@@ -12,9 +13,11 @@ export async function POST(request: Request) {
   const a = await requireAdmin();
   if (!a.ok) return a.response;
 
-  const { message, audience } = await request.json().catch(() => ({})) as { message?: string; audience?: FormAudience };
-  if (!message?.trim()) return Response.json({ error: 'Message is required' }, { status: 400 });
-  if (message.length > 3800) return Response.json({ error: 'Message is too long (max 3,800 characters).' }, { status: 400 });
+  const { message, audience, media_path } = await request.json().catch(() => ({})) as { message?: string; audience?: FormAudience; media_path?: string };
+  const mediaPath = isOurMediaPath(media_path) ? media_path : null;
+  if (!message?.trim() && !mediaPath) return Response.json({ error: 'Write a message or attach an image.' }, { status: 400 });
+  const text = message?.trim() ?? '';
+  if (text.length > 3800) return Response.json({ error: 'Message is too long (max 3,800 characters).' }, { status: 400 });
   if (!audience) return Response.json({ error: 'Audience is required' }, { status: 400 });
   if (!whatsappProvider()) return Response.json({ error: 'WhatsApp is not set up yet — connect it first.' }, { status: 400 });
 
@@ -25,7 +28,8 @@ export async function POST(request: Request) {
 
   const { data: gm, error } = await a.db.from('group_messages').insert({
     sender_id: a.userId,
-    body: message,
+    body: text || '📷 Photo',
+    ...(mediaPath ? { media_path: mediaPath } : {}),
     audience,
     channel: 'whatsapp',
     recipient_count: members.length,
@@ -40,7 +44,8 @@ export async function POST(request: Request) {
   const queued = await enqueueWhatsApp(a.db, gm.id, members.map(m => ({
     memberId: m.id,
     phone: m.whatsapp,
-    body: personalize(message.trim(), details.get(m.id) ?? m) + OPT_OUT_FOOTER,
+    body: (text ? personalize(text, details.get(m.id) ?? m) : '') + OPT_OUT_FOOTER,
+    mediaPath,
   })));
   if (queued !== members.length) {
     await a.db.from('group_messages').update({ recipient_count: queued, pending_count: queued }).eq('id', gm.id);
